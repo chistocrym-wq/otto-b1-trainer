@@ -134,9 +134,16 @@ Canonical active module set is a subset of:
 Rules:
 1. Inactive modules are excluded from ordinary candidate generation.
 2. Their weak/missing evidence remains stored but cannot be silently used to consume session time.
-3. Changing active module scope is a user/product setting, not a mastery transition.
-4. Planner audit records `MODULE_NOT_ACTIVE` for excluded candidates when they otherwise exist.
-5. Strong performance in one active module never compensates for weak/missing evidence in another active module.
+3. Changing active module scope is a **persistent preparation setting**, not a daily planning choice and not a mastery transition.
+4. The “Моя подготовка” daily start screen must not force the learner to choose which module/task to study today.
+5. Planner audit records `MODULE_NOT_ACTIVE` for excluded candidates when they otherwise exist.
+6. Strong performance in one active module never compensates for weak/missing evidence in another active module.
+
+Daily UX:
+- user confirms/chooses 10 / 25 / 45 minutes;
+- OTTO shows a concise plan summary;
+- one primary CTA starts the plan;
+- OTTO determines module/task order from the deterministic policy.
 
 ---
 
@@ -620,7 +627,30 @@ A blocked high-priority skill remains visible in the audit; it is not silently i
 
 ---
 
-# 19. Conflict-resolution policy
+# 20. Shortened-plan / blocked-content UX
+
+If the planner cannot fill the requested time with valid work:
+
+1. do not insert duplicate/near-duplicate filler;
+2. continue with other valid candidates where available;
+3. if the plan still finishes early, tell the learner concisely that OTTO has no valid next item for the blocked target;
+4. identify the blocked target in learner-facing language without blaming the learner;
+5. post-session summary may say:
+   **“Не удалось проверить этот навык — нужен новый материал.”**
+
+This message describes a system/content limitation.
+
+It must not:
+- mark the learner wrong;
+- lower Mastery;
+- create negative EvidenceEvent;
+- ask the learner to manually choose random work merely to fill time.
+
+The audit retains the technical block reason `BLOCKED_NO_VALID_CONTENT`.
+
+---
+
+# 20. Conflict-resolution policy
 
 When obligations compete:
 
@@ -653,7 +683,7 @@ Planner does not choose tasks to maximize an invented readiness percentage.
 
 ---
 
-# 20. Plan construction algorithm
+# 21. Plan construction algorithm
 
 Given current frozen state snapshot and requested duration:
 
@@ -679,7 +709,7 @@ No stochastic step is allowed in V1.
 
 ---
 
-# 21. Replanning policy
+# 22. Replanning policy
 
 Planner never rewrites completed actions.
 
@@ -723,7 +753,7 @@ If the checkpoint is already in progress:
 
 ---
 
-# 22. Early session termination
+# 23. Early session termination
 
 If the user ends early:
 
@@ -738,7 +768,7 @@ No penalty/mastery downgrade is caused by ending early.
 
 ---
 
-# 23. Continue after daily plan
+# 24. Continue after daily plan
 
 If user chooses to continue:
 
@@ -756,7 +786,7 @@ UX should ask/allow an extension duration from the supported 10/25/45 set rather
 
 ---
 
-# 24. Planner audit trail
+# 25. Planner audit trail
 
 Every selected action records:
 
@@ -805,7 +835,7 @@ and
 
 ---
 
-# 25. UX contract — «Моя подготовка»
+# 26. UX contract — «Моя подготовка»
 
 ## Before session
 
@@ -833,6 +863,18 @@ Optional disclosure:
 
 Show one next action at a time.
 
+Before each new action, show one short learner-facing **“Почему сейчас”** reason mapped from the action's primary reason code.
+
+Examples:
+- RETURNED_ERROR → “Эта ошибка вернулась.”
+- OVERDUE_REVIEW → “Это повторение просрочено.”
+- ASSISTANCE_DEPENDENCY → “После подсказок проверим, получится ли самостоятельно.”
+- TRANSFER_PENDING → “Проверим этот навык на новом примере.”
+- INSUFFICIENT_EVIDENCE → “По этому навыку пока недостаточно данных.”
+- STALE_EVIDENCE → “Этот навык давно не проверяли.”
+
+Do not expose internal M/P/N states or priority classes.
+
 After action:
 - display its actual learning feedback owned by F03/F02;
 - do not dump the full replanned queue unless user asks.
@@ -840,24 +882,36 @@ After action:
 If plan changes after new evidence:
 - short message:
   **“План обновлён: сначала закрепим эту ошибку.”**
-- explanation must map to an audit reason.
+- explanation must map to an audit reason;
+- do not interrupt the action already in progress.
 
 ## After session
 
-Show:
+Show only learner-facing outcomes, not internal evidence codes.
+
+Approved status language:
+- **“Сделано самостоятельно”**
+- **“Получилось с подсказкой”**
+- **“Исправлено — проверим позже”**
+- **“Ошибка вернулась”**
+- **“Недостаточно данных”**
+
+Summary may show:
 - what was actually completed;
-- what was independently demonstrated vs completed with help;
+- which targets were independent vs supported in the plain language above;
 - what error was repaired/provisionally resolved/returned;
 - what is scheduled for later review;
 - what remains insufficient evidence;
 - what was deferred due to time/content;
 - next recommended action for a future session, without calculating readiness.
 
+Do not aggregate these statuses into a percentage, grade, or Readiness value in F05.
+
 Primary completion message should describe learning progress, not XP.
 
 ---
 
-# 26. Outputs for future B1-F06 Readiness
+# 27. Outputs for future B1-F06 Readiness
 
 F05 does **not** calculate Readiness.
 
@@ -883,7 +937,7 @@ Important:
 
 ---
 
-# 27. Outputs for runtime DEV
+# 28. Outputs for runtime DEV
 
 Future runtime implementation will need:
 
@@ -901,7 +955,7 @@ F05 does not choose technical storage technology or rewrite current app runtime.
 
 ---
 
-# 28. Required destructive scenario matrix
+# 29. Required destructive scenario matrix
 
 ## F05-Q01 — many overdue reviews
 Expected:
@@ -1013,7 +1067,7 @@ Expected:
 
 ---
 
-# 29. Acceptance checklist
+# 30. Acceptance checklist
 
 - [ ] Deterministic policy/version defined.
 - [ ] Active module scope defined.
@@ -1041,11 +1095,12 @@ Expected:
 
 ---
 
-# 30. Current review status
+# 31. Current review status
 
 Technical findings TA-01..TA-05 are incorporated.
+UX findings UX-01..UX-04 are incorporated.
 
 Next:
-**Technical re-check → UX / DESIGN → QA destructive scenarios → GOETHE boundary (exam-like touched) → Director scope check**
+**UX re-check → QA destructive scenarios → GOETHE boundary (exam-like touched) → Director scope check**
 
 DEV runtime remains blocked.
