@@ -864,14 +864,63 @@ F05 remains the owner of daily selection.
 
 ---
 
-# 20. User-facing UX labels
+# 20. UX / DESIGN contract for module readiness
 
-Internal codes R0–R4 / C0–C2 are not shown by default.
+Internal R/T/C/M/P/N codes, policy thresholds, audit reason codes and raw evidence ratios are not shown in the normal learner UI.
 
-Approved readiness labels:
+## 20.1 Four independent module cards — no global readiness verdict
 
-Module heading:
+Readiness must be presented as **four independent module cards in fixed exam order**:
+
+1. **Lesen**
+2. **Hören**
+3. **Schreiben**
+4. **Sprechen**
+
+The order is stable and is **not** sorted by strongest/weakest status.
+
+The readiness surface must not create:
+- one global readiness percentage;
+- one average score;
+- one green/yellow/red whole-exam verdict;
+- one “B1 ready / not ready” badge;
+- any visual mechanism by which a strong module appears to compensate for a weak module.
+
+Optional neutral summary line:
+
+**«По модулям сейчас разная картина. OTTO оценивает каждый модуль отдельно.»**
+
+Each module card uses exactly this information hierarchy:
+
+1. **Module name**
+2. **Readiness label**
+3. **One plain-language primary reason**
+4. **Coverage line**
+5. **Data reliability line**
+6. **One next step**
+7. expandable **«Почему OTTO так считает?»**
+
+Example anatomy:
+
+> **Lesen**  
+> **Нужна повторная проверка**  
+> Все Teil были проверены, но часть подтверждений уже пора обновить.  
+> Проверено: 5 из 5 Teil  
+> Надёжность данных: средняя  
+> **Дальше:** короткая самостоятельная проверка без подсказок  
+> **Почему OTTO так считает?**
+
+Card heading/details must retain:
+
 **«Готовность к модулю — оценка OTTO»**
+
+Persistent readiness-details note:
+
+**«Это внутренняя оценка OTTO, не официальный результат Goethe.»**
+
+---
+
+## 20.2 User-facing readiness labels and state-specific meaning
 
 | Internal | User-facing |
 |---|---|
@@ -881,61 +930,438 @@ Module heading:
 | R3 | **Нужна повторная проверка** |
 | R4 | **Устойчивые доказательства есть** |
 
-Persistent detail note:
+The label alone is never enough. The card must provide a simple reason derived from the audited blocker/supporting evidence.
+
+### R0 — Недостаточно данных
+
+Default explanation:
+
+**«Пока недостаточно самостоятельных проверок, чтобы оценить весь модуль.»**
+
+When official coverage is missing:
+
+**«Проверено: 4 из 5 Teil. Ещё нужно проверить: Teil 3.»**
+
+When known weakness also exists:
+
+**«Для общей оценки данных пока недостаточно. При этом уже видно, что нужно поработать над …»**
+
+Missing evidence is not learner failure:
+- do not label it “слабое место” without negative evidence;
+- do not call it an “ошибка”;
+- do not use failure-red styling by default.
+
+### R1 — Требуется работа
+
+Default explanation pattern:
+
+**«Данных уже достаточно, и одна проблема повторяется в самостоятельных попытках.»**
+
+The card must name the concrete learner-level area supported by audit evidence.
+
+Do not expose:
+- M1/M6;
+- N3/N4;
+- raw threshold counts.
+
+### R2 — Прогресс есть, но результат нестабилен
+
+Reason copy must reflect the actual blocker. Approved patterns include:
+
+- **«На новых заданиях результат пока меняется.»**
+- **«Часть успешных попыток была с подсказками.»**
+- **«Самостоятельных подтверждений пока недостаточно.»**
+- **«Результаты последних попыток расходятся.»**
+
+### R3 — Нужна повторная проверка
+
+Default explanation:
+
+**«Раньше результат подтверждался, но его пора проверить снова.»**
+
+Do not imply forgetting unless negative evidence actually exists.
+
+Do not say:
+- “Навык ухудшился” merely because evidence became due/stale;
+- “Вы больше не готовы” without regression evidence.
+
+### R4 — Устойчивые доказательства есть
+
+Default explanation:
+
+**«Есть несколько самостоятельных подтверждений на разных заданиях, включая exam-like проверку.»**
+
+Keep the persistent disclaimer:
+
 **«Это внутренняя оценка OTTO, не официальный результат Goethe.»**
 
-Confidence is shown separately as:
+Do not use certification/pass language:
+- “сдано”;
+- “проходной”;
+- “экзамен пройдёте”;
+- “готов на 80%”.
+
+---
+
+## 20.3 Confidence / data reliability is separate from readiness
+
+Internal C0/C1/C2 are never shown.
+
+Use one secondary line:
+
 - **«Надёжность данных: низкая»**
 - **«Надёжность данных: средняя»**
 - **«Надёжность данных: высокая»**
 
-Never show internal R/C codes to the learner.
+This line describes the quality and sufficiency of evidence used by OTTO.
 
-## Coverage display
+It does **not** describe:
+- the learner's official Goethe level;
+- a score;
+- probability of passing.
 
-Show coverage as coverage, not as a readiness score.
+A negative readiness state may have high data reliability if the evidence is broad, recent and consistent.
 
-Preferred user-facing patterns:
-- **«Проверено Teil: 4 из 5»**
-- **«Нужно проверить: Teil 3»**
+---
+
+## 20.4 Coverage is not a score
+
+Show coverage as coverage.
+
+Preferred patterns:
+
+- **«Проверено: 4 из 5 Teil»**
+- **«Ещё нужно проверить: Teil 3»**
 - **«Exam-like подтверждение: есть»**
 - **«Exam-like подтверждение: не хватает»**
 
-Do not use a headline like “80% ready”.
+Do not use a headline like:
+- “80% ready”;
+- “готовность 72/100”;
+- “Goethe score”.
 
-Internal Micro-skill coverage ratios may appear only in an explanatory detail view and must be labeled as **coverage**, never as points or readiness percentage.
-
-## R0 with known weakness
-
-When readiness_state = R0 but known negative evidence exists, show both:
-
-1. **«Недостаточно данных для общей оценки модуля.»**
-2. A concrete known issue, for example:
-   **«При этом уже видно, что нужно поработать над порядком слов в Schreiben Aufgabe 2.»**
-
-The second line must come from audited blockers/evidence. Do not invent a weakness.
-
-## Explanation pattern
-
-Every module card must answer:
-
-1. **Что показывает OTTO сейчас?**
-2. **Почему?**
-3. **Что уже подтверждено?**
-4. **Чего не хватает?**
-5. **Что делать дальше?**
-
-Example:
-- “Lesen: нужна повторная проверка.”
-- “Все Teil были проверены, но два навыка давно не перепроверялись.”
-- “Следующий шаг: короткая независимая проверка без подсказок.”
-
-Do not say:
-- “Вы точно сдадите.”
-- “Ваш официальный балл…”
-- “Goethe readiness 78%.”
+Internal Micro-skill ratios may appear only in deeper diagnostic/admin detail and must be explicitly labeled as **coverage**, never readiness points.
 
 ---
+
+## 20.5 Assisted-heavy evidence is a first-class UX case
+
+Many completed tasks do not imply independent readiness.
+
+When evidence volume is high but most success used assistance, use:
+
+> **Прогресс есть, но результат нестабилен**  
+> **«Данных уже много, но большинство успешных попыток были с подсказками. OTTO пока не может подтвердить самостоятельный результат.»**
+
+After full-model exposure:
+
+**«После примера получилось правильно. Нужна новая попытка на другом задании без подсказки.»**
+
+Do not use:
+- activity count;
+- number of completed tasks;
+- assisted accuracy
+
+as positive readiness messaging when independence is still missing.
+
+---
+
+## 20.6 “Почему OTTO так считает?” — progressive disclosure
+
+The collapsed card shows:
+- readiness label;
+- one primary reason;
+- coverage;
+- data reliability;
+- one next step.
+
+Expanded **«Почему OTTO так считает?»** uses only four human-readable sections.
+
+### Подтверждено
+
+Examples:
+- **«Проверены все 5 Teil.»**
+- **«Есть самостоятельные попытки на разных заданиях.»**
+- **«Есть свежая exam-like проверка без подсказок.»**
+
+### Пока не подтверждено
+
+Examples:
+- **«Не хватает самостоятельной проверки Teil 3.»**
+- **«Нет свежей exam-like проверки.»**
+- **«Для Sprechen пока нет достаточно надёжной аудиопроверки.»**
+
+### Что повлияло
+
+Examples:
+- **«В последних попытках часто использовались подсказки.»**
+- **«Одна и та же ошибка вернулась после повторения.»**
+- **«Часть данных устарела и требует перепроверки.»**
+
+### Что дальше
+
+Show **one concrete next action only**, supplied through the existing F04/F05 contracts.
+
+Do not expose:
+- R/T/C/M/P/N codes;
+- raw policy thresholds;
+- percentages used internally for gates;
+- audit reason-code identifiers;
+- planner priority classes.
+
+---
+
+## 20.7 Missing coverage and system/content gaps
+
+Missing coverage must be visually and verbally different from weakness.
+
+Approved language:
+- **«Ещё не проверено»**
+- **«Не хватает данных»**
+- **«Нужна самостоятельная попытка»**
+
+Do not say:
+- “слабое место” without negative evidence;
+- “ошибка” for missing coverage.
+
+For a system/content gap:
+
+**«Для этой части OTTO пока не хватает подходящего задания для проверки. Это не оценка вашего уровня.»**
+
+This is the learner-facing form of SYSTEM_DATA_GAP.
+
+It must not:
+- lower the learner's displayed ability;
+- be colored/stamped as failure;
+- be described as a user mistake.
+
+---
+
+## 20.8 Module-specific explanation language
+
+The common readiness states are shared, but reasons must reflect the evidence channel of each module.
+
+### Lesen
+
+Explain:
+- official Teil coverage;
+- independent work on different texts/tasks;
+- transfer/new material;
+- freshness/recheck.
+
+Example:
+
+**«Все 5 Teil проверены, но по Teil 4 пока мало самостоятельных попыток на новом материале.»**
+
+### Hören
+
+Extra replay/transcript is training support, not learner failure.
+
+Example:
+
+**«Часть ответов получилась после дополнительного повтора аудио. Это полезно для тренировки, но пока не подтверждает самостоятельную работу в exam-like условиях.»**
+
+Do not simply say “Hören слабый” because extra replay was used.
+
+### Schreiben
+
+Never reduce explanation to correct/incorrect or word count.
+
+Examples:
+
+**«Содержание задания выполняется устойчиво, но структуры в самостоятельных текстах пока нестабильны.»**
+
+When evidence is incomplete:
+
+**«Есть данные по содержанию и связности, но пока недостаточно надёжных наблюдений по нескольким критериям.»**
+
+### Sprechen
+
+For text-only work:
+
+**«Есть данные по тому, что вы хотите сказать, но этого недостаточно, чтобы оценить реальную устную речь.»**
+
+For audio with low evaluator confidence:
+
+**«Устная попытка записана, но данных пока недостаточно для надёжного вывода о произношении или взаимодействии.»**
+
+For interactive Aufgaben:
+
+**«Нужна проверка реального взаимодействия; подготовленный монолог её не заменяет.»**
+
+---
+
+## 20.9 Visual semantics for future implementation
+
+Status must always be communicated in text. Color is secondary only.
+
+Do not use:
+- score rings;
+- speedometers/gauges;
+- readiness percentage bars;
+- certificate/trophy metaphors;
+- pass/fail stamps;
+- “exam passed” visual language.
+
+State visual semantics:
+
+- **Недостаточно данных** → neutral, not failure-red.
+- **Требуется работа** → clear learning attention state, not official fail.
+- **Прогресс есть, но результат нестабилен** → progress + uncertainty.
+- **Нужна повторная проверка** → maintenance/recheck, not regression.
+- **Устойчивые доказательства есть** → calm positive emphasis, not certification/pass confirmation.
+
+The OTTO-vs-Goethe disclaimer must remain available in readiness details without dominating the card.
+
+---
+
+## 20.10 Mixed module states
+
+Show different module states side by side without compensation.
+
+Example:
+
+- **Lesen — Устойчивые доказательства есть**
+- **Hören — Нужна повторная проверка**
+- **Schreiben — Прогресс есть, но результат нестабилен**
+- **Sprechen — Недостаточно данных**
+
+Optional summary:
+
+**«По модулям сейчас разная картина. OTTO оценивает каждый модуль отдельно.»**
+
+Never derive:
+- a global readiness average;
+- a whole-exam green/yellow/red state;
+- “B1 ready / not ready”.
+
+---
+
+## 20.11 Required UX acceptance examples
+
+These examples freeze presentation behavior only. They do not create new readiness rules.
+
+### UX-EX01 — insufficient data, no known weakness
+
+> **Sprechen**  
+> **Недостаточно данных**  
+> Пока недостаточно самостоятельных проверок, чтобы оценить весь модуль.  
+> Проверено: 1 из 3 Aufgaben  
+> Надёжность данных: низкая  
+> **Дальше:** самостоятельная аудиопопытка по Aufgabe 1
+
+### UX-EX02 — insufficient data + known weakness
+
+> **Schreiben**  
+> **Недостаточно данных**  
+> Для общей оценки данных пока недостаточно. При этом уже видно, что в самостоятельных текстах повторяется проблема со структурами.  
+> Проверено: 2 из 3 Aufgaben  
+> Надёжность данных: низкая  
+> **Дальше:** новый самостоятельный текст с фокусом на структуры
+
+### UX-EX03 — sufficient data + recurring weakness
+
+> **Lesen**  
+> **Требуется работа**  
+> Данных уже достаточно, и одна проблема повторяется в самостоятельных попытках: в Teil 4 часто неверно определяется позиция автора.  
+> Проверено: 5 из 5 Teil  
+> Надёжность данных: высокая  
+> **Дальше:** новое задание Teil 4 без подсказок
+
+### UX-EX04 — unstable evidence
+
+> **Hören**  
+> **Прогресс есть, но результат нестабилен**  
+> Результаты последних самостоятельных попыток расходятся.  
+> Проверено: 4 из 4 Teil  
+> Надёжность данных: средняя  
+> **Дальше:** новая самостоятельная проверка на другом аудио
+
+### UX-EX05 — recheck due
+
+> **Lesen**  
+> **Нужна повторная проверка**  
+> Раньше результат подтверждался, но часть доказательств уже пора обновить.  
+> Проверено: 5 из 5 Teil  
+> Надёжность данных: средняя  
+> **Дальше:** короткая независимая проверка без подсказок
+
+### UX-EX06 — stable evidence
+
+> **Lesen**  
+> **Устойчивые доказательства есть**  
+> Есть несколько самостоятельных подтверждений на разных заданиях, включая exam-like проверку.  
+> Проверено: 5 из 5 Teil  
+> Надёжность данных: высокая  
+> **Дальше:** поддерживающая проверка по расписанию  
+> Это внутренняя оценка OTTO, не официальный результат Goethe.
+
+### UX-EX07 — many successes, mostly assisted
+
+> **Schreiben**  
+> **Прогресс есть, но результат нестабилен**  
+> Данных уже много, но большинство успешных попыток были с подсказками. OTTO пока не может подтвердить самостоятельный результат.  
+> Проверено: 3 из 3 Aufgaben  
+> Надёжность данных: средняя  
+> **Дальше:** новый текст без подсказки
+
+### UX-EX08 — mixed modules
+
+> **Lesen — Устойчивые доказательства есть**  
+> **Hören — Нужна повторная проверка**  
+> **Schreiben — Прогресс есть, но результат нестабилен**  
+> **Sprechen — Недостаточно данных**  
+> По модулям сейчас разная картина. OTTO оценивает каждый модуль отдельно.
+
+### UX-EX09 — Hören with extra replay
+
+> **Hören**  
+> **Прогресс есть, но результат нестабилен**  
+> Часть ответов получилась после дополнительного повтора аудио. Это полезно для тренировки, но пока не подтверждает самостоятельную работу в exam-like условиях.  
+> Проверено: 4 из 4 Teil  
+> Надёжность данных: средняя  
+> **Дальше:** проверка с официально допустимым количеством прослушиваний
+
+### UX-EX10 — Sprechen text-only
+
+> **Sprechen**  
+> **Недостаточно данных**  
+> Есть данные по тому, что вы хотите сказать, но этого недостаточно, чтобы оценить реальную устную речь.  
+> Проверено: текстовая подготовка есть; аудиопроверки не хватает  
+> Надёжность данных: низкая  
+> **Дальше:** записать самостоятельный устный ответ
+
+### UX-EX11 — productive evidence with low evaluator confidence
+
+> **Sprechen**  
+> **Прогресс есть, но результат нестабилен**  
+> Устная попытка записана, но данных пока недостаточно для надёжного вывода о произношении или взаимодействии.  
+> Проверено: 3 из 3 Aufgaben  
+> Надёжность данных: низкая  
+> **Дальше:** повторная аудиопроверка с надёжной оценкой
+
+### UX-EX12 — system content gap
+
+> **Hören**  
+> **Недостаточно данных**  
+> Для этой части OTTO пока не хватает подходящего задания для проверки. Это не оценка вашего уровня.  
+> Проверено: 3 из 4 Teil  
+> Надёжность данных: низкая  
+> **Дальше:** проверить Teil 4, когда будет доступно валидное новое задание
+
+---
+
+## 20.12 UX implementation acceptance guard
+
+A future runtime implementation of F06 fails the UX contract if it can reasonably:
+- expose internal codes as learner-facing states;
+- turn readiness into a score dashboard;
+- visually average modules together;
+- confuse missing evidence with weakness;
+- confuse assisted success with independent readiness;
+- present system/content gaps as learner failure;
+- imply an official Goethe pass/result;
+- hide known negative evidence behind “Недостаточно данных”.
 
 # 21. Numeric display policy
 
