@@ -362,8 +362,13 @@ These are planner fairness signals, not mastery evidence.
 ## Module starvation debt
 
 For an active module with at least one executable candidate:
-- debt increases by 1 after each completed session in which the module receives no work;
-- debt resets to 0 when the module receives a meaningful action.
+- debt increases by 1 only when the **base daily plan is formally closed as completed** and the module received no meaningful action;
+- debt resets to 0 when the completed base daily plan included a meaningful action for that module.
+
+Early-exit and extension rules:
+- ending a base plan early does **not** increment debt for modules that would have appeared in unstarted slots;
+- an immediate extension inside the same `learning_occasion_id` does not create a second debt update;
+- planner-history debt is updated at most once per base daily plan.
 
 ## Deterministic fairness injection
 
@@ -408,9 +413,10 @@ For 25/45 minutes with another active module having valid work:
 Before inserting an indivisible action, compute projected same-skill share.
 
 - if projected share stays within cap → allow;
-- if it exceeds cap and another valid action fits the slot → defer with `SAME_SKILL_CAP`;
-- if the single indivisible action itself exceeds the cap and no alternative valid action can satisfy the slot, allow it and record `CAP_EXCEPTION_INDIVISIBLE_ACTION`;
-- the exception does not permit adding further same-skill actions beyond that indivisible action.
+- **if the candidate is the first necessary P0 RECOVERY_REPAIR / RETURNED_ERROR / regression action, it is never rejected solely for exceeding the share cap; allow it with `CAP_EXCEPTION_CRITICAL_RECOVERY`;**
+- otherwise, if it exceeds cap and another valid action fits the slot → defer with `SAME_SKILL_CAP`;
+- if the single indivisible non-P0 action itself exceeds the cap and no alternative valid action can satisfy the slot, allow it and record `CAP_EXCEPTION_INDIVISIBLE_ACTION`;
+- after a critical-recovery exception is used, normal caps/fairness constrain all remaining session selections.
 
 ## Same module cap
 
@@ -420,8 +426,9 @@ For 25/45 minutes:
 - one module should not exceed **70% of instructional minutes** unless all other modules are blocked/ineligible.
 
 Before insertion, evaluate projected module share:
-- if another valid-module action fits and projected share would exceed 70%, defer with `SAME_MODULE_CAP`;
-- a single indivisible long action may exceed the cap only when no alternative valid action can fill the slot; record `CAP_EXCEPTION_INDIVISIBLE_ACTION`.
+- the first necessary P0 critical recovery action is allowed even if it crosses 70%; record `CAP_EXCEPTION_CRITICAL_RECOVERY`;
+- after that, if another valid-module action fits and projected share would exceed 70%, defer with `SAME_MODULE_CAP`;
+- a single indivisible non-P0 long action may exceed the cap only when no alternative valid action can fill the slot; record `CAP_EXCEPTION_INDIVISIBLE_ACTION`.
 
 For 10 minutes:
 - no hard module split is required.
@@ -478,6 +485,13 @@ Planner reserves a small wrap budget and fills the instructional budget with act
 The planner may finish under budget rather than insert low-value/fake work.
 
 No action may be truncated below its content-defined minimum safe duration.
+
+If the highest-ranked executable candidate does not fit the remaining safe budget:
+- defer it with `ACTION_EXCEEDS_TIME_BUDGET`;
+- do not split/truncate it;
+- do not create failure/completion evidence;
+- continue scanning ranked candidates for the next valid action that fits;
+- keep the deferred action visible for a future session with more time.
 
 ---
 
@@ -568,6 +582,22 @@ Checkpoint priority:
 - may outrank low-priority maintenance when exam-like evidence is missing.
 
 A checkpoint outcome creates EvidenceEvents through F02/F01 rules; F05 itself does not score Goethe or calculate Readiness.
+
+## Strong-user deterministic fallback
+
+If, after candidate generation and validation, there is **no executable P0–P4 work** for the active module set:
+
+1. generate a P5 maintenance/checkpoint candidate from an active module with valid content;
+2. choose the module/Teil by:
+   - no valid P5/exam-like evidence first;
+   - then oldest latest independent/exam-like check;
+   - then higher module starvation debt;
+   - then stable module order LESEN → HÖREN → SCHREIBEN → SPRECHEN as final tie-break;
+3. prefer EXAM_LIKE_CHECKPOINT when the content can preserve frozen F01 constraints and fits the selected duration;
+4. otherwise use STALE_MAINTENANCE / independent maintenance practice;
+5. do not label any skill weak merely to create work.
+
+If no valid P5 maintenance/checkpoint content fits, the plan may honestly finish short/empty rather than invent work.
 
 ---
 
@@ -826,7 +856,10 @@ Every deferred/skipped candidate records one or more codes:
 - `INVALID_EXACT_OR_NEAR_DUPLICATE`
 - `CHECKPOINT_NOT_ELIGIBLE`
 - `WAITING_FOR_REPAIR_OR_TRANSFER`
-- `DEFERRED_USER_ENDED_SESSION`.
+- `DEFERRED_USER_ENDED_SESSION`
+- `ACTION_EXCEEDS_TIME_BUDGET`
+- `CAP_EXCEPTION_CRITICAL_RECOVERY`
+- `CAP_EXCEPTION_INDIVISIBLE_ACTION`.
 
 The audit must make it possible to answer:
 **“Почему это задание сейчас?”**
@@ -1099,8 +1132,9 @@ Expected:
 
 Technical findings TA-01..TA-05 are incorporated.
 UX findings UX-01..UX-04 are incorporated.
+QA findings QA-01..QA-04 are incorporated.
 
 Next:
-**UX re-check → QA destructive scenarios → GOETHE boundary (exam-like touched) → Director scope check**
+**QA re-check → Technical final delta → GOETHE boundary (exam-like touched) → Director scope check**
 
 DEV runtime remains blocked.
