@@ -768,8 +768,8 @@
         'Нет полного exam-like покрытия модуля.'
       ],
       influenced_by: [
-        'EvidenceEvents: ' + lesenEvents.length,
-        'Micro-skills с данными в Teil 1: ' + t1MicroCoverage + ' из 6'
+        'Завершённых попыток в Lesen Teil 1: ' + lesenEvents.length,
+        'Проверено микронавыков в Teil 1: ' + t1MicroCoverage + ' из 6'
       ],
       policy_version: POLICY.readiness
     };
@@ -782,10 +782,10 @@
         confidence_level: 'C0',
         confidence_label: 'Надёжность данных: низкая',
         coverage: 'Проверено: 0 из ' + partsLabel,
-        reason: 'В этом первом vertical slice evidence для этого модуля пока не собирается. Это ограничение Preview, не оценка вашего уровня.',
-        next_step: 'Модуль будет подключён следующим vertical slice без изменения Foundation.',
+        reason: 'По этому модулю пока нет учебных данных. Это ограничение текущей версии, а не оценка твоего уровня.',
+        next_step: 'Следующий шаг появится, когда для этого модуля будут подключены реальные задания и сбор результатов.',
         confirmed: [],
-        missing: ['SYSTEM_DATA_GAP: runtime-сбор evidence для модуля ещё не реализован в B1-I01.'],
+        missing: ['По этому модулю пока нет доступных заданий для сбора данных.'],
         influenced_by: [],
         policy_version: POLICY.readiness
       };
@@ -1280,7 +1280,7 @@
 
       const actions = session.remainingActions || [];
       let html = '<span class="i01-kicker">Моя подготовка</span><h1 class="h1">План на ' + session.requestedDuration + ' минут</h1>';
-      html += '<p class="sub">План строится детерминированно из evidence, ошибок и review. После значимого события оставшаяся часть пересчитывается.</p>';
+      html += '<p class="sub">OTTO выбирает порядок по твоим результатам, ошибкам и тому, что пора повторить. После важного ответа оставшаяся часть плана обновится.</p>';
       html += '<div class="i01-plan">';
       actions.forEach(function (a, i) {
         const task = getTask(a.task_id);
@@ -1322,7 +1322,7 @@
       html += reasonCard(action);
       html += '<div class="i01-text">' + e(task.text) + '</div>';
       html += '<div class="i01-statement">' + e(task.statement) + '</div>';
-      html += '<div class="i01-meta"><span>Richtig / Falsch</span><span>' + e(action.action_type === 'TRANSFER_CHECK' ? 'Новый контекст · transfer' : 'Самостоятельная попытка') + '</span></div>';
+      html += '<div class="i01-meta"><span>Richtig / Falsch</span><span>' + e(action.action_type === 'TRANSFER_CHECK' ? 'Новый контекст · перенос навыка' : 'Самостоятельная попытка') + '</span></div>';
       task.options.forEach(function (opt, i) {
         const sel = state.ui.selectedAnswer === i ? ' sel' : '';
         html += '<button class="option' + sel + '" onclick="i01SelectAnswer(' + i + ')">' + e(opt) + '</button>';
@@ -1353,7 +1353,7 @@
       if (!state.ui.currentTaskStartedAt) state.ui.currentTaskStartedAt = iso();
       persist();
 
-      let html = '<span class="i01-kicker">Error Repair Loop</span><h1 class="h1">Сначала попробуй исправить сам</h1>';
+      let html = '<span class="i01-kicker">Исправление ошибки</span><h1 class="h1">Сначала попробуй исправить сам</h1>';
       html += '<div class="card bad"><b>Что произошло</b><p class="sub">' + e(error.cause_hypothesis) + '</p></div>';
       html += '<div class="notice">OTTO пока не показывает готовый ответ. Сравни смысл текста и утверждения ещё раз.</div>';
       html += '<div class="i01-text">' + e(task.text) + '</div><div class="i01-statement">' + e(task.statement) + '</div>';
@@ -1384,7 +1384,7 @@
       html += '<div class="card"><div class="i01-summaryline"><b>Выполнено действий</b><span>' + completed.length + '</span></div>' +
         '<div class="i01-summaryline"><b>Сделано самостоятельно</b><span>' + independent + '</span></div>' +
         '<div class="i01-summaryline"><b>Получилось с подсказкой</b><span>' + assisted + '</span></div>' +
-        '<div class="i01-summaryline"><b>Review-обязательств</b><span>' + reviews.length + '</span></div></div>';
+        '<div class="i01-summaryline"><b>Повторных проверок запланировано</b><span>' + reviews.length + '</span></div></div>';
 
       Object.keys(SKILLS).sort().forEach(function (skillId) {
         const st = state.skillStates[skillId];
@@ -1394,7 +1394,7 @@
       if (reviews.length) {
         html += '<div class="card ok"><b>Исправлено — проверим позже</b><p class="sub">После transfer создана отложенная независимая перепроверка. Ближайшая: ' + e(new Date(reviews[0].next_review_at).toLocaleString('ru-RU')) + '.</p></div>';
       }
-      html += '<div class="card soft"><b>Readiness</b><p class="sub">Lesen: <b>Недостаточно данных</b>. Этот slice покрывает только часть Lesen Teil 1, поэтому OTTO не выдумывает процент готовности.</p></div>';
+      html += '<div class="card soft"><b>Готовность</b><p class="sub">Lesen: <b>Недостаточно данных</b>. Эта версия покрывает только часть Lesen Teil 1, поэтому OTTO не выдумывает процент готовности.</p></div>';
       html += '<button class="btn primary" onclick="go(\'readiness\')">Открыть готовность по модулям</button>';
       html += '<button class="btn secondary" onclick="go(\'home\')">На главную</button>';
       return html;
@@ -1451,16 +1451,16 @@
     R.splash = function () {
       const state = rt();
       const hasSession = state.session && !state.session.finishedAt;
-      return '<div class="hero center"><div class="otto"><img src="assets/otto.webp" alt="Отто"></div><h1>OTTO B1</h1><p>Персональная подготовка по evidence, ошибкам и повторным проверкам.</p>' +
+      return '<div class="hero center"><div class="otto"><img src="assets/otto.webp" alt="Отто"></div><h1>OTTO B1</h1><p>Персональная подготовка по твоим результатам, ошибкам и повторным проверкам.</p>' +
         '<button class="btn ghost" onclick="i01Start()">' + (hasSession ? 'Продолжить мою подготовку' : 'Начать мою подготовку') + '</button></div>' +
-        '<div class="card soft"><b>Первый implementation slice</b><p class="sub">Рабочий end-to-end цикл Lesen: evidence → mastery → repair → transfer → review → replanning → readiness.</p></div>';
+        '<div class="card soft"><b>Как работает эта версия</b><p class="sub">OTTO выбирает задания по твоим ответам, помогает разобрать ошибку и позже возвращает навык на повторную проверку.</p></div>';
     };
 
     R.home = function () {
       const state = rt();
       const sessionOpen = state.session && !state.session.finishedAt;
       return '<span class="eyebrow">' + e(S.name || 'OTTO B1') + '</span><h1 class="h1">Моя подготовка</h1>' +
-        '<p class="sub">OTTO сам выбирает следующий полезный шаг из реальных evidence. Основной режим Preview — 25 минут.</p>' +
+        '<p class="sub">OTTO сам выбирает следующий полезный шаг по твоим результатам. Основной режим этой версии — 25 минут.</p>' +
         '<div class="card soft"><b>Сегодня</b><p class="sub">' + (sessionOpen ? 'Занятие уже начато — можно продолжить.' : 'Новый план будет построен по текущим данным.') + '</p></div>' +
         '<button class="btn primary" onclick="i01Start()">' + (sessionOpen ? 'Продолжить мою подготовку' : 'Начать мою подготовку') + '</button>' +
         '<button class="btn secondary" onclick="go(\'time\')">Время: ' + state.selectedDuration + ' минут</button>' +
@@ -1470,7 +1470,7 @@
 
     R.time = function () {
       const state = rt();
-      return '<span class="eyebrow">Время</span><h1 class="h1">Сколько времени есть?</h1><p class="sub">25 минут — полностью проверяемый режим B1-I01. 10/45 используют ту же архитектуру и честно завершаются раньше, если валидного контента недостаточно.</p>' +
+      return '<span class="eyebrow">Время</span><h1 class="h1">Сколько времени есть?</h1><p class="sub">25 минут — основной полностью рабочий режим этой версии. Режимы 10 и 45 минут используют те же правила, но пока могут завершиться раньше, если подходящих заданий недостаточно.</p>' +
         '<div class="grid">' + [10,25,45].map(function (n) {
           return '<button class="module" onclick="i01SetDuration(' + n + ')"><b>' + n + ' минут</b><small>' + (n === 25 ? 'основной Preview' : 'поддерживается ядром') + '</small></button>';
         }).join('') + '</div><button class="btn primary" onclick="go(\'home\')">Готово</button>';
@@ -1508,7 +1508,7 @@
 
     R.progress = function () {
       const state = rt();
-      return '<span class="eyebrow">Прогресс</span><h1 class="h1">Доказательства, а не XP</h1>' +
+      return '<span class="eyebrow">Прогресс</span><h1 class="h1">Результаты, а не активность</h1>' +
         Object.keys(SKILLS).sort().map(function (skillId) {
           const events = state.evidenceEvents.filter(function (x) { return x.skill_node_id === skillId; });
           const st = state.skillStates[skillId];
