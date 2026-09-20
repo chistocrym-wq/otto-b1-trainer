@@ -138,6 +138,20 @@ This precedence determines urgency metadata, not Daily Planner placement.
 
 B1-F04 uses a simple explicit product policy.
 
+## 6.0 Deterministic bootstrap
+
+Scheduler state is derived from immutable evidence history.
+
+Define `review_success_streak` as the number of **qualifying independent separated retrieval confirmations after the current baseline strong event**, stopping/resetting at the most recent unresolved failure/recurrence.
+
+Bootstrap rules:
+- successful post-repair independent transfer creates a new baseline and explicitly resets `review_success_streak=0`, `review_level=0`;
+- for historical M3/M4 without a scheduler record, identify the latest valid baseline P4/P5 or equivalent strong independent event and count later qualifying review confirmations on later `learning_occasion_id` values;
+- `review_level = min(review_success_streak, 5)`;
+- if no valid baseline can be established, do not guess a level; emit `needs_evidence_collection=true`.
+
+This makes migration/bootstrap reproducible instead of assigning a level from the mastery label alone.
+
 Intervals are measured from the qualifying independent event.
 
 | review_level | interval after qualifying success |
@@ -337,12 +351,20 @@ If no valid candidate exists:
 
 ---
 
-# 12. Successful delayed review
+# 12. Review-attempt event semantics
+
+Every review attempt preserves the **first unassisted outcome** as its own EvidenceEvent.
+
+If the learner first fails and later becomes correct after assistance:
+- the original independent failure remains immutable;
+- the assisted success is a separate EvidenceEvent;
+- assistance never erases the failure;
+- F02/F03 may therefore still produce UNSTABLE/REGRESSION + repair work.
 
 A review is a **qualifying success** only if:
 
 - completion data valid;
-- targeted Micro-skill correct/sufficient;
+- targeted Micro-skill correct/sufficient on the qualifying attempt;
 - new-enough candidate under section 11;
 - consumed assistance = none for independent confirmation;
 - if stage=exam_like, relevant F01 constraints were respected.
@@ -359,20 +381,29 @@ On qualifying independent success:
 ### Strategy-only success
 
 If strategy assistance is consumed:
-- store positive evidence;
-- do not advance review_level;
+- store P2/minimally-supported positive evidence;
+- do not advance `review_success_streak` or `review_level`;
 - next_review_at = completion + current-level interval, minimum 1 day;
 - reason includes ASSISTANCE_DEPENDENCY_RECHECK.
 
-### Keyword/evidence_hint/phrase_start/full_model success
+### Keyword / evidence_hint success
 
-Does not satisfy independent delayed review.
+- store assisted positive evidence;
+- do not advance review_success_streak/level;
+- review remains unconfirmed independently;
+- next_review_at = completion + 1 day;
+- reason includes ASSISTANCE_DEPENDENCY_RECHECK.
 
-Policy:
-- review_level does not advance;
-- state remains review-required;
-- next_review_at = completion + 1 day after instructional follow-up/repair is complete;
-- assistance dependency is exposed.
+### phrase_start / full_model required
+
+If answer-level scaffolding was needed:
+- do not treat the review as successful independent retrieval;
+- preserve the pre-assistance failure/partial event;
+- hand off to F03 repair semantics;
+- **do not assign a normal spaced-progression date from the scaffolded correction itself**;
+- next spaced sequence begins only from a new qualifying F03 transfer basis event.
+
+This prevents answer-level coaching from manufacturing retrieval success.
 
 ---
 
@@ -484,7 +515,43 @@ If one task cannot validly test all linked causes:
 
 ---
 
-# 18. Priority output for B1-F05
+# 18. Blocked-content semantics
+
+If review is due but no valid candidate survives the exclusion rules:
+
+- `blocked_no_valid_item=true`;
+- preserve the original review obligation, reason, original due date, and overdue duration;
+- do not advance review_level;
+- do not manufacture a new due date every day;
+- do not repeatedly enqueue duplicate review records;
+- output planner urgency `BLOCKED_CONTENT`;
+- once valid content becomes available, the existing obligation may resume immediately.
+
+This is a content availability block, not successful scheduling.
+
+---
+
+# 19. Policy migration semantics
+
+A policy-version change is explicit.
+
+Migration rules:
+- preserve previous scheduler snapshot;
+- preserve all EvidenceEvents and completed review outcomes unchanged;
+- create a new scheduler snapshot with:
+  - old_policy_version;
+  - new_policy_version;
+  - migrated_at;
+  - basis_event_ids;
+  - recomputed review_success_streak;
+  - recomputed review_level;
+  - recomputed next_review_at if valid;
+- do not silently migrate on every read;
+- migration must be an auditable administrative/data operation.
+
+---
+
+# 20. Priority output for B1-F05
 
 B1-F04 does not choose daily order.
 
@@ -524,7 +591,7 @@ B1-F05 owns final selection across skills and session time.
 
 ---
 
-# 19. Exam-like boundary
+# 21. Exam-like boundary
 
 If review stage is `exam_like`:
 
@@ -537,7 +604,7 @@ Passing an OTTO review is not an official Goethe result.
 
 ---
 
-# 20. Policy conflict precedence
+# 22. Policy conflict precedence
 
 When inputs conflict, resolve in this order:
 
@@ -558,7 +625,7 @@ Regression/repair can suspend ordinary maintenance progression.
 
 ---
 
-# 21. QA scenario matrix
+# 23. QA scenario matrix
 
 ## F04-Q01 — first repaired error
 Transfer success → level 0 → +1 day.
@@ -603,14 +670,14 @@ No success/failure transition from invalid event; obligation remains.
 UTC duration arithmetic; no midnight rounding.
 
 ## F04-Q15 — policy migration
-Old events preserved; new scheduler record recomputed with new policy_version when explicitly migrated.
+Old snapshot/events preserved; explicit migration creates an auditable new snapshot with old/new policy versions and basis events.
 
 ## F04-Q16 — supported review with keyword
 Does not advance level; follow-up due +1 day after instructional follow-up.
 
 ---
 
-# 22. Acceptance checklist
+# 24. Acceptance checklist
 
 - [ ] review_required rules deterministic.
 - [ ] next_review_at deterministic.
@@ -632,9 +699,11 @@ Does not advance level; follow-up due +1 day after instructional follow-up.
 
 ---
 
-# 23. Current review status
+# 25. Current review status
 
-Ready for:
-**Learning Product / Technical Architecture → QA → GOETHE boundary if required → Director scope check**
+Technical findings TA-01..TA-05 are incorporated.
+
+Next:
+**Technical re-check → QA → GOETHE boundary (exam-like boundary is touched) → Director scope check**
 
 DEV runtime remains blocked.
