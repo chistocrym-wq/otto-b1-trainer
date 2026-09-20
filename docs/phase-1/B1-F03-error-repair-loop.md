@@ -182,10 +182,26 @@ If cause confidence is low:
 If a later reviewer/evaluator shows the original cause tag was wrong:
 - original learner EvidenceEvent remains unchanged;
 - current ErrorObject classification may be revised;
-- revision must be auditable as an interpretation correction;
 - recurrence counts must not be merged across incompatible causes solely because the first classification was wrong.
 
-Classification revision is **not new learner evidence**.
+F03 defines a spec-owned non-learner-evidence record:
+
+### InterpretationRevision
+
+Required fields:
+- revision_id;
+- error_id;
+- previous_error_type;
+- previous_cause_hypothesis;
+- previous_cause_confidence;
+- new_error_type;
+- new_cause_hypothesis;
+- new_cause_confidence;
+- revision_reason;
+- revision_source: rule / human / AI / mixed;
+- created_at.
+
+An InterpretationRevision is audit metadata. It does **not** create positive/negative learner evidence and never mutates the originating EvidenceEvent.
 
 ---
 
@@ -273,14 +289,27 @@ Do not rewrite the full answer before that chance unless escalation is necessary
 
 A `RepairAttempt` is created whenever the learner tries to correct the error.
 
-It links:
+## 7.0 RepairAttempt schema
+
+Required fields:
+- repair_attempt_id;
 - error_id;
-- source event;
-- repair response;
-- assistance consumed before/during repair;
-- repair result;
-- timestamp;
-- learning_occasion_id.
+- source_event_id;
+- skill_node_id;
+- learner_response_before;
+- learner_repair_response;
+- assistance_event_ids[];
+- max_assistance_consumed;
+- independence_class;
+- repair_result: success / partial / failure / not_scorable;
+- evaluator_source where applicable;
+- evaluator_confidence where applicable;
+- learning_occasion_id;
+- started_at;
+- completed_at;
+- created_at.
+
+RepairAttempt is linked to, but does not overwrite, the original immutable EvidenceEvent.
 
 ## Genuine self-repair
 
@@ -306,6 +335,17 @@ This is real learner-generated repair, but not independent evidence.
 - phrase_start or full_model needed to produce the correction.
 
 This is instructional progress but does **not** satisfy frozen F02 SELF_REPAIRED for independent closure purposes.
+
+## 7.1 Deterministic status mapping
+
+Using only frozen F02 statuses:
+
+- max assistance `none` + successful repair → ErrorObject may move to **SELF_REPAIRED**;
+- max assistance `strategy` + successful learner-generated repair → **SELF_REPAIRED**, but the repair evidence is minimally supported rather than independent;
+- max assistance `keyword` or `evidence_hint` + successful learner-generated correction → keep the ErrorObject in the active repair flow (typically SELF_REPAIR_PENDING) with repair metadata recorded; independent confirmation is still required before moving to SELF_REPAIRED/transfer qualification;
+- max assistance `phrase_start` or `full_model` → assisted correction only; ErrorObject remains active and does not enter SELF_REPAIRED from this attempt.
+
+No new lifecycle status is introduced by F03.
 
 ## If learner cannot self-repair
 
@@ -345,6 +385,20 @@ It does **not** mean:
 - same text with names changed;
 - same answer positions;
 - same sentence pattern with cosmetic substitutions.
+
+## Deterministic candidate ordering
+
+After validity filters are applied, order candidates:
+
+1. same canonical `skill_node_id`;
+2. compatible official Teil/task family for that Micro-skill;
+3. valid new stimulus/content/variant identity;
+4. least recently seen candidate;
+5. stable `task_instance_id` lexical/ID order as final tie-break.
+
+The first candidate in this deterministic order is selected.
+
+“Comparable difficulty” is a content-metadata filter only when such metadata exists; absence of a difficulty label must not cause an AI guess.
 
 ## If no valid item exists
 
@@ -473,8 +527,11 @@ Use frozen:
 Link errors when:
 - same user;
 - same canonical Micro-skill;
-- same or closely related normalized error type/cause;
+- compatible normalized error_type;
+- cause classification is deterministic or medium/high confidence;
 - separate task occurrences.
+
+Low-confidence cause hypotheses may be listed as related for investigation, but they do **not** increment recurrence as the same tracked pattern until the cause is confirmed.
 
 Do **not** merge merely because:
 - they are in the same module;
@@ -884,8 +941,9 @@ Expected:
 # 22. Current review status
 
 UX/DESIGN findings UX-01..UX-04 are incorporated.
+Technical findings TA-01..TA-05 are incorporated.
 
 Next:
-**Technical Architecture → QA → GOETHE boundary → Director scope check**
+**Technical re-check → QA → GOETHE boundary → Director scope check**
 
 DEV runtime remains blocked.
