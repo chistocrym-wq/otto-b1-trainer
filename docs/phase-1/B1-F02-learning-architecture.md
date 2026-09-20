@@ -733,9 +733,13 @@ Every meaningful learning error becomes a first-class object.
 - user_id;
 - module;
 - teil_or_aufgabe;
-- skill_node_id;
+- parent_skill_id;
+- micro_skill_id;
+- skill_node_id (canonical B1-F01 Micro-skill node; same semantic target as `micro_skill_id`);
 - task_instance_id;
 - originating_event_id.
+
+`parent_skill_id` and `micro_skill_id` are stored explicitly so an error can be queried at Module → Teil → Skill → Micro-skill level without reparsing labels. They must resolve to the frozen B1-F01 graph and may not introduce a second taxonomy.
 
 ### Learner action
 
@@ -1108,6 +1112,15 @@ Exam-like stage is not itself proof of full module readiness.
 
 B1-F06 will compute readiness. B1-F02 provides inputs only.
 
+Readiness inputs are assembled **separately for each module**:
+
+- LESEN;
+- HÖREN;
+- SCHREIBEN;
+- SPRECHEN.
+
+There is no single global readiness value at the B1-F02 level.
+
 For each module, readiness may consume:
 
 ## Coverage
@@ -1405,6 +1418,169 @@ Must not infer:
 
 ---
 
+# 17. QA destructive scenario suite
+
+These scenarios are mandatory adversarial checks of the architecture. They are not additional mastery formulas; they verify that the formal rules above do not produce misleading states.
+
+## QD-01 — Random correct answer / lucky guess
+
+Situation:
+- first-ever objective item for a Micro-skill;
+- correct answer;
+- no prior evidence;
+- no proof that the reasoning was understood.
+
+Recorded:
+- one valid P3 only if truly independent;
+- optional low-confidence guess/risk marker if the UX captures uncertainty, but confidence self-report is not required for correctness.
+
+Expected:
+- Mastery remains **M0 INSUFFICIENT_EVIDENCE**.
+
+Must not happen:
+- DEVELOPING/STABLE solely because the first answer happened to be correct.
+
+## QD-02 — Constant hint dependence
+
+Situation:
+- learner completes many tasks correctly;
+- every success consumes keyword/evidence_hint/phrase_start or full_model.
+
+Recorded:
+- P1/P2 or exposure-level evidence;
+- assistance history remains visible.
+
+Expected:
+- no M3/M4 based on those successes alone;
+- state may be DEVELOPING only if formal M2 conditions are actually satisfied;
+- planner/readiness later see an independence deficit.
+
+Must not happen:
+- high activity count or high assisted accuracy becomes independent mastery.
+
+## QD-03 — Correct answer after three errors on the same item
+
+Situation:
+- same task answered incorrectly three times;
+- fourth attempt correct after feedback/repetition.
+
+Recorded:
+- negative events plus exact-repeat repair success;
+- same-item success is not transfer.
+
+Expected:
+- ErrorObject may progress through repair;
+- mastery cannot jump to M3/M4;
+- new-context independent transfer is still required.
+
+Must not happen:
+- “4th try correct” interpreted as skill demonstrated.
+
+## QD-04 — Good today, failure a week later
+
+Situation:
+- skill reached M3 or M4 through valid evidence;
+- on a later learning occasion after time separation, learner fails a valid independent check.
+
+Expected:
+- one strong failure moves previously demonstrated skill to **M5 UNSTABLE**;
+- repeated confirmed failures may produce M6 REGRESSED;
+- ErrorObject/review work reopens.
+
+Must not happen:
+- old positive history hides the new failure inside an average.
+
+## QD-05 — One excellent task, no coverage elsewhere
+
+Situation:
+- one Lesen Teil/task or one Schreiben task is excellent;
+- other official Teil/Aufgaben have no evidence.
+
+Expected:
+- local Micro-skills can advance according to their evidence;
+- other nodes remain M0;
+- module Readiness Input exposes missing coverage / insufficient evidence.
+
+Must not happen:
+- one outstanding task makes the whole module “ready”.
+
+## QD-06 — Strong Lesen, weak Schreiben
+
+Situation:
+- Lesen contains several M3/M4 skills;
+- Schreiben contains M0/M1/M2 and unresolved errors.
+
+Expected:
+- module states remain separate;
+- future readiness receives separate Lesen and Schreiben inputs.
+
+Must not happen:
+- strong receptive evidence compensates mathematically for weak productive evidence in B1-F02.
+
+## QD-07 — Not enough data
+
+Situation:
+- user has only a few exposures and one or two low-quality/assisted events.
+
+Expected:
+- **INSUFFICIENT_EVIDENCE** is preserved;
+- UI/readiness later may explicitly say “Недостаточно данных”.
+
+Must not happen:
+- the system manufactures a percentage or confident label.
+
+## QD-08 — Help shown but not consumed
+
+Situation:
+- a hint control is visible or offered;
+- learner does not open/use it and answers independently.
+
+Expected:
+- assistance_offered_not_consumed may be recorded;
+- independence remains independent.
+
+Must not happen:
+- merely displaying a help button weakens evidence.
+
+## QD-09 — Full model shown, then perfect reproduction
+
+Situation:
+- full_model is shown;
+- learner immediately reproduces it correctly.
+
+Expected:
+- exposure/model-exposed evidence;
+- no independent mastery advancement;
+- later unseen independent task required.
+
+## QD-10 — Multiple modules in one session
+
+Situation:
+- one daily session contains Lesen and Schreiben tasks.
+
+Expected:
+- each EvidenceEvent routes only to its own B1-F01 Micro-skill;
+- mastery updates do not leak across unrelated nodes;
+- cross-module reuse of language may be pedagogically useful later but cannot silently merge module evidence.
+
+---
+
+# 18. Unresolved questions / intentional deferrals
+
+There are **no unresolved blocking questions in B1-F02** after Technical, QA and GOETHE review.
+
+The following are intentionally deferred because they belong to later approved tasks:
+
+- exact review intervals and scheduling policy → **B1-F04**;
+- Daily Planner ranking/selection policy → **B1-F05**;
+- Readiness formula, labels, thresholds and presentation → **B1-F06**;
+- runtime/storage implementation choices → future DEV task contracts;
+- full-module mock implementation → later Phase 1/next phase work.
+
+These are not gaps in the B1-F02 contract. B1-F02 defines the inputs and invariants those tasks must consume.
+
+---
+
 # 17. Downstream contracts
 
 ## For B1-F03 — Error Repair Loop
@@ -1455,7 +1631,7 @@ F02 does not define readiness arithmetic or labels beyond preserving INSUFFICIEN
 
 ---
 
-# 18. Technical invariants
+# 19. Technical invariants
 
 1. EvidenceEvent is immutable/append-only.
 2. F01 skill IDs are immutable in F02.
@@ -1473,7 +1649,7 @@ F02 does not define readiness arithmetic or labels beyond preserving INSUFFICIEN
 
 ---
 
-# 19. Independent-review status
+# 20. Independent-review status
 
 Technical Architecture findings TA-01..TA-05 have been incorporated:
 - content/variant identity added for transfer validity;
@@ -1503,7 +1679,7 @@ GOETHE boundary review must verify:
 
 ---
 
-# 20. Independent review results
+# 21. Independent review results
 
 ## Technical Architecture
 
@@ -1547,7 +1723,7 @@ Verified:
 
 ---
 
-# 21. B1-F02 acceptance checklist
+# 22. B1-F02 acceptance checklist
 
 - [x] Canonical EvidenceEvent schema exists.
 - [x] Every event references a B1-F01 Micro-skill.
@@ -1577,7 +1753,7 @@ Verified:
 
 ---
 
-# 22. Frozen output contract for downstream Phase 1 tasks
+# 23. Frozen output contract for downstream Phase 1 tasks
 
 After owner acceptance, this specification becomes the source input for:
 
