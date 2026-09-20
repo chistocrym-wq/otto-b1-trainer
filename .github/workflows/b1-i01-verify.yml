@@ -1,0 +1,25 @@
+name: B1-I01 Verify
+
+on:
+  push:
+    branches:
+      - impl/b1-i01-my-preparation-slice
+  pull_request:
+    branches:
+      - phase1/foundation
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build, syntax check, tests
+        run: npm run verify
