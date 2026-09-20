@@ -1,6 +1,6 @@
 # B1-F03 — Error Repair Loop
 
-Status: **DRAFT FOR INDEPENDENT REVIEW**  
+Status: **B1-F03 SPEC READY TO FREEZE**  
 Phase: **PHASE 1 — FOUNDATION**  
 Parent: **#2 OTTO B1 — PRODUCT REVIEW & REDESIGN**  
 Task: **#7 [B1-F03] Error Repair Loop**  
@@ -953,35 +953,98 @@ Expected:
 
 # 21. Acceptance checklist
 
-- [ ] detect/classify/explain/self-repair/practice/transfer/review/resolve-reopen defined.
-- [ ] immediate post-error UX defined.
-- [ ] explanation timing preserves learner repair opportunity.
-- [ ] genuine vs assisted repair defined.
-- [ ] assistance effects defined.
-- [ ] new-context selection deterministic.
-- [ ] transfer identity protected.
-- [ ] delayed review required.
-- [ ] active/repaired/resolved/returned defined.
-- [ ] recurrence defined.
-- [ ] same-Micro-skill linking defined.
-- [ ] Lesen special cases defined.
-- [ ] Hören replay assistance defined.
-- [ ] Schreiben non-binary feedback defined.
-- [ ] Sprechen text/audio/pronunciation/confidence separation defined.
-- [ ] EvidenceEvent/ErrorObject transition matrix exists.
-- [ ] F02 remains frozen.
-- [ ] scheduler timing not implemented.
-- [ ] Daily Planner/Readiness not implemented.
+- [x] detect/classify/explain/self-repair/practice/transfer/review/resolve-reopen defined.
+- [x] immediate post-error UX defined.
+- [x] explanation timing preserves learner repair opportunity.
+- [x] genuine vs assisted repair defined.
+- [x] assistance effects defined.
+- [x] new-context selection deterministic.
+- [x] transfer identity protected.
+- [x] delayed review required.
+- [x] active/repaired/resolved/returned defined.
+- [x] recurrence defined.
+- [x] same-Micro-skill linking defined.
+- [x] Lesen special cases defined.
+- [x] Hören replay assistance defined.
+- [x] Schreiben non-binary feedback defined.
+- [x] Sprechen text/audio/pronunciation/confidence separation defined.
+- [x] EvidenceEvent/ErrorObject transition matrix exists.
+- [x] F02 remains frozen.
+- [x] scheduler timing not implemented.
+- [x] Daily Planner/Readiness not implemented.
 
 ---
 
-# 22. Current review status
+# 22. Independent review results
 
-UX/DESIGN findings UX-01..UX-04 are incorporated.
-Technical findings TA-01..TA-05 are incorporated.
-QA findings QA-01..QA-03 are incorporated.
+## UX / DESIGN
+**PASS**
 
-Next:
-**QA re-check → Technical final delta → GOETHE boundary → Director scope check**
+Resolved:
+- non-answer-revealing minimal feedback before repair;
+- one primary self-repair CTA;
+- progressive assistance disclosure;
+- bounded productive repair queue;
+- no same-session false “resolved” message.
+
+## Technical Architecture
+**PASS**
+
+Resolved:
+- concrete RepairAttempt schema;
+- deterministic supported-repair state mapping;
+- auditable InterpretationRevision;
+- deterministic new-context candidate ordering;
+- confidence guard for recurrence grouping.
+
+## QA
+**PASS**
+
+Required scenario set F03-Q01..F03-Q14 passes.
+
+Key break tests:
+- same-item retry ≠ transfer;
+- full-model reproduction ≠ independent repair;
+- supported repair may move forward without false mastery;
+- transfer failure keeps error active;
+- delayed review failure returns error;
+- productive errors remain separate;
+- Hören replay assistance is preserved;
+- Sprechen pronunciation requires real audio.
+
+## GOETHE boundary
+**PASS**
+
+No OTTO repair state is presented as an official Goethe score/rule.
+Frozen F01 exam structure remains unchanged.
+
+## Frozen-contract compatibility
+**PASS**
+
+- no B1-F02 field or semantic rewritten;
+- no F02 change request required;
+- F03 hands off only `review_required/review_reason` + qualifying transfer/review evidence to F04.
+
+---
+
+# 23. Unresolved questions / change requests
+
+**No blocking unresolved questions.**
+
+**No change request against frozen B1-F02 is required.**
+
+Intentional deferral:
+- exact delayed-review dates/spacing → B1-F04;
+- daily prioritization → B1-F05;
+- readiness arithmetic → B1-F06;
+- runtime/storage/UI implementation → future DEV contracts.
+
+---
+
+# 24. Final status
+
+**B1-F03 SPEC READY TO FREEZE**
 
 DEV runtime remains blocked.
+main unchanged.
+production unchanged.
