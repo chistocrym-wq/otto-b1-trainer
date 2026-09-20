@@ -85,7 +85,7 @@ test('owner preview scenario works end-to-end and produces honest state', async 
   await page.getByRole('button', { name: 'Ответить' }).click();
 
   // Inspect actual persisted runtime after transfer.
-  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('otto_b1')));
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}'));
   expect(persisted.i01.evidenceEvents.length).toBeGreaterThanOrEqual(3);
   expect(persisted.i01.errors.length).toBeGreaterThanOrEqual(1);
   expect(persisted.i01.reviews.length).toBeGreaterThanOrEqual(1);
@@ -141,11 +141,11 @@ test('assistance is recorded and does not masquerade as independent', async ({ p
   await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
   await page.getByRole('button', { name: 'Начать мою подготовку' }).click();
 
-  await page.getByRole('button', { name: /Совет Отто/ }).click();
+  await page.getByRole('button', { name: 'Совет Отто · будет отмечен как помощь', exact: true }).click();
   await page.getByRole('button', { name: 'Richtig', exact:true }).click();
   await page.getByRole('button', { name: 'Ответить' }).click();
 
-  const state = await page.evaluate(() => JSON.parse(localStorage.getItem('otto_b1')).i01);
+  const state = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}').i01);
   const success = state.evidenceEvents.find(e => e.outcome_status === 'success');
   expect(success.evidence_class).toBe('P2');
   expect(success.independence).toBe('minimally_supported');
