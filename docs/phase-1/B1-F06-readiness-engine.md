@@ -734,6 +734,8 @@ For each Aufgabe used in readiness:
 
 Interaction is a separate evidence channel for **Aufgabe 1** and **Aufgabe 3**.
 
+**Boundary:** the machine-testable sufficiency gate below is **OTTO_METHOD**. It operationalizes evidence for the official interactive task behavior frozen in F01; it does not invent or replace Goethe's official scoring criteria.
+
 A valid interaction sample is grouped by the same `task_instance_id` and must satisfy all common conditions:
 - `audio_available=true`;
 - EvidenceEvents are valid;
@@ -789,6 +791,8 @@ If audio/task success exists but this interaction gate is not met:
 ## Pronunciation — separate mandatory channel
 
 Pronunciation is never inferred from audio presence.
+
+**Boundary:** F01 states that Aussprache contributes across Sprechen Aufgaben 1–3. The per-Aufgabe evidence-coverage requirements below are a conservative **OTTO_METHOD readiness sufficiency rule**, not a claim that Goethe assigns a separate pronunciation score to each Aufgabe.
 
 A valid `pronunciation_observation` must:
 - come from `audio_available=true`;
