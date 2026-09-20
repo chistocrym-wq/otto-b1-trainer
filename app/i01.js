@@ -16,6 +16,35 @@
     readiness: 'OTTO_READINESS_V1'
   };
 
+  const CONTENT_CATALOG_VERSION = 'B1-I01-CONTENT-V1';
+
+  const MODULE_CONFIG = {
+    LESEN: {
+      display: 'Lesen',
+      parts: ['T1', 'T2', 'T3', 'T4', 'T5'],
+      microCounts: { T1: 6, T2: 7, T3: 7, T4: 6, T5: 6 },
+      partLabel: 'Teil'
+    },
+    HOEREN: {
+      display: 'Hören',
+      parts: ['T1', 'T2', 'T3', 'T4'],
+      microCounts: { T1: 6, T2: 6, T3: 6, T4: 6 },
+      partLabel: 'Teil'
+    },
+    SCHREIBEN: {
+      display: 'Schreiben',
+      parts: ['A1', 'A2', 'A3'],
+      microCounts: { A1: 9, A2: 9, A3: 8 },
+      partLabel: 'Aufgabe'
+    },
+    SPRECHEN: {
+      display: 'Sprechen',
+      parts: ['A1', 'A2', 'A3'],
+      microCounts: { A1: 11, A2: 11, A3: 7 },
+      partLabel: 'Aufgabe'
+    }
+  };
+
   const SKILLS = {
     'L.T1.CORR.M04': {
       module: 'LESEN',
@@ -168,18 +197,24 @@
   function freshRuntime(now) {
     const stamp = iso(now);
     return {
-      version: 1,
+      version: 2,
       seq: 0,
       userId: 'local-preview-user',
       activeModules: ['LESEN'],
       selectedDuration: 25,
       evidenceEvents: [],
       assistanceEvents: [],
+      repairAttempts: [],
       skillStates: {},
+      skillStateSnapshots: [],
       errors: [],
       reviews: [],
+      plannerInputSnapshots: [],
       plannerDecisions: [],
+      plans: [],
       planRevisions: [],
+      readinessInputSnapshots: [],
+      readinessSnapshots: [],
       currentPlan: null,
       session: null,
       readiness: null,
@@ -354,8 +389,15 @@
   }
 
   function deriveSkillState(events, skillNodeId, previousState, now) {
-    const relevant = events.filter(function (e) {
-      return e.skill_node_id === skillNodeId && e.data_quality === 'valid' && e.completion_state === 'completed' && e.evidence_class;
+    const allRelevant = events.filter(function (e) {
+      return e.skill_node_id === skillNodeId && e.data_quality === 'valid' && e.completion_state === 'completed';
+    });
+    const relevant = allRelevant.filter(function (e) { return e.evidence_class; });
+    const failedSelfRepair = allRelevant.filter(function (e) {
+      return e.evidence_role === 'self_repair' && e.outcome_status === 'failure';
+    });
+    const successfulSelfRepair = allRelevant.filter(function (e) {
+      return e.evidence_role === 'self_repair' && e.outcome_status === 'success';
     });
     const unique = distinctByTask(relevant);
     const strongPositive = unique.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); });
@@ -389,12 +431,18 @@
       } else if (strongPositive.length >= 2 && hasTransfer && contexts.size >= 2 && !hasUnresolvedNegative) {
         mastery = 'M3';
         reason = 'INDEPENDENT_TRANSFER_CONFIRMED';
-      } else if (anyPositive.length >= 2 && anyPositive.some(function (e) { return ['P2', 'P3', 'P4', 'P5'].includes(e.evidence_class); })) {
+      } else if (
+        (anyPositive.length >= 2 && anyPositive.some(function (e) { return ['P2', 'P3', 'P4', 'P5'].includes(e.evidence_class); })) ||
+        (successfulSelfRepair.length > 0 && strongPositive.length > 0)
+      ) {
         mastery = 'M2';
         reason = strongNegative.length ? 'MIXED_DEVELOPING' : 'POSITIVE_PROGRESS';
-      } else if (strongNegative.length >= 2 && anyPositive.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); }).length === 0) {
+      } else if (
+        (strongNegative.length >= 2 && anyPositive.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); }).length === 0) ||
+        (strongNegative.length >= 1 && failedSelfRepair.length >= 1 && strongPositive.length === 0)
+      ) {
         mastery = 'M1';
-        reason = 'REPEATED_INDEPENDENT_FAILURE';
+        reason = failedSelfRepair.length ? 'INDEPENDENT_FAILURE_PLUS_FAILED_REPAIR' : 'REPEATED_INDEPENDENT_FAILURE';
       }
     }
 
@@ -418,9 +466,40 @@
     };
   }
 
+  function skillStateBasisKey(state) {
+    return JSON.stringify({
+      skill_node_id: state.skill_node_id,
+      mastery_state: state.mastery_state,
+      review_state: state.review_state,
+      basis_event_ids: state.basis_event_ids,
+      transition_reason_code: state.transition_reason_code,
+      freshness_status: state.freshness_status
+    });
+  }
+
+  function storeSkillState(rt, derived, now) {
+    const current = rt.skillStates[derived.skill_node_id] || null;
+    if (current && current.review_state && (!derived.review_state || derived.review_state === 'NOT_DUE')) {
+      derived.review_state = current.review_state;
+    }
+    const changed = !current || skillStateBasisKey(current) !== skillStateBasisKey(derived);
+    if (changed) {
+      const snapshot = clone(derived);
+      snapshot.state_snapshot_id = nextId(rt, 'skillstate');
+      snapshot.computed_at = iso(now);
+      rt.skillStateSnapshots.push(snapshot);
+      rt.skillStates[derived.skill_node_id] = clone(snapshot);
+    } else {
+      rt.skillStates[derived.skill_node_id] = clone(current);
+    }
+    return rt.skillStates[derived.skill_node_id];
+  }
+
   function recomputeAllSkillStates(rt, now) {
+    if (!rt.skillStateSnapshots) rt.skillStateSnapshots = [];
     Object.keys(SKILLS).forEach(function (skillId) {
-      rt.skillStates[skillId] = deriveSkillState(rt.evidenceEvents, skillId, rt.skillStates[skillId], now);
+      const derived = deriveSkillState(rt.evidenceEvents, skillId, rt.skillStates[skillId], now);
+      storeSkillState(rt, derived, now);
     });
     return rt.skillStates;
   }
@@ -431,38 +510,67 @@
     });
     if (existing && existing.status !== 'RESOLVED') {
       existing.related_event_ids.push(event.event_id);
+      existing.linked_evidence_event_ids = existing.linked_evidence_event_ids || [];
+      existing.linked_evidence_event_ids.push(event.event_id);
       existing.last_seen_at = iso(now);
       existing.current_task_id = task.id;
-      existing.status = existing.status === 'REVIEW_SCHEDULED' || existing.status === 'PROVISIONALLY_RESOLVED' ? 'RETURNED' : 'NEW';
-      existing.recurrence_count = Number(existing.recurrence_count || 0) + (existing.status === 'RETURNED' ? 1 : 0);
+      const returned = existing.status === 'REVIEW_SCHEDULED' || existing.status === 'PROVISIONALLY_RESOLVED' || existing.status === 'RESOLVED';
+      existing.status = returned ? 'RETURNED' : 'NEW';
+      if (returned) {
+        existing.recurrence_count = Number(existing.recurrence_count || 0) + 1;
+        existing.reopened_at = iso(now);
+      }
       return existing;
     }
 
+    const cause = task.skillNodeId === 'L.T1.CORR.M04'
+      ? 'Опора на формулировку вместо смыслового эквивалента.'
+      : 'Пропущено отрицание, ограничение или коррекция.';
     const error = {
       error_id: nextId(rt, 'err'),
+      user_id: rt.userId,
       module: 'Lesen',
       teil_or_aufgabe: 'T1',
       parent_skill_id: 'L.T1.CORR',
+      micro_skill_id: task.skillNodeId,
       skill_node_id: task.skillNodeId,
       task_instance_id: task.id,
       origin_task_id: task.id,
       current_task_id: task.id,
       originating_event_id: event.event_id,
       related_event_ids: [event.event_id],
+      linked_evidence_event_ids: [event.event_id],
       original_response: event.selected_answer,
+      original_action_type: 'objective_choice',
+      selected_answer: event.selected_answer,
+      learner_sample: null,
       correct_answer: task.correctIndex,
+      evidence_basis: task.text,
+      expected_task_function: null,
       error_type: task.skillNodeId === 'L.T1.CORR.M04' ? 'paraphrase_miss' : 'negation_limitation_miss',
-      cause_hypothesis: task.skillNodeId === 'L.T1.CORR.M04' ? 'Опора на формулировку вместо смыслового эквивалента.' : 'Пропущено отрицание, ограничение или коррекция.',
+      error_cause_hypothesis: cause,
+      cause_hypothesis: cause,
       cause_confidence: 'high',
+      classification_source: 'rule',
+      assistance_before_error: clone(event.assistance_events || []),
       assistance_event_ids: [],
       repair_attempt_ids: [],
+      repair_attempt_count: 0,
+      max_assistance_during_repair: 'none',
+      self_repair_result: 'pending',
       transfer_event_ids: [],
+      transfer_status: 'pending',
+      delayed_review_event_ids: [],
       review_status: 'NOT_DUE',
+      review_required: false,
+      review_reason: [],
       next_review_at: null,
       status: 'NEW',
       recurrence_count: 0,
       first_seen_at: iso(now),
       last_seen_at: iso(now),
+      resolved_at: null,
+      reopened_at: null,
       root_error_id: null,
       related_error_ids: []
     };
@@ -482,18 +590,25 @@
       review_required: true,
       review_reason: ['POST_REPAIR_CONFIRMATION'],
       primary_review_reason: 'POST_REPAIR_CONFIRMATION',
+      source_reason: 'POST_REPAIR_CONFIRMATION',
       review_state: 'SCHEDULED',
       review_level: 0,
+      review_success_streak: 0,
       policy_version: POLICY.review,
       basis_event_ids: [transferEvent.event_id],
       computed_at: iso(now),
+      baseline_event_id: transferEvent.event_id,
       next_review_at: addDays(transferEvent.completed_at, 1),
       last_review_result: null,
-      blocked_no_valid_item: false
+      blocked_no_valid_item: false,
+      needs_evidence_collection: false
     };
     rt.reviews.push(review);
     error.review_status = 'SCHEDULED';
+    error.review_required = true;
+    error.review_reason = ['POST_REPAIR_CONFIRMATION'];
     error.next_review_at = review.next_review_at;
+    error.transfer_status = 'confirmed';
     error.status = 'REVIEW_SCHEDULED';
     return review;
   }
@@ -507,7 +622,13 @@
       else if (nowMs >= dueMs) r.review_state = 'DUE';
       else r.review_state = 'SCHEDULED';
       const skill = rt.skillStates[r.skill_node_id];
-      if (skill) skill.review_state = r.review_state;
+      if (skill && skill.review_state !== r.review_state) {
+        const derived = clone(skill);
+        derived.previous_state = skill.mastery_state;
+        derived.review_state = r.review_state;
+        derived.transition_reason_code = 'REVIEW_' + r.review_state;
+        storeSkillState(rt, derived, now);
+      }
     });
   }
 
@@ -557,6 +678,81 @@
     return 5;
   }
 
+  function latestEvidenceForSkill(rt, skillId) {
+    return rt.evidenceEvents.filter(function (e) { return e.skill_node_id === skillId; }).slice(-1)[0] || null;
+  }
+
+  function enrichCandidate(rt, candidate) {
+    const skill = rt.skillStates[candidate.skill_node_id] || {};
+    const error = candidate.error_id ? rt.errors.find(function (e) { return e.error_id === candidate.error_id; }) : null;
+    const review = candidate.review_id ? rt.reviews.find(function (r) { return r.review_id === candidate.review_id; }) : null;
+    const recent = rt.evidenceEvents.filter(function (e) { return e.skill_node_id === candidate.skill_node_id; });
+    const independent = recent.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); });
+    const supported = recent.filter(function (e) { return ['P1', 'P2'].includes(e.evidence_class); });
+    const task = candidate.task_id ? getTask(candidate.task_id) : null;
+    const completed = rt.session && rt.session.completedActions ? rt.session.completedActions : [];
+
+    return Object.assign({
+      teil_or_aufgabe: (getSkill(candidate.skill_node_id).teil || 'T1'),
+      secondary_reason_codes: [],
+      source_error_ids: error ? [error.error_id] : [],
+      source_review_record_id: review ? review.review_id : null,
+      source_evidence_ids: skill.basis_event_ids ? clone(skill.basis_event_ids) : [],
+      mastery_state: skill.mastery_state || 'M0',
+      review_state: review ? review.review_state : (skill.review_state || 'NOT_DUE'),
+      evidence_sufficiency: skill.mastery_state && skill.mastery_state !== 'M0' ? 'MEANINGFUL_SKILL_EVIDENCE' : 'INSUFFICIENT_EVIDENCE',
+      independence_status: independent.length ? 'INDEPENDENT_EVIDENCE_PRESENT' : supported.length ? 'ASSISTED_ONLY' : 'NO_POSITIVE_EVIDENCE',
+      assistance_dependency: supported.length > 0 && independent.length === 0,
+      recurrence_count: error ? Number(error.recurrence_count || 0) : 0,
+      transfer_status: error ? (error.transfer_status || 'pending') : 'not_applicable',
+      freshness_status: skill.freshness_status || 'unknown',
+      exam_like_evidence_status: recent.some(function (e) { return e.evidence_class === 'P5'; }) ? 'PRESENT' : 'MISSING',
+      content_status: candidate.blocked ? 'BLOCKED_NO_VALID_CONTENT' : 'AVAILABLE',
+      blocked_no_valid_item: !!candidate.blocked,
+      estimated_duration_min: Number(candidate.minutes || (task && task.minutes) || 0),
+      stage_target: candidate.action_type === 'TRANSFER_CHECK' ? 'transfer' : 'independent',
+      candidate_content_ids: task ? [task.id] : [],
+      content_exclusion_metadata: task ? {
+        task_instance_id: task.id,
+        stimulus_id: task.stimulusId,
+        content_fingerprint: task.contentFingerprint,
+        variant_group_id: task.variantGroupId,
+        transfer_context_id: task.transferContextId
+      } : null,
+      last_selected_at: completed.filter(function (a) { return a.skill_node_id === candidate.skill_node_id; }).slice(-1)[0]?.completed_at || null,
+      recent_same_skill_minutes: completed.filter(function (a) { return a.skill_node_id === candidate.skill_node_id; }).reduce(function (sum, a) { return sum + Number(a.minutes || 0); }, 0),
+      recent_same_module_minutes: completed.filter(function (a) { return a.module === candidate.module; }).reduce(function (sum, a) { return sum + Number(a.minutes || 0); }, 0)
+    }, candidate);
+  }
+
+  function createPlannerInputSnapshot(rt, duration, now, learningOccasionId) {
+    if (!rt.plannerInputSnapshots) rt.plannerInputSnapshots = [];
+    const snapshot = {
+      planner_input_snapshot_id: nextId(rt, 'plannerinput'),
+      generated_at: iso(now),
+      active_modules: clone(rt.activeModules),
+      skill_state_refs: Object.values(rt.skillStates).map(function (s) {
+        return { state_snapshot_id: s.state_snapshot_id || null, skill_node_id: s.skill_node_id, policy_version: s.policy_version };
+      }),
+      active_error_refs: rt.errors.filter(function (e) { return e.status !== 'RESOLVED'; }).map(function (e) {
+        return { error_id: e.error_id, status: e.status, last_seen_at: e.last_seen_at };
+      }),
+      review_state_refs: rt.reviews.filter(function (r) { return r.review_required; }).map(function (r) {
+        return { review_id: r.review_id, review_state: r.review_state, policy_version: r.policy_version, next_review_at: r.next_review_at };
+      }),
+      content_catalog_version: CONTENT_CATALOG_VERSION,
+      content_availability_snapshot_id: 'content-' + CONTENT_CATALOG_VERSION,
+      planner_history_fairness_snapshot: {
+        prior_plan_ids: (rt.plans || []).map(function (p) { return p.plan_id; }),
+        active_module_count: rt.activeModules.length
+      },
+      requested_duration_min: Number(duration),
+      learning_occasion_id: learningOccasionId
+    };
+    rt.plannerInputSnapshots.push(clone(snapshot));
+    return snapshot;
+  }
+
   function generateCandidates(rt, now) {
     refreshReviewStates(rt, now);
     const candidates = [];
@@ -572,7 +768,7 @@
             skill_node_id: err.skill_node_id,
             task_id: task.id,
             module: 'LESEN',
-            minutes: 3,
+            minutes: task.minutes || 6,
             priority_class: 0,
             primary_reason_code: actionReason('RECOVERY_REPAIR'),
             counts_toward_review_cap: false,
@@ -642,14 +838,17 @@
       });
     });
 
-    return candidates;
+    return candidates.map(function (candidate) { return enrichCandidate(rt, candidate); });
   }
 
-  function buildPlan(rt, duration, now) {
+  function buildPlan(rt, duration, now, learningOccasionId) {
     duration = Number(duration || 25);
     const budgets = { 10: 9, 25: 22, 45: 41 };
     const instructionalBudget = budgets[duration] || 22;
     const reviewCap = duration === 10 ? 1 : duration === 45 ? 3 : 2;
+    refreshReviewStates(rt, now);
+    const occasionId = learningOccasionId || (rt.session && rt.session.learningOccasionId) || nextId(rt, 'occasion');
+    const inputSnapshot = createPlannerInputSnapshot(rt, duration, now, occasionId);
     const candidates = generateCandidates(rt, now);
 
     candidates.sort(function (a, b) {
@@ -707,21 +906,36 @@
 
     const plan = {
       plan_id: nextId(rt, 'plan'),
+      plan_revision: rt.session ? Number(rt.session.planRevision || 0) + 1 : 1,
       planner_policy_version: POLICY.planner,
       generated_at: iso(now),
+      planner_input_snapshot_id: inputSnapshot.planner_input_snapshot_id,
+      learning_occasion_id: occasionId,
       requested_duration: duration,
+      requested_duration_min: duration,
       instructional_budget_min: instructionalBudget,
+      active_modules: clone(rt.activeModules),
+      source_state_refs: clone(inputSnapshot.skill_state_refs),
+      candidate_action_ids: candidates.map(function (x) { return x.candidate_action_id; }),
+      selected_action_ids: selected.map(function (x) { return x.candidate_action_id; }),
       selected_actions: selected,
       deferred_actions: deferred,
+      deferred_candidate_ids: deferred.map(function (x) { return x.candidate_action_id; }),
+      conflict_rule_applied: 'LEXICOGRAPHIC_PRIORITY',
+      anti_monopoly_rule_applied: 'SAME_MICRO_SKILL_50_PERCENT',
+      content_block_flags: deferred.filter(function (x) { return x.reason === 'BLOCKED_NO_VALID_CONTENT'; }),
       estimated_total_work_min: minutes,
       reserved_wrap_min: duration - instructionalBudget,
-      active_modules: clone(rt.activeModules)
+      extension_flag: false
     };
 
+    if (!rt.plans) rt.plans = [];
+    rt.plans.push(clone(plan));
     rt.currentPlan = plan;
     rt.plannerDecisions.push({
       decision_id: nextId(rt, 'decision'),
       plan_id: plan.plan_id,
+      planner_input_snapshot_id: plan.planner_input_snapshot_id,
       generated_at: plan.generated_at,
       selected: selected.map(function (a, index) {
         return {
@@ -740,70 +954,258 @@
     return plan;
   }
 
-  function computeReadiness(rt, now) {
-    const lesenEvents = rt.evidenceEvents.filter(function (e) { return e.module === 'Lesen' && e.data_quality === 'valid'; });
-    const t1Distinct = distinctByTask(lesenEvents.filter(function (e) { return e.teil_or_aufgabe === 'T1'; }));
-    const t1Independent = t1Distinct.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); });
-    const observedSkills = new Set(lesenEvents.map(function (e) { return e.skill_node_id; }));
-    const t1MicroCoverage = observedSkills.size;
-    const t1CoverageText = t1Distinct.length
-      ? 'Есть данные по Teil 1, но этот Teil покрыт только частично; Teil 2–5 не проверены.'
-      : 'Teil 1–5 ещё не имеют достаточного evidence.';
+  function moduleEvents(rt, configKey) {
+    const display = MODULE_CONFIG[configKey].display;
+    return rt.evidenceEvents.filter(function (e) { return e.module === display && e.data_quality === 'valid' && e.completion_state === 'completed'; });
+  }
 
-    const lesen = {
-      module: 'Lesen',
-      readiness_state: 'R0',
-      user_label: 'Недостаточно данных',
-      confidence_level: 'C0',
-      confidence_label: 'Надёжность данных: низкая',
-      coverage: 'Полностью подтверждено Teil: 0 из 5',
-      reason: t1CoverageText,
-      next_step: t1Independent.length < 2
-        ? 'Продолжить самостоятельные задания Lesen Teil 1 на новом материале.'
-        : 'Расширить coverage Lesen на другие Micro-skills и Teil.',
-      confirmed: t1Independent.length ? ['Есть самостоятельные попытки в Lesen Teil 1.'] : [],
-      missing: [
-        'Teil 2–5 ещё не проверены.',
-        'Для Teil 1 нужен более широкий набор Micro-skills.',
-        'Нет полного exam-like покрытия модуля.'
-      ],
-      influenced_by: [
-        'Завершённых попыток в Lesen Teil 1: ' + lesenEvents.length,
-        'Проверено микронавыков в Teil 1: ' + t1MicroCoverage + ' из 6'
-      ],
-      policy_version: POLICY.readiness
-    };
-
-    function systemGapModule(name, partsLabel) {
-      return {
-        module: name,
-        readiness_state: 'R0',
-        user_label: 'Недостаточно данных',
-        confidence_level: 'C0',
-        confidence_label: 'Надёжность данных: низкая',
-        coverage: 'Проверено: 0 из ' + partsLabel,
-        reason: 'По этому модулю пока нет учебных данных. Это ограничение текущей версии, а не оценка твоего уровня.',
-        next_step: 'Следующий шаг появится, когда для этого модуля будут подключены реальные задания и сбор результатов.',
-        confirmed: [],
-        missing: ['По этому модулю пока нет доступных заданий для сбора данных.'],
-        influenced_by: [],
-        policy_version: POLICY.readiness
-      };
+  function coverageTier(events, part) {
+    const partEvents = distinctByTask(events.filter(function (e) { return e.teil_or_aufgabe === part; }));
+    if (!partEvents.length) return { tier: 'T0', label: 'UNCHECKED', distinct_tasks: 0 };
+    const independent = partEvents.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); });
+    if (partEvents.length < 2 || independent.length < 1) return { tier: 'T1', label: 'OBSERVED', distinct_tasks: partEvents.length };
+    const strongContexts = new Set(independent.map(function (e) { return e.transfer_context_id || e.stimulus_id; }));
+    const hasTransfer = independent.some(function (e) { return ['P4', 'P5'].includes(e.evidence_class); });
+    const examLike = independent.some(function (e) { return e.evidence_class === 'P5' && !e.exam_constraint_violation; });
+    if (independent.length >= 2 && hasTransfer && strongContexts.size >= 2) {
+      return { tier: examLike ? 'T4' : 'T3', label: examLike ? 'EXAM_LIKE_CONFIRMED' : 'TRANSFER_CONFIRMED', distinct_tasks: partEvents.length };
     }
+    return { tier: 'T2', label: 'INDEPENDENTLY_SAMPLED', distinct_tasks: partEvents.length };
+  }
 
-    const snapshot = {
-      readiness_snapshot_id: 'readiness-' + iso(now).replace(/[^0-9]/g, '').slice(0, 14),
+  function readinessBasisKey(snapshot) {
+    return JSON.stringify({
+      module: snapshot.module,
+      basis_state_snapshot_ids: snapshot.basis_state_snapshot_ids,
+      basis_evidence_event_ids: snapshot.basis_evidence_event_ids,
+      basis_error_ids: snapshot.basis_error_ids,
+      basis_review_record_ids: snapshot.basis_review_record_ids,
+      readiness_state: snapshot.readiness_state,
+      official_teil_coverage: snapshot.official_teil_coverage,
+      missing_data_flags: snapshot.missing_data_flags
+    });
+  }
+
+  function computeReadiness(rt, now) {
+    if (!rt.readinessInputSnapshots) rt.readinessInputSnapshots = [];
+    if (!rt.readinessSnapshots) rt.readinessSnapshots = [];
+
+    const outputs = [];
+    Object.keys(MODULE_CONFIG).forEach(function (moduleKey) {
+      const cfg = MODULE_CONFIG[moduleKey];
+      const events = moduleEvents(rt, moduleKey);
+      const relevantSkillStates = Object.values(rt.skillStates).filter(function (s) {
+        return (getSkill(s.skill_node_id).module || '').toUpperCase() === moduleKey;
+      });
+      const relevantErrors = rt.errors.filter(function (e) { return String(e.module || '').toUpperCase() === cfg.display.toUpperCase(); });
+      const relevantReviews = rt.reviews.filter(function (r) {
+        return relevantSkillStates.some(function (s) { return s.skill_node_id === r.skill_node_id; });
+      });
+      const partCoverage = cfg.parts.map(function (part) {
+        const tier = coverageTier(events, part);
+        return {
+          teil_or_aufgabe: part,
+          coverage_tier: tier.tier,
+          coverage_label: tier.label,
+          distinct_task_count: tier.distinct_tasks,
+          micro_skill_count: cfg.microCounts[part]
+        };
+      });
+      const independentEvents = events.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); });
+      const transferEvents = events.filter(function (e) { return ['P4', 'N3'].includes(e.evidence_class); });
+      const examLikeEvents = events.filter(function (e) { return ['P5', 'N4'].includes(e.evidence_class); });
+      const observedSkillIds = new Set(events.map(function (e) { return e.skill_node_id; }));
+      const independentSkillIds = new Set(independentEvents.map(function (e) { return e.skill_node_id; }));
+      const totalMicro = cfg.parts.reduce(function (sum, p) { return sum + cfg.microCounts[p]; }, 0);
+      const checkedParts = partCoverage.filter(function (p) { return ['T2', 'T3', 'T4'].includes(p.coverage_tier); }).length;
+      const allPartsT2 = checkedParts === cfg.parts.length;
+      const observedPct = totalMicro ? observedSkillIds.size / totalMicro : 0;
+      const independentPct = totalMicro ? independentSkillIds.size / totalMicro : 0;
+      const microFloorPass = observedPct >= 0.70 && independentPct >= 0.40;
+      const sufficient = allPartsT2 && microFloorPass;
+      const activeBlockers = [];
+      relevantSkillStates.forEach(function (s) {
+        if (['M5', 'M6'].includes(s.mastery_state)) activeBlockers.push(s.skill_node_id + ':' + s.mastery_state);
+      });
+      relevantErrors.forEach(function (e) {
+        if (e.status === 'RETURNED') activeBlockers.push(e.error_id + ':RETURNED');
+      });
+      const missingFlags = [];
+      partCoverage.forEach(function (p) {
+        if (!['T2', 'T3', 'T4'].includes(p.coverage_tier)) missingFlags.push('PART_NOT_INDEPENDENTLY_SAMPLED:' + p.teil_or_aufgabe);
+      });
+      if (observedPct < 0.70) missingFlags.push('MODULE_MICRO_SKILL_COVERAGE_BELOW_70');
+      if (independentPct < 0.40) missingFlags.push('MODULE_INDEPENDENT_MICRO_SKILL_COVERAGE_BELOW_40');
+      if (!examLikeEvents.length) missingFlags.push('NO_EXAM_LIKE_EVIDENCE');
+
+      const input = {
+        readiness_input_snapshot_id: nextId(rt, 'readinessinput'),
+        policy_version: POLICY.readiness,
+        module: cfg.display,
+        computed_at: iso(now),
+        coverage: partCoverage,
+        mastery: relevantSkillStates.map(function (s) { return { skill_node_id: s.skill_node_id, mastery_state: s.mastery_state, state_snapshot_id: s.state_snapshot_id || null }; }),
+        independence: {
+          independent_event_ids: independentEvents.map(function (e) { return e.event_id; }),
+          assisted_event_ids: events.filter(function (e) { return ['P1', 'P2'].includes(e.evidence_class); }).map(function (e) { return e.event_id; })
+        },
+        transfer: {
+          transfer_event_ids: transferEvents.map(function (e) { return e.event_id; }),
+          transfer_pending_error_ids: relevantErrors.filter(function (e) { return e.status === 'TRANSFER_PENDING'; }).map(function (e) { return e.error_id; })
+        },
+        freshness: {
+          due_review_ids: relevantReviews.filter(function (r) { return ['DUE', 'OVERDUE'].includes(r.review_state); }).map(function (r) { return r.review_id; }),
+          latest_independent_at: independentEvents.length ? independentEvents[independentEvents.length - 1].completed_at : null
+        },
+        errors: {
+          unresolved_error_ids: relevantErrors.filter(function (e) { return e.status !== 'RESOLVED'; }).map(function (e) { return e.error_id; }),
+          returned_error_ids: relevantErrors.filter(function (e) { return e.status === 'RETURNED'; }).map(function (e) { return e.error_id; })
+        },
+        timing: {
+          timed_event_ids: events.filter(function (e) { return Number.isFinite(e.response_time_ms); }).map(function (e) { return e.event_id; })
+        },
+        checkpoints_exam_like: {
+          event_ids: examLikeEvents.map(function (e) { return e.event_id; })
+        },
+        productive_skill_confidence: {
+          evaluator_sources: [],
+          evaluator_confidence: [],
+          missing_audio_flags: moduleKey === 'SPRECHEN' ? ['NO_RUNTIME_AUDIO_EVIDENCE_IN_B1_I01'] : []
+        },
+        missing_data_flags: clone(missingFlags)
+      };
+      const inputKey = JSON.stringify({
+        module: input.module,
+        coverage: input.coverage,
+        mastery: input.mastery,
+        evidence: events.map(function (e) { return e.event_id; }),
+        errors: input.errors,
+        reviews: relevantReviews.map(function (r) { return [r.review_id, r.review_state]; }),
+        missing: input.missing_data_flags
+      });
+      const lastInput = rt.readinessInputSnapshots.filter(function (x) { return x.module === cfg.display; }).slice(-1)[0];
+      if (!lastInput || lastInput.basis_key !== inputKey) {
+        input.basis_key = inputKey;
+        rt.readinessInputSnapshots.push(clone(input));
+      } else {
+        input.readiness_input_snapshot_id = lastInput.readiness_input_snapshot_id;
+        input.basis_key = lastInput.basis_key;
+      }
+
+      let state = 'R0';
+      let userLabel = 'Недостаточно данных';
+      let confidence = 'C0';
+      let confidenceLabel = 'Надёжность данных: низкая';
+      let auditReasons = ['SUFFICIENCY_GATE_FAILED'];
+      if (sufficient) {
+        const m1 = relevantSkillStates.filter(function (s) { return s.mastery_state === 'M1'; });
+        const m6 = relevantSkillStates.filter(function (s) { return s.mastery_state === 'M6'; });
+        const m5 = relevantSkillStates.filter(function (s) { return s.mastery_state === 'M5'; });
+        const due = relevantReviews.some(function (r) { return ['DUE', 'OVERDUE'].includes(r.review_state); });
+        if (m6.length || activeBlockers.some(function (x) { return x.includes('RETURNED'); })) {
+          state = 'R1'; userLabel = 'Требуется работа'; confidence = 'C2'; confidenceLabel = 'Надёжность данных: средняя'; auditReasons = ['MATERIAL_UNRESOLVED_NEGATIVE_EVIDENCE'];
+        } else if (m1.length || m5.length || !examLikeEvents.length) {
+          state = 'R2'; userLabel = 'Прогресс есть, но результат нестабилен'; confidence = 'C2'; confidenceLabel = 'Надёжность данных: средняя'; auditReasons = ['UNSTABLE_OR_EXAM_LIKE_GAP'];
+        } else if (due) {
+          state = 'R3'; userLabel = 'Нужна повторная проверка'; confidence = 'C2'; confidenceLabel = 'Надёжность данных: средняя'; auditReasons = ['RECHECK_DUE'];
+        } else {
+          state = 'R4'; userLabel = 'Устойчивые доказательства есть'; confidence = 'C3'; confidenceLabel = 'Надёжность данных: высокая'; auditReasons = ['READY_GATE_PASSED'];
+        }
+      }
+
+      const reason = state === 'R0'
+        ? (events.length ? 'Пока проверена только часть модуля. Для общей оценки данных недостаточно.' : 'Пока недостаточно самостоятельных проверок, чтобы оценить весь модуль.')
+        : state === 'R1' ? 'Данных уже достаточно, и есть повторяющаяся самостоятельная проблема.'
+        : state === 'R2' ? 'Данных достаточно для оценки, но самостоятельность или перенос навыка пока нестабильны.'
+        : state === 'R3' ? 'Результаты были устойчивыми, но часть подтверждений уже пора обновить.'
+        : 'Есть достаточные свежие самостоятельные подтверждения по всему модулю.';
+
+      const output = {
+        readiness_snapshot_id: nextId(rt, 'readiness'),
+        policy_version: POLICY.readiness,
+        module: cfg.display,
+        computed_at: iso(now),
+        basis_state_snapshot_ids: relevantSkillStates.map(function (s) { return s.state_snapshot_id; }).filter(Boolean),
+        basis_evidence_event_ids: events.map(function (e) { return e.event_id; }),
+        basis_error_ids: relevantErrors.map(function (e) { return e.error_id; }),
+        basis_review_record_ids: relevantReviews.map(function (r) { return r.review_id; }),
+        readiness_state: state,
+        confidence_level: confidence,
+        sufficiency_status: sufficient ? 'SUFFICIENT_FOR_READINESS_CLASSIFICATION' : 'INSUFFICIENT_FOR_READINESS_CLASSIFICATION',
+        official_teil_coverage: partCoverage,
+        micro_skill_coverage_summary: {
+          total_frozen_micro_skills: totalMicro,
+          observed_micro_skills: observedSkillIds.size,
+          independent_micro_skills: independentSkillIds.size,
+          observed_ratio: observedPct,
+          independent_ratio: independentPct
+        },
+        independence_summary: input.independence,
+        transfer_summary: input.transfer,
+        exam_like_summary: input.checkpoints_exam_like,
+        freshness_summary: input.freshness,
+        active_blockers: activeBlockers,
+        missing_data_flags: missingFlags,
+        evaluator_quality_summary: input.productive_skill_confidence,
+        user_label_key: state,
+        audit_reason_codes: auditReasons,
+        supersedes_snapshot_id: null,
+        user_label: userLabel,
+        confidence_label: confidenceLabel,
+        coverage: 'Проверено: ' + checkedParts + ' из ' + cfg.parts.length + ' ' + (cfg.partLabel === 'Teil' ? 'Teil' : 'Aufgaben'),
+        reason: reason,
+        next_step: moduleKey === 'LESEN'
+          ? (checkedParts < cfg.parts.length ? 'Продолжить самостоятельные задания и постепенно проверить остальные Teil.' : 'Добавить exam-like проверку без подсказок.')
+          : 'Следующий шаг появится, когда для этого модуля будут подключены реальные задания и сбор результатов.',
+        confirmed: checkedParts ? ['Самостоятельно проверено частей модуля: ' + checkedParts + '.'] : [],
+        missing: missingFlags.map(function (flag) {
+          if (flag.indexOf('PART_NOT_INDEPENDENTLY_SAMPLED:') === 0) return 'Ещё не проверено самостоятельно: ' + flag.split(':')[1] + '.';
+          if (flag === 'NO_EXAM_LIKE_EVIDENCE') return 'Нет полной проверки в условиях без учебных подсказок.';
+          return 'Нужно расширить покрытие микронавыков.';
+        }),
+        influenced_by: [
+          'Завершённых попыток: ' + events.length,
+          'Микронавыков с данными: ' + observedSkillIds.size + ' из ' + totalMicro
+        ]
+      };
+
+      const key = readinessBasisKey(output);
+      const last = rt.readinessSnapshots.filter(function (x) { return x.module === cfg.display; }).slice(-1)[0];
+      if (!last || last.basis_key !== key) {
+        output.supersedes_snapshot_id = last ? last.readiness_snapshot_id : null;
+        output.basis_key = key;
+        rt.readinessSnapshots.push(clone(output));
+      } else {
+        output.readiness_snapshot_id = last.readiness_snapshot_id;
+        output.supersedes_snapshot_id = last.supersedes_snapshot_id || null;
+        output.basis_key = last.basis_key;
+      }
+      outputs.push(output);
+    });
+
+    const wrapper = {
       policy_version: POLICY.readiness,
       computed_at: iso(now),
-      modules: [
-        lesen,
-        systemGapModule('Hören', '4 Teil'),
-        systemGapModule('Schreiben', '3 Aufgaben'),
-        systemGapModule('Sprechen', '3 Aufgaben')
-      ]
+      modules: outputs
     };
-    rt.readiness = snapshot;
-    return snapshot;
+    rt.readiness = wrapper;
+    return wrapper;
+  }
+
+  function actionTypeLabel(type) {
+    return {
+      RECOVERY_REPAIR: 'исправить текущую ошибку',
+      OVERDUE_REVIEW: 'пройти просроченную перепроверку',
+      DUE_REVIEW: 'пройти повторную проверку',
+      POST_REPAIR_CONFIRMATION: 'подтвердить исправленный навык',
+      TRANSFER_CHECK: 'проверить навык на новом материале',
+      WEAK_SKILL_BUILD: 'усилить навык',
+      DEVELOPING_SKILL_BUILD: 'продолжить самостоятельную практику',
+      ASSISTANCE_DEPENDENCY_RECHECK: 'проверить навык без подсказки',
+      EVIDENCE_GAP_PROBE: 'собрать недостающие данные',
+      STALE_MAINTENANCE: 'обновить давно не проверявшийся навык',
+      EXAM_LIKE_CHECKPOINT: 'пройти проверку без учебных подсказок'
+    }[type] || 'продолжить подготовку';
   }
 
   function masteryLabel(state) {
@@ -822,9 +1224,12 @@
     if (typeof S === 'undefined' || typeof R === 'undefined' || typeof go !== 'function') return;
 
     function ensure() {
-      if (!S.i01 || S.i01.version !== 1) S.i01 = freshRuntime();
+      if (!S.i01 || S.i01.version !== 2) S.i01 = freshRuntime();
       const rt = S.i01;
       if (!rt.skillStates) rt.skillStates = {};
+      ['repairAttempts','skillStateSnapshots','plannerInputSnapshots','plannerDecisions','plans','planRevisions','readinessInputSnapshots','readinessSnapshots'].forEach(function (key) {
+        if (!Array.isArray(rt[key])) rt[key] = [];
+      });
       if (!rt.ui) rt.ui = freshRuntime().ui;
       recomputeAllSkillStates(rt);
       refreshReviewStates(rt, Date.now());
@@ -881,6 +1286,7 @@
     }
 
     function registerScreens() {
+      TITLES.readiness = 'Готовность по модулям';
       [
         ['my-prep', 'Моя подготовка'],
         ['prep-task', 'Задание · Моя подготовка'],
@@ -897,7 +1303,7 @@
     }
 
     root.i01Reset = function () {
-      if (!confirm('Сбросить данные vertical slice на этом устройстве?')) return;
+      if (!confirm('Сбросить данные этой учебной версии на этом устройстве?')) return;
       S.i01 = freshRuntime();
       persist();
       go('home');
@@ -918,10 +1324,11 @@
       }
       const now = Date.now();
       recomputeAllSkillStates(state, now);
-      const plan = buildPlan(state, state.selectedDuration || 25, now);
+      const occasionId = nextId(state, 'occasion');
+      const plan = buildPlan(state, state.selectedDuration || 25, now, occasionId);
       state.session = {
         sessionId: nextId(state, 'session'),
-        learningOccasionId: nextId(state, 'occasion'),
+        learningOccasionId: plan.learning_occasion_id,
         startedAt: iso(now),
         finishedAt: null,
         requestedDuration: state.selectedDuration || 25,
@@ -929,7 +1336,7 @@
         completedActions: [],
         remainingActions: clone(plan.selected_actions),
         planId: plan.plan_id,
-        planRevision: 1,
+        planRevision: plan.plan_revision,
         revisionReason: 'SESSION_START'
       };
       state.planRevisions.push({
@@ -937,6 +1344,7 @@
         reason: 'SESSION_START',
         at: iso(now),
         plan_id: plan.plan_id,
+        planner_input_snapshot_id: plan.planner_input_snapshot_id,
         selected_action_ids: plan.selected_actions.map(function (a) { return a.candidate_action_id; })
       });
       persist();
@@ -968,6 +1376,7 @@
         reason: reason,
         at: iso(),
         plan_id: plan.plan_id,
+        planner_input_snapshot_id: plan.planner_input_snapshot_id,
         selected_action_ids: remaining.map(function (a) { return a.candidate_action_id; })
       });
       persist();
@@ -1102,6 +1511,9 @@
 
       if (stage === 'transfer' && linkedError && maxHelp === 'none' && event.evidence_class === 'P4') {
         linkedError.transfer_event_ids.push(event.event_id);
+        linkedError.linked_evidence_event_ids = linkedError.linked_evidence_event_ids || [];
+        linkedError.linked_evidence_event_ids.push(event.event_id);
+        linkedError.transfer_status = 'success';
         linkedError.status = 'PROVISIONALLY_RESOLVED';
         createReviewObligation(state, linkedError, event, Date.now());
       }
@@ -1110,12 +1522,20 @@
         const review = state.reviews.find(function (r) { return r.review_id === action.review_id; });
         if (review) {
           review.last_review_result = 'success';
+          review.review_success_streak = Number(review.review_success_streak || 0) + 1;
           review.review_level = Math.min(5, Number(review.review_level || 0) + 1);
           const intervals = [1, 3, 7, 14, 30, 30];
           review.next_review_at = addDays(event.completed_at, intervals[review.review_level]);
           review.review_state = 'SCHEDULED';
+          review.basis_event_ids.push(event.event_id);
           const err = findError(review.linked_error_id);
-          if (err) err.status = 'RESOLVED';
+          if (err) {
+            err.delayed_review_event_ids = err.delayed_review_event_ids || [];
+            err.delayed_review_event_ids.push(event.event_id);
+            err.review_status = 'SCHEDULED';
+            err.status = 'RESOLVED';
+            err.resolved_at = event.completed_at;
+          }
         }
       }
 
@@ -1166,8 +1586,33 @@
       });
 
       const repairId = nextId(state, 'repair');
+      const consumedAssistance = clone(event.assistance_events || []);
+      const repairAttempt = {
+        repair_attempt_id: repairId,
+        error_id: error.error_id,
+        source_event_id: error.originating_event_id,
+        skill_node_id: error.skill_node_id,
+        learner_response_before: error.original_response,
+        learner_repair_response: state.ui.selectedAnswer,
+        assistance_event_ids: consumedAssistance.map(function (a) { return a.assistance_event_id; }),
+        max_assistance_consumed: help,
+        independence_class: independenceFromAssistance(help),
+        repair_result: ok ? 'success' : 'failure',
+        evaluator_source: 'rule',
+        evaluator_confidence: 'high',
+        learning_occasion_id: state.session ? state.session.learningOccasionId : event.learning_occasion_id,
+        started_at: started,
+        completed_at: event.completed_at,
+        created_at: iso()
+      };
+      state.repairAttempts.push(repairAttempt);
       error.repair_attempt_ids.push(repairId);
+      error.repair_attempt_count = error.repair_attempt_ids.length;
+      error.max_assistance_during_repair = assistanceRank(help) > assistanceRank(error.max_assistance_during_repair || 'none') ? help : (error.max_assistance_during_repair || 'none');
+      error.self_repair_result = ok ? 'success' : 'failure';
       error.related_event_ids.push(event.event_id);
+      error.linked_evidence_event_ids = error.linked_evidence_event_ids || [];
+      error.linked_evidence_event_ids.push(event.event_id);
 
       if (ok) {
         const repairAction = currentAction();
@@ -1236,6 +1681,8 @@
       };
       state.assistanceEvents.push(event);
       error.assistance_event_ids.push(event.assistance_event_id);
+      error.max_assistance_during_repair = 'full_model';
+      error.self_repair_result = 'model_exposed';
       state.ui.hintLevel = 'full_model';
       state.ui.message = task.explanation + ' Правильный ответ: ' + task.options[task.correctIndex] + '. После модели понадобится новый самостоятельный пример.';
       const repairAction = currentAction();
@@ -1273,7 +1720,7 @@
       const session = state.session;
       if (!session || !plan) {
         return '<span class="i01-kicker">Моя подготовка</span><h1 class="h1">Готово начать</h1>' +
-          '<p class="sub">OTTO построит занятие из текущих evidence, ошибок и review-обязательств.</p>' +
+          '<p class="sub">OTTO построит занятие по твоим результатам, ошибкам и тому, что пора повторить.</p>' +
           '<div class="row"><button class="btn secondary" onclick="i01SetDuration(10)">10 минут</button><button class="btn primary" onclick="i01SetDuration(25)">25 минут</button><button class="btn secondary" onclick="i01SetDuration(45)">45 минут</button></div>' +
           '<button class="btn primary" onclick="i01Start()">Построить план</button>';
       }
@@ -1290,7 +1737,7 @@
       });
       html += '</div>';
       if (!actions.length) {
-        html += '<div class="notice">Сейчас нет валидного следующего задания в этом ограниченном slice. OTTO не подставляет дубликаты ради заполнения времени.</div>';
+        html += '<div class="notice">Сейчас нет подходящего нового задания. OTTO не подставляет повтор почти того же задания только ради заполнения времени.</div>';
         html += '<button class="btn primary" onclick="i01FinishSession()">Завершить занятие</button>';
       } else {
         html += reasonCard(actions[0]);
@@ -1312,7 +1759,7 @@
       }
       const task = getTask(action.task_id);
       if (!task) {
-        return '<span class="i01-kicker">Моя подготовка</span><h1 class="h1">Нет валидного задания</h1><div class="notice">OTTO не использует exact/near duplicate вместо нового evidence.</div><button class="btn primary" onclick="i01Replan(\'CONTENT_BLOCK\');go(\'my-prep\')">Перестроить план</button>';
+        return '<span class="i01-kicker">Моя подготовка</span><h1 class="h1">Нет валидного задания</h1><div class="notice">OTTO не использует точный или почти одинаковый повтор вместо нового материала.</div><button class="btn primary" onclick="i01Replan(\'CONTENT_BLOCK\');go(\'my-prep\')">Перестроить план</button>';
       }
       if (!state.ui.currentTaskStartedAt) {
         state.ui.currentTaskStartedAt = iso();
@@ -1392,7 +1839,7 @@
       });
 
       if (reviews.length) {
-        html += '<div class="card ok"><b>Исправлено — проверим позже</b><p class="sub">После transfer создана отложенная независимая перепроверка. Ближайшая: ' + e(new Date(reviews[0].next_review_at).toLocaleString('ru-RU')) + '.</p></div>';
+        html += '<div class="card ok"><b>Исправлено — проверим позже</b><p class="sub">После успешного задания на новом материале создана отложенная самостоятельная перепроверка. Ближайшая: ' + e(new Date(reviews[0].next_review_at).toLocaleString('ru-RU')) + '.</p></div>';
       }
       html += '<div class="card soft"><b>Готовность</b><p class="sub">Lesen: <b>Недостаточно данных</b>. Эта версия покрывает только часть Lesen Teil 1, поэтому OTTO не выдумывает процент готовности.</p></div>';
       html += '<button class="btn primary" onclick="go(\'readiness\')">Открыть готовность по модулям</button>';
@@ -1410,15 +1857,15 @@
       const decision = state.plannerDecisions.slice().reverse().find(function (d) {
         return d.selected.some(function (s) { return s.action_id === actionId; });
       });
-      let html = '<span class="i01-kicker">Audit trail</span><h1 class="h1">Почему OTTO так считает?</h1>';
+      let html = '<span class="i01-kicker">Объяснение выбора</span><h1 class="h1">Почему OTTO так считает?</h1>';
       if (!action || !decision) {
         html += '<div class="notice">Для этого действия audit-запись не найдена.</div>';
       } else {
         const selected = decision.selected.find(function (s) { return s.action_id === actionId; });
-        html += '<div class="card"><b>Подтверждено</b><p class="sub">Действие выбрано текущей версией Planner V1 из сохранённого состояния пользователя.</p></div>';
+        html += '<div class="card"><b>Подтверждено</b><p class="sub">OTTO выбрал это действие по сохранённым результатам и текущим учебным приоритетам.</p></div>';
         html += '<div class="card"><b>Почему сейчас</b><p class="sub">' + e(selected.reason_text) + '</p></div>';
-        html += '<div class="card"><b>Что повлияло</b><p class="sub">Навык: ' + e(getSkill(action.skill_node_id).label) + '. Тип действия: ' + e(action.action_type) + '.</p></div>';
-        html += '<div class="card"><b>Что дальше</b><p class="sub">После нового EvidenceEvent OTTO пересчитает Mastery и оставшуюся часть занятия.</p></div>';
+        html += '<div class="card"><b>Что повлияло</b><p class="sub">Навык: ' + e(getSkill(action.skill_node_id).label) + '. Следующий шаг: ' + e(actionTypeLabel(action.action_type)) + '.</p></div>';
+        html += '<div class="card"><b>Что дальше</b><p class="sub">После следующего ответа OTTO обновит состояние навыка и оставшуюся часть занятия.</p></div>';
         html += '<details><summary>Технический audit для QA</summary><pre class="i01-audit">' + e(JSON.stringify({ selected: selected, deferred: decision.deferred }, null, 2)) + '</pre></details>';
       }
       html += '<button class="btn primary" onclick="back()">Назад</button>';
@@ -1437,7 +1884,7 @@
           '<p class="sub"><b>Дальше:</b> ' + e(m.next_step) + '</p>' +
           '<details><summary>Почему OTTO так считает?</summary><p class="sub"><b>Подтверждено:</b> ' + e(m.confirmed.length ? m.confirmed.join(' ') : 'Пока нет достаточного подтверждения.') + '</p>' +
           '<p class="sub"><b>Пока не подтверждено:</b> ' + e(m.missing.join(' ')) + '</p>' +
-          '<p class="sub"><b>Что повлияло:</b> ' + e(m.influenced_by.join(' ') || 'Недостаток данных в этом slice.') + '</p>' +
+          '<p class="sub"><b>Что повлияло:</b> ' + e(m.influenced_by.join(' ') || 'Пока данных недостаточно.') + '</p>' +
           '<p class="sub"><b>Что дальше:</b> ' + e(m.next_step) + '</p></details></div>';
       });
       html += '</div><button class="btn primary" onclick="go(\'home\')">На главную</button>';
@@ -1465,14 +1912,14 @@
         '<button class="btn primary" onclick="i01Start()">' + (sessionOpen ? 'Продолжить мою подготовку' : 'Начать мою подготовку') + '</button>' +
         '<button class="btn secondary" onclick="go(\'time\')">Время: ' + state.selectedDuration + ' минут</button>' +
         '<button class="btn secondary" onclick="go(\'readiness\')">Готовность по модулям</button>' +
-        '<button class="btn ghost" onclick="i01Reset()">Сбросить данные slice</button>';
+        '<button class="btn ghost" onclick="i01Reset()">Начать заново</button>';
     };
 
     R.time = function () {
       const state = rt();
       return '<span class="eyebrow">Время</span><h1 class="h1">Сколько времени есть?</h1><p class="sub">25 минут — основной полностью рабочий режим этой версии. Режимы 10 и 45 минут используют те же правила, но пока могут завершиться раньше, если подходящих заданий недостаточно.</p>' +
         '<div class="grid">' + [10,25,45].map(function (n) {
-          return '<button class="module" onclick="i01SetDuration(' + n + ')"><b>' + n + ' минут</b><small>' + (n === 25 ? 'основной Preview' : 'поддерживается ядром') + '</small></button>';
+          return '<button class="module" onclick="i01SetDuration(' + n + ')"><b>' + n + ' минут</b><small>' + (n === 25 ? 'основной режим' : 'поддерживается ядром') + '</small></button>';
         }).join('') + '</div><button class="btn primary" onclick="go(\'home\')">Готово</button>';
     };
 
@@ -1513,7 +1960,7 @@
           const events = state.evidenceEvents.filter(function (x) { return x.skill_node_id === skillId; });
           const st = state.skillStates[skillId];
           return '<div class="card"><b>' + e(SKILLS[skillId].label) + '</b><p class="sub">' +
-            e(masteryLabel(st ? st.mastery_state : 'M0')) + ' · evidence: ' + events.length + '</p></div>';
+            e(masteryLabel(st ? st.mastery_state : 'M0')) + ' · попыток: ' + events.length + '</p></div>';
         }).join('') +
         '<button class="btn primary" onclick="go(\'readiness\')">Готовность по модулям</button>';
     };
@@ -1526,6 +1973,8 @@
     SKILLS: SKILLS,
     CONTENT: CONTENT,
     REASON_LABELS: REASON_LABELS,
+    MODULE_CONFIG: MODULE_CONFIG,
+    CONTENT_CATALOG_VERSION: CONTENT_CATALOG_VERSION,
     freshRuntime: freshRuntime,
     isTransferSafe: isTransferSafe,
     classifyEvidence: classifyEvidence,
@@ -1534,6 +1983,7 @@
     recomputeAllSkillStates: recomputeAllSkillStates,
     createErrorObject: createErrorObject,
     createReviewObligation: createReviewObligation,
+    createPlannerInputSnapshot: createPlannerInputSnapshot,
     refreshReviewStates: refreshReviewStates,
     generateCandidates: generateCandidates,
     buildPlan: buildPlan,
