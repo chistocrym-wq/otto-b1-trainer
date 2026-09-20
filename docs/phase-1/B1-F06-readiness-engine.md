@@ -198,7 +198,13 @@ Meaning:
 OTTO has sufficient, recent, independent, transferred, module-wide and exam-like evidence to support a readiness conclusion for this module.
 
 User label:
-**«Есть устойчивые доказательства готовности»**
+**«Устойчивые доказательства есть»**
+
+Module-card heading:
+**«Готовность к модулю — оценка OTTO»**
+
+Persistent detail note:
+**«Это внутренняя оценка OTTO, не официальный результат Goethe.»**
 
 This is an OTTO educational state.
 
@@ -432,8 +438,10 @@ Use when:
 - evidence is highly conflicting and sparse;
 - important data-quality/missing-data flags remain.
 
-User-facing phrase:
-**«Уверенность оценки низкая»** only when useful; normally explain the missing data instead.
+User-facing secondary line:
+**«Надёжность данных: низкая»**
+
+Do not expose C0.
 
 ## C1 — MEDIUM
 
@@ -443,6 +451,11 @@ Use when:
 - evidence is adequate but some Teil sit near minimum coverage;
 - or evidence is somewhat mixed/stale but still classifiable;
 - no decisive productive evidence is low-confidence.
+
+User-facing secondary line:
+**«Надёжность данных: средняя»**
+
+Do not expose C1.
 
 ## C2 — HIGH
 
@@ -457,7 +470,12 @@ Use when:
 
 For R4, HIGH additionally requires exam-like coverage under section 7.2.
 
-Confidence is not displayed as a percentage in V1.
+User-facing secondary line:
+**«Надёжность данных: высокая»**
+
+Do not expose C2.
+
+Confidence is not displayed as a percentage in V1 and describes evidence quality, not the learner's official level.
 
 ---
 
@@ -852,13 +870,50 @@ Internal codes R0–R4 / C0–C2 are not shown by default.
 
 Approved readiness labels:
 
+Module heading:
+**«Готовность к модулю — оценка OTTO»**
+
 | Internal | User-facing |
 |---|---|
 | R0 | **Недостаточно данных** |
 | R1 | **Требуется работа** |
 | R2 | **Прогресс есть, но результат нестабилен** |
 | R3 | **Нужна повторная проверка** |
-| R4 | **Есть устойчивые доказательства готовности** |
+| R4 | **Устойчивые доказательства есть** |
+
+Persistent detail note:
+**«Это внутренняя оценка OTTO, не официальный результат Goethe.»**
+
+Confidence is shown separately as:
+- **«Надёжность данных: низкая»**
+- **«Надёжность данных: средняя»**
+- **«Надёжность данных: высокая»**
+
+Never show internal R/C codes to the learner.
+
+## Coverage display
+
+Show coverage as coverage, not as a readiness score.
+
+Preferred user-facing patterns:
+- **«Проверено Teil: 4 из 5»**
+- **«Нужно проверить: Teil 3»**
+- **«Exam-like подтверждение: есть»**
+- **«Exam-like подтверждение: не хватает»**
+
+Do not use a headline like “80% ready”.
+
+Internal Micro-skill coverage ratios may appear only in an explanatory detail view and must be labeled as **coverage**, never as points or readiness percentage.
+
+## R0 with known weakness
+
+When readiness_state = R0 but known negative evidence exists, show both:
+
+1. **«Недостаточно данных для общей оценки модуля.»**
+2. A concrete known issue, for example:
+   **«При этом уже видно, что нужно поработать над порядком слов в Schreiben Aufgabe 2.»**
+
+The second line must come from audited blockers/evidence. Do not invent a weakness.
 
 ## Explanation pattern
 
@@ -1021,9 +1076,10 @@ Expected:
 
 Technical findings TA-01..TA-05 are incorporated.
 QA findings QA-01..QA-04 are incorporated.
-GOETHE boundary: PASS subject to final UX wording preserving OTTO/non-official framing.
+GOETHE boundary: PASS subject to final wording re-check.
+UX findings UX-01..UX-04 are incorporated.
 
 Next:
-**QA re-check → Technical final delta → UX / DESIGN → Director scope check**
+**UX re-check → GOETHE wording re-check → Director scope check**
 
 DEV runtime remains blocked.
