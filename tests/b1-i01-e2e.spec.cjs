@@ -76,7 +76,7 @@ test('owner preview scenario works end-to-end and produces honest state', async 
   await page.getByRole('button', { name: 'Richtig', exact: true }).click();
   await page.getByRole('button', { name: 'Исправить самому' }).click();
 
-  await expect(page.getByText('Новый контекст · transfer')).toBeVisible();
+  await expect(page.getByText('Новый контекст · перенос навыка')).toBeVisible();
   const transferStatement = (await page.locator('.i01-statement').textContent()).trim();
   expect(transferStatement).not.toBe(firstStatement);
   await page.screenshot({path:testInfo.outputPath('05-transfer-desktop.png'), fullPage:true});
