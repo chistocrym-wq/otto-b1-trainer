@@ -52,6 +52,22 @@ test('owner preview scenario works end-to-end and produces honest state', async 
   await page.goto(baseURL, { waitUntil: 'networkidle' });
 
   await expect(page.getByRole('button', { name: 'Начать мою подготовку' }).first()).toBeVisible();
+  const mascot = page.locator('.otto img');
+  await expect(mascot).toBeVisible();
+  const mascotCheck = await mascot.evaluate(img => {
+    if (!img.complete || img.naturalWidth < 10 || img.naturalHeight < 10) return {loaded:false, varied:false};
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.min(80, img.naturalWidth);
+    canvas.height = Math.min(80, img.naturalHeight);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    const colors = new Set();
+    for (let i=0;i<data.length;i+=16) colors.add(data[i]+','+data[i+1]+','+data[i+2]+','+data[i+3]);
+    return {loaded:true, varied:colors.size > 8, colors:colors.size};
+  });
+  expect(mascotCheck.loaded).toBe(true);
+  expect(mascotCheck.varied).toBe(true);
   await page.screenshot({path:testInfo.outputPath('01-home-desktop.png'), fullPage:true});
 
   await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
@@ -91,6 +107,14 @@ test('owner preview scenario works end-to-end and produces honest state', async 
   expect(persisted.i01.reviews.length).toBeGreaterThanOrEqual(1);
   expect(persisted.i01.reviews[0].review_reason).toContain('POST_REPAIR_CONFIRMATION');
   expect(persisted.i01.planRevisions.length).toBeGreaterThanOrEqual(3);
+  expect(persisted.i01.repairAttempts.length).toBe(1);
+  expect(persisted.i01.repairAttempts[0].repair_result).toBe('success');
+  expect(persisted.i01.repairAttempts[0].independence_class).toBe('independent');
+  expect(persisted.i01.skillStateSnapshots.length).toBeGreaterThanOrEqual(2);
+  expect(persisted.i01.plannerInputSnapshots.length).toBeGreaterThanOrEqual(3);
+  expect(persisted.i01.plans.length).toBeGreaterThanOrEqual(3);
+  expect(persisted.i01.errors[0].review_required).toBe(true);
+  expect(persisted.i01.errors[0].transfer_status).toBe('confirmed');
 
   const source = persisted.i01.evidenceEvents.find(e => e.outcome_status === 'failure');
   const transfer = persisted.i01.evidenceEvents.find(e => e.evidence_class === 'P4');
@@ -105,6 +129,8 @@ test('owner preview scenario works end-to-end and produces honest state', async 
     await page.locator('.i01-reason .i01-link').first().click();
     await expect(page.getByText('Почему OTTO так считает?')).toBeVisible();
     await expect(page.getByText('Что дальше')).toBeVisible();
+    const auditText = await page.locator('#screen').innerText();
+    expect(auditText).not.toMatch(/Planner V1|EvidenceEvent|Mastery|TRANSFER_CHECK|EVIDENCE_GAP_PROBE/);
     await page.getByRole('button', { name: 'Назад' }).click();
   }
 
@@ -112,6 +138,7 @@ test('owner preview scenario works end-to-end and produces honest state', async 
   await page.evaluate(() => window.i01FinishSession());
   await expect(page.getByText('Что реально произошло')).toBeVisible();
   await expect(page.getByText('Исправлено — проверим позже')).toBeVisible();
+  expect(await page.locator('#screen').innerText()).not.toMatch(/\btransfer\b|vertical slice|Preview|EvidenceEvent|Mastery/i);
   await page.screenshot({path:testInfo.outputPath('06-summary-desktop.png'), fullPage:true});
 
   await page.getByRole('button', { name: 'Открыть готовность по модулям' }).click();
@@ -120,13 +147,23 @@ test('owner preview scenario works end-to-end and produces honest state', async 
     await expect(page.getByRole('heading', { name: module })).toBeVisible();
   }
   await expect(page.getByText('Недостаточно данных').first()).toBeVisible();
+  await expect(page.getByText('Проверено: 1 из 5 Teil')).toBeVisible();
   expect((await page.locator('body').innerText())).not.toMatch(/\d+%|60\/100|B1 ready/i);
+  expect(await page.locator('#screen').innerText()).not.toMatch(/vertical slice|Preview|EvidenceEvent|Mastery|\bR[0-4]\b|\bT[0-4]\b|\bC[0-3]\b/);
+  const readyState = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}').i01);
+  expect(readyState.readinessSnapshots.length).toBeGreaterThanOrEqual(4);
+  expect(readyState.readinessInputSnapshots.length).toBeGreaterThanOrEqual(4);
+  const lesenSnapshot = readyState.readinessSnapshots.filter(x => x.module === 'Lesen').at(-1);
+  expect(lesenSnapshot.readiness_state).toBe('R0');
+  expect(lesenSnapshot.official_teil_coverage[0].coverage_tier).toBe('T2');
+  expect(lesenSnapshot.sufficiency_status).toBe('INSUFFICIENT_FOR_READINESS_CLASSIFICATION');
   await page.screenshot({path:testInfo.outputPath('07-readiness-desktop.png'), fullPage:true});
 
   // Mobile visual smoke on the same rendered app.
   await page.setViewportSize({width:390,height:844});
   await page.evaluate(() => window.go('home'));
   await expect(page.getByRole('button', {name:/мою подготовку/i}).first()).toBeVisible();
+  expect(await page.locator('#screen').innerText()).not.toMatch(/slice|Preview|EvidenceEvent|Mastery/i);
   await page.screenshot({path:testInfo.outputPath('08-home-mobile.png'), fullPage:true});
   await page.evaluate(() => window.go('readiness'));
   await page.screenshot({path:testInfo.outputPath('09-readiness-mobile.png'), fullPage:true});
@@ -151,4 +188,20 @@ test('assistance is recorded and does not masquerade as independent', async ({ p
   expect(success.independence).toBe('minimally_supported');
   expect(success.max_assistance_consumed).toBe('strategy');
   expect(state.assistanceEvents.some(a => a.event_id === success.event_id)).toBe(true);
+});
+
+
+test('25-minute plan survives reload without changing the chosen actions', async ({ page }) => {
+  await page.goto(baseURL, { waitUntil:'networkidle' });
+  await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
+  const before = await page.evaluate(() => {
+    const state = JSON.parse(localStorage.ottoB1 || '{}').i01;
+    return state.session.remainingActions.map(a => [a.candidate_action_id,a.task_id,a.primary_reason_code]);
+  });
+  await page.reload({waitUntil:'networkidle'});
+  const after = await page.evaluate(() => {
+    const state = JSON.parse(localStorage.ottoB1 || '{}').i01;
+    return state.session.remainingActions.map(a => [a.candidate_action_id,a.task_id,a.primary_reason_code]);
+  });
+  expect(after).toEqual(before);
 });
