@@ -234,3 +234,23 @@ test('readiness is four immutable module snapshots and owner-path Lesen coverage
   api.computeReadiness(rt, '2026-09-20T10:13:00.000Z');
   assert.equal(rt.readinessSnapshots.length, 4, 'unchanged basis must not rewrite snapshot history');
 });
+
+
+test('due post-repair obligation becomes canonical POST_REPAIR_CONFIRMATION planner action', () => {
+  const rt = api.freshRuntime('2026-09-20T10:00:00.000Z');
+  api.recomputeAllSkillStates(rt, '2026-09-20T10:00:00.000Z');
+  const source = api.CONTENT[0];
+  const transferTask = api.CONTENT[1];
+  const failure = ev(rt, source, {selectedAnswer:1,outcomeStatus:'failure'});
+  const err = api.createErrorObject(rt, source, failure, '2026-09-20T10:01:00.000Z');
+  const transfer = ev(rt, transferTask, {
+    stage:'transfer',completedAt:'2026-09-20T10:10:00.000Z',transferOfErrorId:err.error_id
+  });
+  api.createReviewObligation(rt, err, transfer, '2026-09-20T10:10:00.000Z');
+  api.recomputeAllSkillStates(rt, '2026-09-21T10:11:00.000Z');
+  const plan = api.buildPlan(rt, 25, '2026-09-21T10:11:00.000Z', 'occasion-review');
+  const reviewAction = plan.selected_actions.find(x => x.review_id);
+  assert.ok(reviewAction);
+  assert.equal(reviewAction.action_type, 'POST_REPAIR_CONFIRMATION');
+  assert.equal(reviewAction.primary_reason_code, 'POST_REPAIR_CONFIRMATION');
+});
