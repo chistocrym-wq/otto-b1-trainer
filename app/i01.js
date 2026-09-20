@@ -250,7 +250,7 @@
     const success = opts.outcomeStatus === 'success';
     const stage = opts.stage || 'independent';
 
-    if (stage === 'repair') {
+    if (opts.selfRepairAttempt) {
       return {
         evidenceClass: null,
         evidenceRole: 'self_repair',
@@ -335,6 +335,10 @@
       evidence_role: classification.evidenceRole,
       independence: classification.independence
     };
+    (opts.assistanceEvents || []).forEach(function (a) {
+      const stored = rt.assistanceEvents.find(function (x) { return x.assistance_event_id === a.assistance_event_id; });
+      if (stored && !stored.event_id) stored.event_id = eventId;
+    });
     rt.evidenceEvents.push(event);
     return event;
   }
@@ -1067,7 +1071,7 @@
         responseTimeMs: Math.max(0, Date.now() - new Date(started).getTime()),
         maxAssistanceConsumed: maxHelp,
         assistanceEvents: state.assistanceEvents.filter(function (a) {
-          return a.affected_skill_node_id === task.skillNodeId && a.task_instance_id === task.id;
+          return a.affected_skill_node_id === task.skillNodeId && a.task_instance_id === task.id && !a.event_id;
         }),
         selectedAnswer: state.ui.selectedAnswer,
         outcomeStatus: ok ? 'success' : 'failure',
@@ -1142,7 +1146,8 @@
       const started = state.ui.currentTaskStartedAt || iso();
 
       const event = makeEvidenceEvent(state, task, {
-        stage: 'repair',
+        stage: help === 'none' ? 'independent' : 'guided',
+        selfRepairAttempt: true,
         attemptNumber: priorExact + 1,
         priorExactExposure: priorExact,
         priorFamilyExposure: state.evidenceEvents.filter(function (e) { return e.task_family_id === task.taskFamilyId; }).length,
@@ -1150,6 +1155,9 @@
         completedAt: Date.now(),
         responseTimeMs: Math.max(0, Date.now() - new Date(started).getTime()),
         maxAssistanceConsumed: help,
+        assistanceEvents: state.assistanceEvents.filter(function (a) {
+          return a.affected_skill_node_id === task.skillNodeId && a.task_instance_id === task.id && !a.event_id;
+        }),
         selectedAnswer: state.ui.selectedAnswer,
         outcomeStatus: ok ? 'success' : 'failure',
         linkedErrorId: error.error_id,
@@ -1162,6 +1170,10 @@
       error.related_event_ids.push(event.event_id);
 
       if (ok) {
+        const repairAction = currentAction();
+        if (repairAction && repairAction.action_type === 'RECOVERY_REPAIR') {
+          markActionCompleted(state, repairAction, help === 'none' ? 'self_repair_success' : 'supported_repair_success');
+        }
         error.status = (help === 'none' || help === 'strategy') ? 'SELF_REPAIRED' : 'SELF_REPAIR_PENDING';
         error.current_task_id = task.id;
         clearTaskUI(state);
@@ -1226,13 +1238,17 @@
       error.assistance_event_ids.push(event.assistance_event_id);
       state.ui.hintLevel = 'full_model';
       state.ui.message = task.explanation + ' Правильный ответ: ' + task.options[task.correctIndex] + '. После модели понадобится новый самостоятельный пример.';
+      const repairAction = currentAction();
+      if (repairAction && repairAction.action_type === 'RECOVERY_REPAIR') {
+        markActionCompleted(state, repairAction, 'model_exposed');
+      }
       error.status = 'TRANSFER_PENDING';
       clearTaskUI(state);
       state.ui.hintLevel = 'full_model';
       state.ui.message = task.explanation + ' Правильный ответ: ' + task.options[task.correctIndex] + '. После модели понадобится новый самостоятельный пример.';
       root.i01Replan('MODEL_EXPOSED_NEEDS_TRANSFER');
       persist();
-      render();
+      go('prep-task');
     };
 
     root.i01OpenAudit = function (actionId) {
@@ -1333,7 +1349,7 @@
       }
       if (!error) return '<h1 class="h1">Активной ошибки нет</h1><button class="btn primary" onclick="go(\'my-prep\')">К плану</button>';
       const task = getTask(error.current_task_id || error.origin_task_id);
-      error.status = 'SELF_REPAIR_PENDING';
+      if (['NEW', 'EXPLAINED', 'RETURNED'].includes(error.status)) error.status = 'SELF_REPAIR_PENDING';
       if (!state.ui.currentTaskStartedAt) state.ui.currentTaskStartedAt = iso();
       persist();
 
