@@ -1,6 +1,6 @@
 # B1-F06 — Readiness Engine
 
-Status: **DRAFT FOR INDEPENDENT REVIEW**  
+Status: **B1-F06 SPEC READY TO FREEZE**  
 Phase: **PHASE 1 — FOUNDATION**  
 Parent: **#2 OTTO B1 — PRODUCT REVIEW & REDESIGN**  
 Task: **#13 [B1-F06] Readiness Engine**  
@@ -1047,39 +1047,128 @@ Expected:
 
 # 23. Acceptance checklist
 
-- [ ] separate readiness per module.
-- [ ] R0–R4 deterministic.
-- [ ] confidence C0–C2 separate from state.
-- [ ] sufficiency gate explicit.
-- [ ] official Teil coverage explicit.
-- [ ] Micro-skill coverage floor explicit.
-- [ ] independence/assistance effects explicit.
-- [ ] transfer/exam-like effects explicit.
-- [ ] freshness/review effects explicit.
-- [ ] recurrence/regression effects explicit.
-- [ ] Schreiben rules non-binary.
-- [ ] Sprechen text/audio/interaction/pronunciation separated.
-- [ ] evaluator confidence rules explicit.
-- [ ] Hören replay assistance handled.
-- [ ] no module compensation.
-- [ ] no official-looking readiness score required.
-- [ ] no 60/100 OTTO threshold.
-- [ ] audit trail complete.
-- [ ] F05 advisory interface does not rewrite Planner.
-- [ ] destructive scenarios F06-Q01..Q17 defined.
-- [ ] frozen F01–F05 unchanged.
-- [ ] no app/runtime/main/production change.
+- [x] separate readiness per module.
+- [x] R0–R4 deterministic.
+- [x] confidence C0–C2 separate from state.
+- [x] sufficiency gate explicit.
+- [x] official Teil coverage explicit.
+- [x] Micro-skill coverage floor explicit.
+- [x] independence/assistance effects explicit.
+- [x] transfer/exam-like effects explicit.
+- [x] freshness/review effects explicit.
+- [x] recurrence/regression effects explicit.
+- [x] Schreiben rules non-binary.
+- [x] Sprechen text/audio/interaction/pronunciation separated.
+- [x] evaluator confidence rules explicit.
+- [x] Hören replay assistance handled.
+- [x] no module compensation.
+- [x] no official-looking readiness score required.
+- [x] no 60/100 OTTO threshold.
+- [x] audit trail complete.
+- [x] F05 advisory interface does not rewrite Planner.
+- [x] destructive scenarios F06-Q01..Q17 defined.
+- [x] frozen F01–F05 unchanged.
+- [x] no app/runtime/main/production change.
 
 ---
 
-# 24. Current review status
+# 24. Independent review results
 
-Technical findings TA-01..TA-05 are incorporated.
-QA findings QA-01..QA-04 are incorporated.
-GOETHE boundary: PASS subject to final wording re-check.
-UX findings UX-01..UX-04 are incorporated.
+## Technical Architecture
+**PASS — FINAL**
 
-Next:
-**UX re-check → GOETHE wording re-check → Director scope check**
+Resolved:
+- deterministic blocker semantics without undefined criticality;
+- CheckpointCoverageManifest for full-module exam-like proof;
+- Teil-level freshness aggregation from F04;
+- machine-testable C0/C1/C2 confidence gates;
+- full frozen F01 Micro-skill denominator for R4;
+- QA-driven R1 aggregation, R0 blocker visibility and system-data-gap semantics.
 
-DEV runtime remains blocked.
+No frozen F01–F05 change request is required.
+
+## QA
+**PASS — F06-Q01..F06-Q17**
+
+Validated:
+- one perfect task cannot produce module readiness;
+- one Teil cannot carry the module;
+- assisted/model-exposed work cannot produce independent readiness;
+- modules never compensate for each other;
+- stale evidence leads to recheck, not fictional forgetting;
+- later regression overrides prior exam-like success;
+- productive criteria remain multidimensional;
+- Sprechen text-only cannot establish audio/pronunciation/interaction readiness;
+- low evaluator confidence blocks decisive productive readiness evidence;
+- Hören extra replay cannot create independent exam-like confirmation;
+- missing Teil forces insufficient data;
+- activity volume is not mastery/readiness;
+- conflicting evidence prevents false ready state;
+- long inactivity is handled through F04 freshness;
+- one separately prepared module is evaluated independently.
+
+## GOETHE boundary
+**PASS — FINAL**
+
+- R/T/C states and internal thresholds are OTTO_METHOD.
+- Official Module/Teil/Aufgabe structure remains frozen from F01.
+- 60/100 is not used as an OTTO threshold.
+- No official score, pass/fail or pass probability is calculated.
+- Final UX explicitly states OTTO readiness is not an official Goethe result.
+- Hören/Schreiben/Sprechen exam-like boundaries remain intact.
+
+## UX / DESIGN
+**PASS**
+
+- module heading: “Готовность к модулю — оценка OTTO”;
+- no official-looking readiness percentage;
+- readiness state and data reliability are shown separately;
+- coverage shown as Teil coverage, not score;
+- R0 with known weakness does not hide the known problem;
+- R4 wording no longer sounds like certification.
+
+---
+
+# 25. Unresolved blockers / change requests
+
+**No blocking unresolved questions.**
+
+**No change request against frozen B1-F01–F05 is required.**
+
+Intentional deferrals:
+- runtime/storage implementation;
+- actual UI implementation;
+- calibration of future policy versions from real product data;
+- any future predictive pass-probability model would require a separate validated task and is not part of F06.
+
+---
+
+# 26. Implementation handoff
+
+After Owner freeze, Foundation F01–F06 provides the specification input for the first runtime vertical slice.
+
+The implementation slice may consume:
+- F01 skill IDs and exam constraints;
+- F02 Evidence/Mastery;
+- F03 Error Repair;
+- F04 Review Scheduler;
+- F05 Daily Planner;
+- F06 module-specific readiness snapshots.
+
+Implementation must still:
+- use a separate DEV task contract;
+- work on a non-main branch;
+- produce a Preview;
+- receive independent QA;
+- not deploy production without Owner instruction.
+
+---
+
+# 27. Final status
+
+**B1-F06 SPEC READY TO FREEZE**
+
+DEV runtime remains blocked.  
+Implementation has not started.  
+`main` unchanged.  
+production unchanged.
