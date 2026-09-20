@@ -1,6 +1,6 @@
 # B1-F05 — Adaptive Daily Planner / «Моя подготовка»
 
-Status: **DRAFT FOR INDEPENDENT REVIEW**  
+Status: **B1-F05 SPEC READY TO FREEZE**  
 Phase: **PHASE 1 — FOUNDATION**  
 Parent: **#2 OTTO B1 — PRODUCT REVIEW & REDESIGN**  
 Task: **#11 [B1-F05] Adaptive Daily Planner / Моя подготовка**  
@@ -1102,39 +1102,130 @@ Expected:
 
 # 30. Acceptance checklist
 
-- [ ] Deterministic policy/version defined.
-- [ ] Active module scope defined.
-- [ ] Candidate action schema defined.
-- [ ] Priority classes explicit.
-- [ ] Tie-break deterministic.
-- [ ] 10/25/45 composition explicit.
-- [ ] Review caps explicit.
-- [ ] Same-skill/module anti-monopoly explicit.
-- [ ] Module starvation/fairness explicit.
-- [ ] Evidence gaps handled without fake weakness.
-- [ ] Assistance dependency handled.
-- [ ] Content blocks handled.
-- [ ] Exam-like checkpoint eligibility explicit.
-- [ ] Replanning rules explicit.
-- [ ] Early termination safe.
-- [ ] Continue/extension behavior defined.
-- [ ] Audit trail explains selection and deferral.
-- [ ] UX before/during/after defined.
-- [ ] B1-F06 output contract without readiness arithmetic.
-- [ ] Runtime output contract defined.
-- [ ] Frozen F01–F04 unchanged.
-- [ ] No app/runtime code.
-- [ ] No main/production change.
+- [x] Deterministic policy/version defined.
+- [x] Active module scope defined.
+- [x] Candidate action schema defined.
+- [x] Priority classes explicit.
+- [x] Tie-break deterministic.
+- [x] 10/25/45 composition explicit.
+- [x] Review caps explicit.
+- [x] Same-skill/module anti-monopoly explicit.
+- [x] Module starvation/fairness explicit.
+- [x] Evidence gaps handled without fake weakness.
+- [x] Assistance dependency handled.
+- [x] Content blocks handled.
+- [x] Exam-like checkpoint eligibility explicit.
+- [x] Replanning rules explicit.
+- [x] Early termination safe.
+- [x] Continue/extension behavior defined.
+- [x] Audit trail explains selection and deferral.
+- [x] UX before/during/after defined.
+- [x] B1-F06 output contract without readiness arithmetic.
+- [x] Runtime output contract defined.
+- [x] Frozen F01–F04 unchanged.
+- [x] No app/runtime code.
+- [x] No main/production change.
 
 ---
 
-# 31. Current review status
+# 31. Independent review results
 
-Technical findings TA-01..TA-05 are incorporated.
-UX findings UX-01..UX-04 are incorporated.
-QA findings QA-01..QA-04 are incorporated.
+## Technical Architecture
+**PASS**
 
-Next:
-**QA re-check → Technical final delta → GOETHE boundary (exam-like touched) → Director scope check**
+Resolved:
+- immutable input snapshot/version consistency;
+- deterministic duration source and missing-duration block;
+- formal module-starvation injection point;
+- deterministic cap overflow semantics;
+- canonical review-cap membership.
 
-DEV runtime remains blocked.
+Final delta after QA changes:
+**PASS**
+
+## UX / DESIGN
+**PASS**
+
+Resolved:
+- active modules are persistent settings, not a daily methodological choice;
+- one primary “Моя подготовка” start CTA;
+- one learner-facing “Почему сейчас” reason per action;
+- honest shortened-plan/content-block messaging;
+- plain-language post-session independence states without score/readiness.
+
+## QA
+**PASS — F05-Q01..F05-Q20**
+
+Validated:
+- overdue review overload;
+- weak Schreiben + overdue Lesen;
+- critical error preempting checkpoint;
+- multiple insufficient-evidence modules;
+- 10-minute constraints;
+- week-long absence;
+- simultaneous returned errors;
+- content shortage;
+- persistent hints;
+- rapid improvement;
+- strong-user maintenance;
+- early termination;
+- same-occasion extension;
+- inactive module;
+- monopolizing skill;
+- oversized review queue;
+- content block fallback;
+- invalid/low-quality review basis;
+- regression vs checkpoint;
+- already-used same-occasion content.
+
+## GOETHE boundary
+**PASS**
+
+- planner policy remains OTTO_METHOD;
+- exam_like checkpoints preserve frozen F01 constraints;
+- no official score/pass/fail is computed;
+- no F01 structure changed.
+
+---
+
+# 32. Unresolved blockers / change requests
+
+**No blocking unresolved questions.**
+
+**No change request against frozen B1-F01–F04 is required.**
+
+Intentional deferrals:
+- Readiness arithmetic/labels → B1-F06;
+- runtime/storage implementation → future DEV Task Contracts;
+- final production UX implementation → future approved implementation tasks.
+
+---
+
+# 33. Frozen-output candidate for B1-F06
+
+After Owner freeze, B1-F06 may consume:
+
+- active module set;
+- planned/completed coverage by Module/Teil/Skill/Micro-skill;
+- pointers to actual EvidenceEvents created during sessions;
+- exam-like/checkpoint EvidenceEvent pointers;
+- remaining evidence gaps;
+- active/returned ErrorObject references;
+- due/overdue review backlog after session;
+- blocked-content flags;
+- independence/assistance summary from actual events;
+- early-exit/session-completion metadata;
+- planner audit trail for **why work was selected**, but **not as readiness evidence itself**.
+
+B1-F06 must continue to derive learning truth from frozen F02 Evidence/Mastery, not from planner priority.
+
+---
+
+# 34. Final status
+
+**B1-F05 SPEC READY TO FREEZE**
+
+DEV runtime implementation remains blocked.  
+B1-F06 is not started.  
+`main` unchanged.  
+production unchanged.
