@@ -444,7 +444,7 @@ Confidence is not displayed as a percentage in V1.
 
 ---
 
-# 10. Deterministic confidence gates
+# 9. Deterministic confidence gates
 
 Confidence is resolved **after** readiness_state and uses machine-testable conditions.
 
