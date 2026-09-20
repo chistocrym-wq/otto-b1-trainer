@@ -120,7 +120,7 @@ test('owner preview scenario works end-to-end and produces honest state', async 
     await expect(page.getByRole('heading', { name: module })).toBeVisible();
   }
   await expect(page.getByText('Недостаточно данных').first()).toBeVisible();
-  expect((await page.locator('#app').innerText())).not.toMatch(/\d+%|60\/100|B1 ready/i);
+  expect((await page.locator('body').innerText())).not.toMatch(/\d+%|60\/100|B1 ready/i);
   await page.screenshot({path:testInfo.outputPath('07-readiness-desktop.png'), fullPage:true});
 
   // Mobile visual smoke on the same rendered app.
