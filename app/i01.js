@@ -505,10 +505,10 @@
   }
 
   function createErrorObject(rt, task, event, now) {
-    const existing = rt.errors.find(function (e) {
-      return e.skill_node_id === task.skillNodeId && !['RESOLVED'].includes(e.status) && e.root_error_id == null;
+    const existing = rt.errors.slice().reverse().find(function (e) {
+      return e.skill_node_id === task.skillNodeId && e.root_error_id == null;
     });
-    if (existing && existing.status !== 'RESOLVED') {
+    if (existing) {
       existing.related_event_ids.push(event.event_id);
       existing.linked_evidence_event_ids = existing.linked_evidence_event_ids || [];
       existing.linked_evidence_event_ids.push(event.event_id);
@@ -1445,6 +1445,8 @@
         skill_node_id: action.skill_node_id,
         reason_code: action.primary_reason_code,
         outcome: outcome,
+        module: action.module,
+        minutes: Number(action.minutes || action.estimated_duration_min || 0),
         completed_at: iso()
       });
       state.session.minutesUsed += Number(action.minutes || 0);
@@ -1492,6 +1494,16 @@
       if (!ok) {
         let error = linkedError;
         if (!error) error = createErrorObject(state, task, event, Date.now());
+        if (action.review_id) {
+          const failedReview = state.reviews.find(function (r) { return r.review_id === action.review_id; });
+          if (failedReview) {
+            failedReview.last_review_result = 'failure';
+            failedReview.review_state = 'REGRESSION_DETECTED';
+            failedReview.basis_event_ids.push(event.event_id);
+            error.review_status = 'REGRESSION_DETECTED';
+            error.review_required = true;
+          }
+        }
         else {
           error.related_event_ids.push(event.event_id);
           error.current_task_id = task.id;
@@ -1733,7 +1745,7 @@
         const task = getTask(a.task_id);
         html += '<div class="i01-step"><b>' + (i + 1) + '. ' + e(getSkill(a.skill_node_id).label) + '</b>' +
           '<small>' + e(REASON_LABELS[a.primary_reason_code] || '') + '</small>' +
-          '<small>' + e(a.action_type === 'RECOVERY_REPAIR' ? 'Исправление текущей ошибки' : task ? 'Lesen Teil 1 · новое задание' : a.action_type) + '</small></div>';
+          '<small>' + e(a.action_type === 'RECOVERY_REPAIR' ? 'Исправление текущей ошибки' : task ? 'Lesen Teil 1 · новое задание' : actionTypeLabel(a.action_type)) + '</small></div>';
       });
       html += '</div>';
       if (!actions.length) {
