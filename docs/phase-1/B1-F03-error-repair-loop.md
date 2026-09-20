@@ -242,10 +242,22 @@ Does not reveal:
 - the correct multiple-choice option;
 - a finished productive response.
 
-Typical assistance impact:
-- none or strategy, depending on content.
-
 After E1, the primary action is self-repair, not “show answer”.
+
+## 6.1 Deterministic explanation → assistance mapping
+
+Use the content actually consumed by the learner:
+
+- pure outcome + error-category statement with no solution cue → `none`;
+- general task/repair strategy → `strategy`;
+- pointing to the decisive text/audio region or evidence location → `evidence_hint`;
+- supplying decisive lexical content needed for the answer → `keyword`;
+- supplying an answer skeleton / partial sentence frame → `phrase_start`;
+- supplying the correct answer, completed phrase, or model response → `full_model`.
+
+If one explanation contains multiple levels, record the highest consumed level.
+
+Displaying an unopened help control does not count as consumed assistance.
 
 ### E2 — evidence-directed explanation
 Points the learner to:
@@ -356,6 +368,17 @@ The error remains ACTIVE.
 Do not punish the learner with an endless same-item loop.
 
 After instruction/model exposure, move to a new practice item when feasible, but later obtain independent evidence.
+
+## Supported-repair forward path
+
+A successful learner-generated correction after `keyword` or `evidence_hint`:
+- is stored as supported repair progress;
+- does not count as independent SELF_REPAIRED;
+- may end the same-item repair loop to avoid repetition trapping;
+- allows OTTO to present a **new-context independent transfer attempt**;
+- keeps the ErrorObject ACTIVE until qualifying transfer evidence exists.
+
+If that new-context transfer succeeds independently, it may create P4 and move the ErrorObject toward PROVISIONALLY_RESOLVED under frozen F02 rules.
 
 ---
 
@@ -776,6 +799,20 @@ Default repair cycle:
 
 The next repair cycle may pull queued items after the current set is repaired/parked.
 
+### Queue state rule
+
+Queued ErrorObjects that have not yet gone through their own repair/transfer remain **ACTIVE**.
+
+For a queued-but-unrepaired error:
+- do not set `review_required` because another error from the same response was repaired;
+- do not inherit PROVISIONALLY_RESOLVED/REVIEW_SCHEDULED from sibling errors;
+- preserve its own error_id, Micro-skill, cause, and lifecycle.
+
+One productive response may therefore contain simultaneously:
+- one error REPAIRED_PENDING_CONFIRMATION;
+- another error ACTIVE;
+- another lower-priority error still queued.
+
 ## Do not show
 
 - fake mastery percentage after one error;
@@ -942,8 +979,9 @@ Expected:
 
 UX/DESIGN findings UX-01..UX-04 are incorporated.
 Technical findings TA-01..TA-05 are incorporated.
+QA findings QA-01..QA-03 are incorporated.
 
 Next:
-**Technical re-check → QA → GOETHE boundary → Director scope check**
+**QA re-check → Technical final delta → GOETHE boundary → Director scope check**
 
 DEV runtime remains blocked.
