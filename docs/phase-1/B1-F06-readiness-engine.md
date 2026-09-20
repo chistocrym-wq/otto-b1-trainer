@@ -624,10 +624,10 @@ Extra replay/transcript assistance:
 R4 requires valid hearing behavior under the relevant official-aligned replay conditions.
 
 ## Schreiben
-All Aufgaben 1–3 must satisfy the productive rules in section 11.
+All Aufgaben 1–3 must satisfy the productive rules in section 12.
 
 ## Sprechen
-All Aufgaben 1–3 must satisfy the productive rules in section 12.
+All Aufgaben 1–3 must satisfy the productive rules in section 13.
 
 No official Teil may be substituted by stronger evidence from another Teil.
 
@@ -646,25 +646,58 @@ For each official Aufgabe:
 - evaluator provenance recorded;
 - decisive evaluator confidence >= medium.
 
-## Criterion/function coverage
+## Aufgabe-scoped criterion/function coverage
 
-Across the module, readiness must include valid observations of the applicable frozen F01 dimensions:
+Schreiben criterion evidence is evaluated **separately for each official Aufgabe**. Evidence from one Aufgabe cannot fill a missing criterion dimension in another.
+
+Frozen F01 applicable official dimensions for **each** Aufgabe 1–3:
 - Erfüllung / task fulfillment;
 - Kohärenz;
 - Wortschatz;
-- Strukturen;
-- task-specific communicative functions/register where applicable.
+- Strukturen.
 
-A strong content/Erfüllung result cannot hide repeated weak Strukturen.
+Task-specific communicative functions/register remain additional OTTO/F01 evidence where applicable.
+
+For each Aufgabe, derive an `AufgabeCriterionCoverage` record:
+
+- aufgabe_id;
+- applicable_criteria[];
+- criterion_observations_by_dimension;
+- distinct_sample_ids_by_dimension;
+- independent_sample_ids_by_dimension;
+- transfer_or_exam_like_sample_ids_by_dimension;
+- evaluator_provenance_by_dimension;
+- evaluator_confidence_by_dimension;
+- missing_criterion_dimensions[].
+
+### Productive sufficiency gate for Schreiben
+
+For an Aufgabe to count as T2+ readiness coverage:
+- every applicable criterion dimension must have at least **1 valid observation** from an independent learner-written sample;
+- the decisive observation for each dimension must have evaluator confidence >= medium;
+- missing one applicable dimension sets `SCHREIBEN_AUFGABE_CRITERION_MISSING` and that Aufgabe cannot satisfy the productive sufficiency gate.
+
+Therefore stronger A1/A2 evidence cannot compensate for missing Strukturen/Kohärenz/etc. in A3.
+
+### R4 criterion gate
+
+For each Aufgabe and each applicable criterion dimension:
+- at least **2 valid observations** on distinct learner-written samples;
+- at least 1 observation must come from a P4/P5 transfer or exam-like sample;
+- decisive evaluator confidence >= medium;
+- no unresolved M5/M6 or repeated M1 blocker for the corresponding readiness-basis Micro-skill/criterion evidence.
+
+A strong Erfüllung/content result cannot hide repeated weak or completely unobserved Strukturen.
 
 ## Ready blocker examples
 
 R4 is blocked by:
 - repeated structure errors creating M1/M5/M6;
+- any `missing_criterion_dimensions[]` for an official Aufgabe;
 - missing required task-function evidence;
 - only one prompt/template family;
 - model-dependent writing;
-- low-confidence evaluator evidence dominating the sample.
+- low-confidence evaluator evidence dominating a criterion dimension.
 
 Word count is context metadata, not readiness proof.
 
@@ -695,21 +728,95 @@ For each Aufgabe used in readiness:
 - at least one valid independent real-audio sample is required for T2+ productive readiness;
 - R4 requires recent audio-based P4/P5 evidence.
 
-## Interaction requirement
+`audio_available=true` proves only that usable audio exists. It does **not** prove pronunciation or interaction quality.
 
-For Aufgaben requiring interaction:
-- valid interaction evidence is required;
-- prepared monologue/text cannot substitute for partner-response behavior.
+## Deterministic interaction requirement
 
-## Pronunciation
+Interaction is a separate evidence channel for **Aufgabe 1** and **Aufgabe 3**.
 
-Pronunciation readiness evidence:
-- requires real audio;
-- must record evaluator provenance/confidence.
+A valid interaction sample is grouped by the same `task_instance_id` and must satisfy all common conditions:
+- `audio_available=true`;
+- EvidenceEvents are valid;
+- evaluator provenance recorded;
+- decisive evaluator confidence >= medium;
+- `interaction_turn_count >= 2`;
+- evidence is not text-only/model-exposed when used for independent readiness.
+
+### Aufgabe 1 — planning interaction gate
+
+The same task instance must contain valid observations linked to frozen F01 Micro-skills showing both:
+
+**initiative**
+- at least one of:
+  - S.A1.PLAN.M02 make a proposal;
+  - S.A1.PLAN.M04 ask for partner opinion/clarification;
+
+and **reciprocal reaction**
+- at least one of:
+  - S.A1.PLAN.M03 react to partner proposal;
+  - S.A1.PLAN.M05 agree and move plan forward;
+  - S.A1.PLAN.M06 disagree politely with reason;
+  - S.A1.PLAN.M07 offer alternative/compromise.
+
+It must also have no evidence that the sample is only a monologue substitute for interaction when S.A1.PLAN.M11 is evaluated.
+
+### Aufgabe 3 — reaction interaction gate
+
+The same task instance must contain valid observations for:
+- S.A3.REACT.M02 relevant feedback;
+- S.A3.REACT.M03 relevant question;
+- at least one responsive behavior:
+  - S.A3.REACT.M05 relevant spontaneous answer; or
+  - S.A3.REACT.M06 clarification behavior when needed.
+
+A prepared monologue or audio recording without reciprocal-turn evidence does not satisfy this gate.
+
+### Interaction sufficiency
+
+For T2+ on Aufgabe 1/3:
+- at least 1 valid interaction sample is required.
+
+For R4:
+- each of Aufgabe 1 and Aufgabe 3 needs at least **2 valid interaction samples** on distinct task instances/contexts;
+- at least 1 per Aufgabe must be P4/P5;
+- evaluator confidence >= medium.
+
+If audio/task success exists but this interaction gate is not met:
+- set `SPRECHEN_INTERACTION_MISSING`;
+- do not treat the Aufgabe as interaction-ready;
+- R4 is blocked.
+
+## Pronunciation — separate mandatory channel
+
+Pronunciation is never inferred from audio presence.
+
+A valid `pronunciation_observation` must:
+- come from `audio_available=true`;
+- be scorable, not missing/not_scorable;
+- record evaluator provenance;
+- have evaluator confidence >= medium when used for sufficiency/R4;
+- link to the speaking EvidenceEvent/task instance.
+
+### Pronunciation sufficiency gate
+
+For Sprechen to pass module-level productive sufficiency:
+- at least **2 valid pronunciation_observations** from distinct task instances are required;
+- observations must span at least **2 of the 3 official Aufgaben**;
+- if this is not met, set `SPRECHEN_PRONUNCIATION_MISSING` and readiness remains R0 unless other missing-data precedence already applies.
+
+### Pronunciation R4 gate
+
+R4 additionally requires:
+- at least **1 valid pronunciation_observation for each Aufgabe 1, 2 and 3** across the readiness-basis evidence;
+- at least 1 pronunciation observation must come from a P4/P5 sample;
+- at least 2 distinct learning occasions across the pronunciation basis;
+- no decisive pronunciation observation may be low-confidence.
+
+Thus fresh P4/P5 audio events with missing/not_scorable pronunciation **cannot** satisfy Sprechen R4.
 
 ## Evaluator confidence
 
-If audio/evaluator confidence is low on decisive Sprechen evidence:
+If audio/interaction/pronunciation evaluator confidence is low on decisive Sprechen evidence:
 - do not infer ready;
 - if reliable coverage is insufficient → R0;
 - if coverage exists but stability remains uncertain → R2.
@@ -760,7 +867,9 @@ Canonical flags include:
 - `PRODUCTIVE_SAMPLE_COUNT_LOW`
 - `EVALUATOR_CONFIDENCE_LOW`
 - `SPRECHEN_AUDIO_MISSING`
+- `SPRECHEN_PRONUNCIATION_MISSING`
 - `SPRECHEN_INTERACTION_MISSING`
+- `SCHREIBEN_AUFGABE_CRITERION_MISSING`
 - `HOEREN_INDEPENDENT_REPLAY_EVIDENCE_MISSING`
 - `FRESHNESS_RECHECK_REQUIRED`
 - `ACTIVE_RETURNED_ERROR`
@@ -800,7 +909,9 @@ Canonical reason codes:
 - `FAILED_DELAYED_REVIEW`
 - `STALE_EVIDENCE`
 - `PRODUCTIVE_CONFIDENCE_INSUFFICIENT`
+- `SCHREIBEN_AUFGABE_CRITERION_GAP`
 - `SPRECHEN_AUDIO_GAP`
+- `SPRECHEN_PRONUNCIATION_GAP`
 - `SPRECHEN_INTERACTION_GAP`
 - `HOEREN_REPLAY_ASSISTANCE`
 - `READY_GATE_PASSED`
@@ -817,8 +928,10 @@ For one module:
 2. Enumerate official Teil/Aufgaben from F01.
 3. Build Teil coverage tiers T0–T4.
 4. Compute micro-skill coverage counts/ratios.
-5. Evaluate data-quality/productive-confidence floor.
-6. If sufficiency gate fails → R0.
+5. For Schreiben, compute AufgabeCriterionCoverage for every official Aufgabe and fail productive sufficiency if any applicable criterion dimension is missing.
+6. For Sprechen, compute separate audio, pronunciation and interaction sufficiency gates; audio presence must never substitute for pronunciation/interaction observations.
+7. Evaluate data-quality/productive-confidence floor.
+8. If sufficiency gate fails → R0.
 7. Evaluate M6/material negative blockers → R1 if present.
 8. Evaluate M5/conflict/assistance/transfer/exam-like blockers → R2 if present.
 9. Evaluate F04 freshness/review due/overdue blockers → R3 if otherwise ready-capable.
@@ -845,6 +958,7 @@ Allowed outputs:
 - `exam_like_gap_teil_ids[]`;
 - `recheck_required`;
 - `productive_data_gap`;
+- `missing_productive_dimensions[]` (for example Schreiben Aufgabe+criterion, Sprechen pronunciation/interaction);
 - `content_gap_flags[]`.
 
 Future runtime adapter may map these to **existing F05 action types**:
@@ -1175,6 +1289,10 @@ When evidence is incomplete:
 
 **«Есть данные по содержанию и связности, но пока недостаточно надёжных наблюдений по нескольким критериям.»**
 
+If one Aufgabe is missing one criterion dimension:
+
+**«По Aufgabe 3 уже есть самостоятельные тексты, но пока не хватает надёжной проверки структур. Другие Aufgaben это не заменяют.»**
+
 ### Sprechen
 
 For text-only work:
@@ -1185,9 +1303,17 @@ For audio with low evaluator confidence:
 
 **«Устная попытка записана, но данных пока недостаточно для надёжного вывода о произношении или взаимодействии.»**
 
+If audio exists but pronunciation is not scorable:
+
+**«Аудио есть, но произношение пока не удалось надёжно оценить. Нужна новая аудиопопытка с проверяемым произношением.»**
+
 For interactive Aufgaben:
 
 **«Нужна проверка реального взаимодействия; подготовленный монолог её не заменяет.»**
+
+If task/audio success exists but reciprocal interaction evidence is missing:
+
+**«Устный ответ записан, но пока не подтверждено, как вы реагируете на партнёра в диалоге.»**
 
 ---
 
@@ -1469,6 +1595,44 @@ Expected:
 - inactive/other modules do not affect its state;
 - other modules may remain R0 without penalty to the active module.
 
+
+## F06-Q18 — Sprechen audio present, pronunciation missing/not_scorable
+Situation:
+- fresh independent P4/P5 audio evidence exists for Aufgaben 1–3;
+- `audio_available=true`;
+- task/function evidence has medium/high evaluator confidence;
+- `pronunciation_observation` is missing or `not_scorable`.
+
+Expected:
+- `SPRECHEN_PRONUNCIATION_MISSING`;
+- pronunciation sufficiency/R4 gate fails;
+- audio presence cannot substitute for pronunciation evidence;
+- module cannot reach R4.
+
+## F06-Q19 — Sprechen task/audio success without valid interaction evidence
+Situation:
+- Aufgabe 1 and/or 3 has fresh audio P4/P5 task-success evidence;
+- reciprocal interaction requirements are absent:
+  - insufficient interaction_turn_count; or
+  - required initiative/reaction Micro-skill evidence missing.
+
+Expected:
+- `SPRECHEN_INTERACTION_MISSING`;
+- interaction gate fails deterministically;
+- prepared monologue/audio success cannot satisfy interaction readiness;
+- module cannot reach R4 and may remain R0 if productive sufficiency is incomplete.
+
+## F06-Q20 — Schreiben one Aufgabe missing one applicable criterion
+Situation:
+- Aufgaben 1 and 2 have complete reliable Erfüllung/Kohärenz/Wortschatz/Strukturen observations;
+- Aufgabe 3 has valid independent/transfer samples but one applicable criterion, e.g. Strukturen, has no valid medium/high observation.
+
+Expected:
+- `SCHREIBEN_AUFGABE_CRITERION_MISSING`;
+- Aufgabe 3 fails productive sufficiency for readiness;
+- evidence from Aufgaben 1/2 cannot compensate;
+- R4 is impossible; if module classification coverage is thereby incomplete → R0.
+
 ---
 
 # 23. Acceptance checklist
@@ -1492,7 +1656,7 @@ Expected:
 - [x] no 60/100 OTTO threshold.
 - [x] audit trail complete.
 - [x] F05 advisory interface does not rewrite Planner.
-- [x] destructive scenarios F06-Q01..Q17 defined.
+- [x] destructive scenarios F06-Q01..Q20 defined.
 - [x] frozen F01–F05 unchanged.
 - [x] no app/runtime/main/production change.
 
@@ -1514,24 +1678,16 @@ Resolved:
 No frozen F01–F05 change request is required.
 
 ## QA
-**PASS — F06-Q01..F06-Q17**
+**RE-CHECK REQUIRED after independent QA FAIL on prior head**
 
-Validated:
-- one perfect task cannot produce module readiness;
-- one Teil cannot carry the module;
-- assisted/model-exposed work cannot produce independent readiness;
-- modules never compensate for each other;
-- stale evidence leads to recheck, not fictional forgetting;
-- later regression overrides prior exam-like success;
-- productive criteria remain multidimensional;
-- Sprechen text-only cannot establish audio/pronunciation/interaction readiness;
-- low evaluator confidence blocks decisive productive readiness evidence;
-- Hören extra replay cannot create independent exam-like confirmation;
-- missing Teil forces insufficient data;
-- activity volume is not mastery/readiness;
-- conflicting evidence prevents false ready state;
-- long inactivity is handled through F04 freshness;
-- one separately prepared module is evaluated independently.
+The independent review of head `02f52f666f5e99188cb0c62657cd876de143d812` superseded the earlier 17/17 PASS and found three blocking productive-skill gaps:
+- Sprechen pronunciation could be missing while audio existed;
+- Sprechen interaction validity was not deterministic;
+- Schreiben criterion coverage was module-aggregated rather than Aufgabe-scoped.
+
+The current spec addresses all three and adds F06-Q18..Q20.
+
+Final QA status must be set only after re-running F06-Q01..Q20 on the updated head.
 
 ## GOETHE boundary
 **PASS — FINAL**
@@ -1602,9 +1758,15 @@ Implementation must still:
 
 ---
 
-# 27. Final status
+# 27. Current status after blocking QA findings
 
-**B1-F06 SPEC READY TO FREEZE**
+**B1-F06 — QA RE-CHECK REQUIRED**
+
+The three blocking productive-skill findings have been addressed in the spec, but freeze is not allowed until:
+- QA re-runs F06-Q01..Q20 and passes;
+- Technical Architecture confirms deterministic implementability of the new gates;
+- GOETHE boundary re-check confirms the Aufgabe/criterion and Sprechen interaction/pronunciation boundary;
+- UX/DESIGN confirms the new missing-evidence explanations remain non-technical.
 
 DEV runtime remains blocked.  
 Implementation has not started.  
