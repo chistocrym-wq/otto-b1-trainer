@@ -1486,6 +1486,33 @@ These examples freeze presentation behavior only. They do not create new readine
 > Надёжность данных: низкая  
 > **Дальше:** проверить Teil 4, когда будет доступно валидное новое задание
 
+### UX-EX13 — Sprechen audio exists, pronunciation not scorable
+
+> **Sprechen**  
+> **Недостаточно данных**  
+> Аудио есть, но произношение пока не удалось надёжно оценить. Наличие записи само по себе не подтверждает произношение.  
+> Проверено: аудио по 3 Aufgaben; проверяемое произношение — не по всем Aufgaben  
+> Надёжность данных: низкая  
+> **Дальше:** новая самостоятельная аудиопопытка с проверяемым произношением
+
+### UX-EX14 — Sprechen task success but interaction evidence missing
+
+> **Sprechen**  
+> **Недостаточно данных**  
+> Устный ответ записан, но пока не подтверждено, как вы реагируете на партнёра в интерактивных Aufgaben.  
+> Проверено: монолог и часть устных заданий; взаимодействие — не полностью  
+> Надёжность данных: низкая  
+> **Дальше:** новая интерактивная попытка с реакцией на партнёра
+
+### UX-EX15 — Schreiben one Aufgabe missing one criterion dimension
+
+> **Schreiben**  
+> **Недостаточно данных**  
+> По Aufgabe 3 уже есть самостоятельные тексты, но пока не хватает надёжной проверки структур. Сильные результаты в других Aufgaben это не заменяют.  
+> Проверено: все 3 Aufgaben; criterion coverage Aufgabe 3 — неполное  
+> Надёжность данных: средняя  
+> **Дальше:** новый самостоятельный текст Aufgabe 3 с надёжной оценкой структур
+
 ---
 
 ## 20.12 UX implementation acceptance guard
@@ -1728,7 +1755,7 @@ The final spec freezes:
 - SYSTEM_DATA_GAP explicitly framed as an OTTO limitation, not learner failure;
 - module-specific explanation language for Hören/Schreiben/Sprechen;
 - text-first visual semantics with score rings, gauges, pass/fail stamps and certificate metaphors prohibited;
-- 12 complete UX acceptance examples;
+- 15 complete UX acceptance examples, including productive-evidence gaps;
 - R0 with known weakness shows both insufficient module-wide data and the known problem;
 - OTTO-vs-Goethe disclaimer remains persistent in readiness details.
 
