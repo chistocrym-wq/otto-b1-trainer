@@ -127,11 +127,15 @@ Every meaningful learner attempt creates an immutable `EvidenceEvent`.
 | event_id | yes | Unique immutable event ID. |
 | user_id | yes | Learner reference. |
 | session_id | yes | Session reference. |
+| learning_occasion_id | yes | Evidence occasion identity. Events from the same uninterrupted learning occasion cannot satisfy a later-review requirement solely because timestamps differ. |
 | skill_node_id | yes | Frozen B1-F01 Micro-skill ID. |
 | module | yes | Lesen/Hören/Schreiben/Sprechen, derived from F01 node. |
 | teil_or_aufgabe | yes | Official task parent, derived from F01 node. |
 | task_instance_id | yes | Exact task instance. |
-| task_family_id | yes | Family/template identity used to detect near-duplicates. |
+| task_family_id | yes | Family/template identity used to group structurally related items. |
+| stimulus_id | yes | Identity of the concrete text/audio/prompt/stimulus. |
+| content_fingerprint | yes | Immutable content identity/hash used to detect exact-content reuse. |
+| variant_group_id | yes | Near-duplicate/template-variant group; variants in the same group cannot by themselves prove transfer. |
 | task_origin | yes | `official_published` or `original_aligned`. |
 | transfer_context_id | conditional | New-context identifier used when attempt is a transfer check. |
 
@@ -497,6 +501,27 @@ Strong negative evidence for readiness input, but not automatically an official 
 
 # 7. Mastery Model
 
+## 7.0 SkillState snapshot and reproducibility
+
+`SkillState` is a derived snapshot, never the source of truth.
+
+Required snapshot fields:
+
+- `skill_node_id`;
+- `mastery_state`;
+- `review_state`;
+- `policy_version`;
+- `computed_at`;
+- `basis_event_ids[]`;
+- `previous_state`;
+- `transition_reason_code`;
+- `latest_valid_evidence_at`;
+- `latest_independent_success_at`;
+- `latest_strong_negative_at`;
+- `freshness_status`.
+
+A policy update may recompute current state from immutable events, but the previous snapshot remains auditable through its policy version and basis events.
+
 ## 7.1 Mastery states
 
 Mastery is stored per B1-F01 `skill_node_id`.
@@ -562,8 +587,8 @@ The skill has been independently demonstrated across context and time with no un
 
 Minimum product rule:
 - currently PROVISIONALLY_DEMONSTRATED;
-- at least 1 additional P3/P4/P5 on a later review occasion;
-- positive evidence exists across at least 2 separate calendar days or equivalent separated review occasions;
+- at least 1 additional P3/P4/P5 on a later `learning_occasion_id`;
+- positive evidence exists across at least 2 separated learning occasions; calendar-day separation is acceptable but not required if the review policy intentionally creates a later occasion;
 - at least 1 P4/P5 is present;
 - no unresolved N3/N4 since the latest successful repair;
 - for productive skills, enough valid samples exist that no single low-confidence evaluation dominates.
@@ -629,6 +654,21 @@ Time passage alone:
 
 This prevents OTTO from falsely claiming forgetting without observation.
 
+## 8.4 Deterministic state-resolution order
+
+When a recomputation sees evidence that could satisfy more than one state rule, it evaluates in this order:
+
+1. **Evidence validity/sufficiency gate** — invalid evidence is excluded; if no meaningful scorable set remains, M0.
+2. **Prior demonstrated-state contradiction gate** — if prior state was M3/M4 and a strong unresolved N2/N3/N4 exists, resolve to M5 unless M6 regression criteria are already met.
+3. **Regression gate** — if M6 criteria are met, M6 takes precedence over positive historical evidence.
+4. **Stable gate** — if all M4 conditions are currently satisfied and there is no unresolved strong contradiction, M4.
+5. **Provisional gate** — if all M3 conditions are satisfied and there is no unresolved strong contradiction, M3.
+6. **Weak gate** — if M1 repeated-negative criteria are met and M3/M4 are not met, M1.
+7. **Developing gate** — if M2 criteria are met, M2.
+8. **Fallback** — M0.
+
+A state engine must emit one `transition_reason_code` explaining the selected branch. It must not average its way around contradictory evidence.
+
 ---
 
 # 9. Evidence aggregation rules
@@ -637,8 +677,11 @@ This prevents OTTO from falsely claiming forgetting without observation.
 
 Two events count as distinct confirmation only if:
 - different `task_instance_id`; and
-- not exact duplicate content; and
-- for transfer claims, different `transfer_context_id` or a demonstrably new context.
+- different `content_fingerprint`; and
+- not the same near-duplicate `variant_group_id` when that would allow answer-pattern recall; and
+- for transfer claims, different `transfer_context_id` and a demonstrably new context/material.
+
+A task that only rewords surface details while preserving the same answer pattern inside the same `variant_group_id` may support practice, but cannot satisfy P4 transfer on its own.
 
 ## 9.2 Same-item retry
 
@@ -725,7 +768,9 @@ Every meaningful learning error becomes a first-class object.
 - transfer_status;
 - delayed_review_event_ids[];
 - review_status;
-- next_review_at;
+- review_required;
+- review_reason;
+- next_review_at (nullable until B1-F04 assigns a schedule);
 - recurrence_count;
 - first_seen_at;
 - last_seen_at;
@@ -791,7 +836,15 @@ A delayed review is still required.
 
 ## REVIEW_SCHEDULED
 
-A future review obligation exists and `next_review_at` is populated by scheduler policy.
+A future review obligation exists.
+
+Requirements:
+- `review_required=true`;
+- `review_reason` populated;
+- `next_review_at` may temporarily be null before B1-F04 assigns an interval/date;
+- once scheduling policy runs, `next_review_at` is populated.
+
+This lets B1-F03 finish a repair loop without inventing scheduler timing before B1-F04 exists.
 
 ## RESOLVED
 
@@ -908,6 +961,8 @@ B1-F02 defines the data contract; B1-F04 will implement scheduling.
 Per Micro-skill/ErrorObject:
 
 - mastery_state;
+- policy_version;
+- learning_occasion_id history;
 - last_valid_evidence_at;
 - last_independent_success_at;
 - last_transfer_success_at;
@@ -938,6 +993,7 @@ The exact interval function is owned by B1-F04.
 ## 13.4 Successful review
 
 A delayed review is successful when:
+- it occurs in a later `learning_occasion_id`, not merely later in the same uninterrupted session;
 - task instance/context is new enough to avoid simple recall;
 - evidence is valid;
 - success is independent or meets the required review policy;
@@ -1399,13 +1455,14 @@ F02 does not define readiness arithmetic or labels beyond preserving INSUFFICIEN
 
 ---
 
-# 19. Open points for independent review
+# 19. Independent-review status
 
-Technical Architecture must verify:
-- whether the state separation is implementable without circular dependencies;
-- whether M0–M6 transition rules are deterministic enough;
-- whether `task_family_id` + `transfer_context_id` is sufficient to prevent false transfer;
-- whether evidence immutability and derived SkillState are suitable for the current app architecture.
+Technical Architecture findings TA-01..TA-05 have been incorporated:
+- content/variant identity added for transfer validity;
+- policy-versioned SkillState snapshots added;
+- deterministic state-resolution order added;
+- learning-occasion identity added;
+- review obligation separated from scheduler-assigned date.
 
 QA must verify:
 - all 16 scenarios;
@@ -1424,7 +1481,9 @@ GOETHE boundary review must verify:
 
 # 20. Current draft status
 
-This draft is ready for:
-**Technical Architecture → QA → GOETHE boundary check**.
+Technical Architecture changes are incorporated.
+
+Next independent route:
+**QA → GOETHE boundary check → Director scope check**.
 
 DEV remains blocked.
