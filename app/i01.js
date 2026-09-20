@@ -797,16 +797,17 @@
     rt.reviews.forEach(function (review) {
       if (!review.review_required || !['DUE', 'OVERDUE'].includes(review.review_state)) return;
       const task = chooseUnusedTask(rt, review.skill_node_id);
+      const postRepair = review.primary_review_reason === 'POST_REPAIR_CONFIRMATION';
       candidates.push({
         candidate_action_id: 'cand-review-' + review.review_id,
-        action_type: review.review_state === 'OVERDUE' ? 'OVERDUE_REVIEW' : 'DUE_REVIEW',
+        action_type: postRepair ? 'POST_REPAIR_CONFIRMATION' : (review.review_state === 'OVERDUE' ? 'OVERDUE_REVIEW' : 'DUE_REVIEW'),
         review_id: review.review_id,
         skill_node_id: review.skill_node_id,
         task_id: task ? task.id : null,
         module: 'LESEN',
-        minutes: 5,
+        minutes: task ? task.minutes : 4,
         priority_class: 1,
-        primary_reason_code: review.review_state === 'OVERDUE' ? 'OVERDUE_REVIEW' : 'DUE_REVIEW',
+        primary_reason_code: postRepair ? 'POST_REPAIR_CONFIRMATION' : (review.review_state === 'OVERDUE' ? 'OVERDUE_REVIEW' : 'DUE_REVIEW'),
         counts_toward_review_cap: true,
         blocked: !task,
         block_reason: task ? null : 'BLOCKED_NO_VALID_CONTENT',
@@ -1467,7 +1468,7 @@
       const maxHelp = currentMaxAssistance(state);
       const linkedError = action.error_id ? findError(action.error_id) : null;
       const stage = action.action_type === 'TRANSFER_CHECK' ? 'transfer' :
-        (action.action_type === 'DUE_REVIEW' || action.action_type === 'OVERDUE_REVIEW') ? 'independent' : 'independent';
+        (action.action_type === 'DUE_REVIEW' || action.action_type === 'OVERDUE_REVIEW' || action.action_type === 'POST_REPAIR_CONFIRMATION') ? 'independent' : 'independent';
 
       const priorExact = state.evidenceEvents.filter(function (e) { return e.task_instance_id === task.id; }).length;
       const priorFamily = state.evidenceEvents.filter(function (e) { return e.task_family_id === task.taskFamilyId; }).length;
@@ -1511,9 +1512,9 @@
           if (stage === 'transfer') error.transfer_event_ids.push(event.event_id);
         }
         error.status = 'EXPLAINED';
-        state.ui.currentErrorId = error.error_id;
-        state.ui.message = '';
         markActionCompleted(state, action, 'failure');
+        clearTaskUI(state);
+        state.ui.currentErrorId = error.error_id;
         recomputeAllSkillStates(state, Date.now());
         root.i01Replan(stage === 'transfer' ? 'TRANSFER_FAILURE' : 'NEW_ERROR');
         persist();
@@ -1703,8 +1704,7 @@
       }
       error.status = 'TRANSFER_PENDING';
       clearTaskUI(state);
-      state.ui.hintLevel = 'full_model';
-      state.ui.message = task.explanation + ' Правильный ответ: ' + task.options[task.correctIndex] + '. После модели понадобится новый самостоятельный пример.';
+      state.ui.message = 'Теперь проверь этот навык на новом материале самостоятельно.';
       root.i01Replan('MODEL_EXPOSED_NEEDS_TRANSFER');
       persist();
       go('prep-task');
