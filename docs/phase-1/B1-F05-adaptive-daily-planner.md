@@ -627,7 +627,7 @@ A blocked high-priority skill remains visible in the audit; it is not silently i
 
 ---
 
-# 20. Shortened-plan / blocked-content UX
+# 19. Shortened-plan / blocked-content UX
 
 If the planner cannot fill the requested time with valid work:
 
