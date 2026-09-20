@@ -227,6 +227,8 @@ M0 with no confirmed error/repair history:
 - review_required = false;
 - scheduler outputs `needs_evidence_collection=true` for B1-F05.
 
+**Override:** M0 may still have a valid isolated ErrorObject and completed repair/transfer history. If F03 produces a qualifying post-repair independent transfer, POST_REPAIR_CONFIRMATION takes precedence and creates a review obligation even if aggregate Mastery remains M0.
+
 Never invent “review” for a skill the learner has never meaningfully attempted.
 
 ---
@@ -325,6 +327,16 @@ Recompute scheduler record when any of these occurs:
 - policy version change;
 - invalidated/reclassified evidence that was a basis event.
 
+## Early independent practice before due
+
+A valid independent P3/P4/P5 event may occur before `next_review_at`.
+
+Policy:
+- it may refresh `last_valid_evidence_at` / freshness basis;
+- it does **not** increment `review_success_streak` or `review_level` unless it is a qualifying review event for an active due obligation;
+- if the time basis is refreshed, recompute `next_review_at` using the **same current review_level**;
+- do not silently reward early unrelated practice with a longer spacing level.
+
 Do not continuously move dates for unrelated app activity.
 
 ---
@@ -348,6 +360,15 @@ If no valid candidate exists:
 - scheduler outputs `blocked_no_valid_item=true`;
 - retains review obligation;
 - B1-F05/content system receives the block.
+
+## Fail-safe if an invalid candidate was served anyway
+
+If post-hoc validation shows the served review was exact/near-duplicate or otherwise invalid for independent delayed-review evidence:
+- store the learner attempt for audit/learning history;
+- mark the review outcome `non_qualifying_candidate`;
+- do not advance review_success_streak or review_level;
+- preserve the original obligation, original due date, and overdue history;
+- request a new valid candidate without treating the invalid attempt as confirmation.
 
 ---
 
@@ -374,9 +395,12 @@ A review is a **qualifying success** only if:
 On qualifying independent success:
 - review_level = min(n + 1, 5);
 - state = SCHEDULED unless no further maintenance obligation is desired by future policy;
+- **next_review_at is based on the actual successful completion timestamp**, including when the review was overdue;
 - next_review_at = success completion + interval for new level;
 - last_review_result = success;
 - review_required remains true for periodic maintenance while Phase 1 policy applies.
+
+Never calculate the next interval from the old overdue date after a successful late review.
 
 ### Strategy-only success
 
@@ -393,6 +417,11 @@ If strategy assistance is consumed:
 - review remains unconfirmed independently;
 - next_review_at = completion + 1 day;
 - reason includes ASSISTANCE_DEPENDENCY_RECHECK.
+
+If multiple assisted attempts occur in the same `learning_occasion_id`:
+- keep one active scheduler obligation;
+- do not create duplicate records;
+- update the +1 day instructional basis at most once, using the latest completed assisted attempt in that learning occasion.
 
 ### phrase_start / full_model required
 
@@ -702,8 +731,9 @@ Does not advance level; follow-up due +1 day after instructional follow-up.
 # 25. Current review status
 
 Technical findings TA-01..TA-05 are incorporated.
+QA findings QA-01..QA-05 are incorporated.
 
 Next:
-**Technical re-check → QA → GOETHE boundary (exam-like boundary is touched) → Director scope check**
+**QA re-check → GOETHE boundary (exam-like boundary is touched) → Director scope check**
 
 DEV runtime remains blocked.
