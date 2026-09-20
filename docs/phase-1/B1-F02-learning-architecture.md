@@ -545,12 +545,14 @@ User-facing:
 ### M1 — WEAK
 
 Meaning:
-There is repeated valid evidence that the learner cannot yet perform the Micro-skill reliably.
+There is repeated valid and predominantly negative evidence that the learner cannot yet perform the Micro-skill reliably.
 
 Entry requires one of:
-- at least 2 N2/N3/N4 events on distinct task instances/contexts without stronger contradictory recent evidence;
-- 1 valid independent failure followed by failed self-repair or failed transfer;
-- repeated N1 assisted failures across distinct items.
+- at least 2 N2/N3/N4 events on distinct task instances/contexts and no meaningful recent P3/P4/P5 evidence that makes the set genuinely mixed;
+- 1 valid independent failure followed by failed self-repair or failed transfer, with no contradictory strong success;
+- repeated N1 assisted failures across distinct items and no meaningful independent success.
+
+If meaningful positive and negative evidence coexist, use M2 DEVELOPING when M2 requirements are satisfied. If M2 minimum is not satisfied, remain M0 INSUFFICIENT_EVIDENCE with a contradiction/risk flag.
 
 One isolated mistake does not automatically produce WEAK; it creates a risk/error object while mastery may remain INSUFFICIENT_EVIDENCE.
 
@@ -663,9 +665,10 @@ When a recomputation sees evidence that could satisfy more than one state rule, 
 3. **Regression gate** — if M6 criteria are met, M6 takes precedence over positive historical evidence.
 4. **Stable gate** — if all M4 conditions are currently satisfied and there is no unresolved strong contradiction, M4.
 5. **Provisional gate** — if all M3 conditions are satisfied and there is no unresolved strong contradiction, M3.
-6. **Weak gate** — if M1 repeated-negative criteria are met and M3/M4 are not met, M1.
-7. **Developing gate** — if M2 criteria are met, M2.
-8. **Fallback** — M0.
+6. **Developing/mixed gate** — if meaningful positive and negative evidence coexist and M2 criteria are met, M2.
+7. **Weak gate** — if M1 predominantly-negative criteria are met and the evidence set is not mixed enough to satisfy M2, M1.
+8. **Developing-positive gate** — if M2 criteria are met from positive progress without enough evidence for M3, M2.
+9. **Fallback** — M0, with a risk/contradiction marker when evidence exists but does not satisfy a higher state.
 
 A state engine must emit one `transition_reason_code` explaining the selected branch. It must not average its way around contradictory evidence.
 
@@ -697,11 +700,12 @@ It cannot by itself:
 ## 9.3 Contradictory evidence
 
 If recent evidence contains both strong positive and strong negative events:
-- state becomes or remains DEVELOPING if competence was not yet demonstrated;
-- state becomes UNSTABLE if competence was previously M3/M4;
+- before M3: state is M2 DEVELOPING only if the explicit M2 minimum is satisfied;
+- before M3 but below the M2 minimum: remain M0 INSUFFICIENT_EVIDENCE and set a contradiction/risk marker;
+- after M3/M4: state becomes M5 UNSTABLE;
 - planner/review later prioritizes a new independent check.
 
-OTTO does not average contradiction away into a comfortable percentage.
+OTTO does not average contradiction away into a comfortable percentage and does not bypass formal state criteria.
 
 ## 9.4 Low-quality evidence
 
@@ -817,7 +821,9 @@ Learner has not yet successfully corrected own response.
 
 ## SELF_REPAIRED
 
-Learner corrected the original/similar immediate attempt.
+Learner corrected the original/similar immediate attempt without disqualifying answer-level assistance.
+
+An assisted/model-exposed correction may be stored as repair progress, but the lifecycle remains active until independent repair/transfer evidence exists.
 
 This is not transfer and not full closure.
 
@@ -899,13 +905,16 @@ If the exact cause is uncertain:
 ## Step 3 — Learner self-repairs
 
 Default:
-- ask learner to correct the answer/text/utterance themselves.
+- ask learner to correct the answer/text/utterance themselves when pedagogically possible.
 
-If impossible or excessively hard:
-- assistance may be escalated;
-- consumed assistance is recorded.
+If learner cannot self-repair:
+- assistance may be escalated gradually;
+- every consumed assistance event is recorded;
+- the ErrorObject remains active;
+- a correction produced only after phrase_start/full_model is assisted correction, not independent SELF_REPAIRED for closure purposes;
+- OTTO must later obtain an independent repair or move to a new independent transfer check once the learner can attempt it.
 
-A model answer shown before a genuine self-repair attempt changes the evidence to model_exposed.
+A model answer shown before a genuine self-repair attempt changes the immediate evidence to model_exposed and cannot satisfy the independent-repair requirement.
 
 ## Step 4 — New similar item
 
@@ -1076,9 +1085,18 @@ Failure creates/updates error and blocks provisional demonstration.
 Purpose:
 - test performance under official-aligned constraints and without training help.
 
-Entry:
-- Micro-skill is at least DEVELOPING and has independent evidence;
-- task implementation can actually preserve the relevant official constraints.
+Entry has two valid paths.
+
+**Learning-progression path**
+- Micro-skill is at least DEVELOPING and has prior independent evidence;
+- task implementation can preserve the relevant official constraints.
+
+**Assessment path**
+- diagnostic/checkpoint/mock may enter EXAM_LIKE directly from M0 or any later state;
+- task implementation must preserve the relevant official constraints;
+- no training assistance is consumed.
+
+A direct assessment-path P5 is strong evidence, but normal mastery rules still apply: one exam-like success cannot jump a skill directly to STABLE.
 
 Success may create P5.
 
@@ -1464,7 +1482,13 @@ Technical Architecture findings TA-01..TA-05 have been incorporated:
 - learning-occasion identity added;
 - review obligation separated from scheduler-assigned date.
 
-QA must verify:
+QA findings QA-01..QA-04 have been incorporated:
+- mixed evidence no longer defaults incorrectly to WEAK;
+- formal M2 minimum cannot be bypassed by contradiction prose;
+- EXAM_LIKE supports direct diagnostic/checkpoint/mock entry;
+- assisted correction cannot masquerade as independent self-repair.
+
+QA must re-check:
 - all 16 scenarios;
 - one-attempt protection;
 - assistance edge cases;
@@ -1481,9 +1505,9 @@ GOETHE boundary review must verify:
 
 # 20. Current draft status
 
-Technical Architecture changes are incorporated.
+Technical Architecture and first-pass QA changes are incorporated.
 
 Next independent route:
-**QA → GOETHE boundary check → Director scope check**.
+**QA re-check → GOETHE boundary check → Director scope check**.
 
 DEV remains blocked.
