@@ -514,9 +514,13 @@
     });
   }
 
-  function chooseUnusedTask(rt, skillId) {
+  function unusedTasks(rt, skillId) {
     const used = new Set(rt.evidenceEvents.map(function (e) { return e.task_instance_id; }));
-    return CONTENT.filter(function (t) { return t.skillNodeId === skillId && !used.has(t.id); })[0] || null;
+    return CONTENT.filter(function (t) { return t.skillNodeId === skillId && !used.has(t.id); });
+  }
+
+  function chooseUnusedTask(rt, skillId) {
+    return unusedTasks(rt, skillId)[0] || null;
   }
 
   function chooseTransferTask(rt, error) {
@@ -612,13 +616,12 @@
 
     Object.keys(SKILLS).sort().forEach(function (skillId) {
       const state = rt.skillStates[skillId] || deriveSkillState(rt.evidenceEvents, skillId, null, now);
-      const task = chooseUnusedTask(rt, skillId);
       let type = 'EVIDENCE_GAP_PROBE';
       if (state.mastery_state === 'M1') type = 'WEAK_SKILL_BUILD';
       else if (state.mastery_state === 'M2') type = 'DEVELOPING_SKILL_BUILD';
       else if (['M3', 'M4'].includes(state.mastery_state)) type = 'STALE_MAINTENANCE';
 
-      if (task) {
+      unusedTasks(rt, skillId).forEach(function (task, sequenceIndex) {
         candidates.push({
           candidate_action_id: 'cand-skill-' + skillId + '-' + task.id,
           action_type: type,
@@ -627,11 +630,12 @@
           module: 'LESEN',
           minutes: task.minutes,
           priority_class: candidatePriority(type),
+          sequence_rank: sequenceIndex,
           primary_reason_code: actionReason(type),
           counts_toward_review_cap: type === 'STALE_MAINTENANCE',
           blocked: false
         });
-      }
+      });
     });
 
     return candidates;
@@ -649,6 +653,9 @@
       if (a.priority_class !== b.priority_class) return a.priority_class - b.priority_class;
       const ao = Number(a.overdue_by_ms || 0), bo = Number(b.overdue_by_ms || 0);
       if (ao !== bo) return bo - ao;
+      const as = Number(a.sequence_rank == null ? -1 : a.sequence_rank);
+      const bs = Number(b.sequence_rank == null ? -1 : b.sequence_rank);
+      if (as !== bs) return as - bs;
       const ar = rt.errors.find(function (e) { return e.error_id === a.error_id; });
       const br = rt.errors.find(function (e) { return e.error_id === b.error_id; });
       const arec = ar ? Number(ar.recurrence_count || 0) : 0;
@@ -684,7 +691,7 @@
       const projectedSkill = Number(skillMinutes[c.skill_node_id] || 0) + c.minutes;
       const cap = instructionalBudget * 0.5;
       const critical = c.action_type === 'RECOVERY_REPAIR';
-      if (!critical && projectedSkill > cap && selected.some(function (a) { return a.skill_node_id !== c.skill_node_id; })) {
+      if (!critical && projectedSkill > cap) {
         deferred.push({ candidate_action_id: c.candidate_action_id, reason: 'SAME_SKILL_CAP' });
         return;
       }
@@ -978,6 +985,7 @@
       const event = {
         assistance_event_id: nextId(state, 'assist'),
         event_id: null,
+        task_instance_id: task ? task.id : null,
         level: level || 'strategy',
         offered_at: iso(),
         consumed_at: iso(),
@@ -1058,7 +1066,9 @@
         completedAt: Date.now(),
         responseTimeMs: Math.max(0, Date.now() - new Date(started).getTime()),
         maxAssistanceConsumed: maxHelp,
-        assistanceEvents: state.assistanceEvents.filter(function (a) { return a.affected_skill_node_id === task.skillNodeId; }).slice(-2),
+        assistanceEvents: state.assistanceEvents.filter(function (a) {
+          return a.affected_skill_node_id === task.skillNodeId && a.task_instance_id === task.id;
+        }),
         selectedAnswer: state.ui.selectedAnswer,
         outcomeStatus: ok ? 'success' : 'failure',
         linkedErrorId: linkedError ? linkedError.error_id : null,
@@ -1178,6 +1188,7 @@
       const event = {
         assistance_event_id: nextId(state, 'assist'),
         event_id: null,
+        task_instance_id: task.id,
         level: 'evidence_hint',
         offered_at: iso(),
         consumed_at: iso(),
@@ -1202,6 +1213,7 @@
       const event = {
         assistance_event_id: nextId(state, 'assist'),
         event_id: null,
+        task_instance_id: task.id,
         level: 'full_model',
         offered_at: iso(),
         consumed_at: iso(),
