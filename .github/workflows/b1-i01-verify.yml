@@ -1,0 +1,38 @@
+name: B1-I01 Verify
+
+on:
+  push:
+    branches:
+      - impl/b1-i01-my-preparation-slice
+  pull_request:
+    branches:
+      - phase1/foundation
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build, syntax check, tests
+        run: npm run verify
+      - name: Install browser test runner
+        run: |
+          npm install --no-save @playwright/test@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Browser end-to-end owner scenario
+        run: npx playwright test tests/b1-i01-e2e.spec.cjs --browser=chromium --reporter=line
+      - name: Upload browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b1-i01-preview-screens
+          path: test-results/**/*
+          if-no-files-found: warn

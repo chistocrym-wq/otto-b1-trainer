@@ -1,0 +1,2006 @@
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) {
+    root.OTTO_I01 = api;
+    if (root.document) api.boot(root);
+  }
+})(typeof window !== 'undefined' ? window : null, function () {
+  'use strict';
+
+  const POLICY = {
+    evidence: 'OTTO_EVIDENCE_V1',
+    mastery: 'OTTO_MASTERY_V1',
+    review: 'OTTO_REVIEW_V1',
+    planner: 'OTTO_DAILY_PLANNER_V1',
+    readiness: 'OTTO_READINESS_V1'
+  };
+
+  const CONTENT_CATALOG_VERSION = 'B1-I01-CONTENT-V1';
+
+  const MODULE_CONFIG = {
+    LESEN: {
+      display: 'Lesen',
+      parts: ['T1', 'T2', 'T3', 'T4', 'T5'],
+      microCounts: { T1: 6, T2: 7, T3: 7, T4: 6, T5: 6 },
+      partLabel: 'Teil'
+    },
+    HOEREN: {
+      display: 'Hören',
+      parts: ['T1', 'T2', 'T3', 'T4'],
+      microCounts: { T1: 6, T2: 6, T3: 6, T4: 6 },
+      partLabel: 'Teil'
+    },
+    SCHREIBEN: {
+      display: 'Schreiben',
+      parts: ['A1', 'A2', 'A3'],
+      microCounts: { A1: 9, A2: 9, A3: 8 },
+      partLabel: 'Aufgabe'
+    },
+    SPRECHEN: {
+      display: 'Sprechen',
+      parts: ['A1', 'A2', 'A3'],
+      microCounts: { A1: 11, A2: 11, A3: 7 },
+      partLabel: 'Aufgabe'
+    }
+  };
+
+  const SKILLS = {
+    'L.T1.CORR.M04': {
+      module: 'LESEN',
+      teil: 'T1',
+      label: 'Понимать перефразирование',
+      short: 'перефразирование'
+    },
+    'L.T1.CORR.M05': {
+      module: 'LESEN',
+      teil: 'T1',
+      label: 'Замечать отрицание и ограничение',
+      short: 'отрицание и ограничение'
+    }
+  };
+
+  const CONTENT = [
+    {
+      id: 'L-T1-PARA-01',
+      skillNodeId: 'L.T1.CORR.M04',
+      taskFamilyId: 'L-T1-RF-CORR',
+      stimulusId: 'msg-photo-workshop',
+      contentFingerprint: 'fp-photo-workshop-v1',
+      variantGroupId: 'vg-para-workshop',
+      transferContextId: 'ctx-workshop',
+      origin: 'original_aligned',
+      minutes: 5,
+      text: 'Hallo Nina, der Fotoworkshop beginnt zwar erst um 15 Uhr, aber wir sollen schon um 14:30 da sein. Die Teilnahme kostet nichts; anmelden mussten wir uns vorher online.',
+      statement: 'Für den Workshop muss man nichts bezahlen.',
+      options: ['Richtig', 'Falsch'],
+      correctIndex: 0,
+      explanation: '„Die Teilnahme kostet nichts“ bedeutet: Für den Workshop bezahlt man nichts.',
+      hint: 'Ищи не одинаковые слова, а одинаковый смысл: „kostet nichts“ = „nichts bezahlen“.'
+    },
+    {
+      id: 'L-T1-PARA-02',
+      skillNodeId: 'L.T1.CORR.M04',
+      taskFamilyId: 'L-T1-RF-CORR',
+      stimulusId: 'msg-small-restaurant',
+      contentFingerprint: 'fp-small-restaurant-v1',
+      variantGroupId: 'vg-para-restaurant',
+      transferContextId: 'ctx-restaurant',
+      origin: 'original_aligned',
+      minutes: 5,
+      text: 'Liebe Mara, gestern waren wir in einem ziemlich kleinen Restaurant. Trotzdem bekamen wir sofort einen Tisch und mussten überhaupt nicht warten.',
+      statement: 'Obwohl das Restaurant klein war, gab es sofort einen freien Tisch.',
+      options: ['Richtig', 'Falsch'],
+      correctIndex: 0,
+      explanation: '„Trotzdem bekamen wir sofort einen Tisch“ entspricht „obwohl … gab es sofort einen freien Tisch“.',
+      hint: 'Сравни связь „trotzdem“ ↔ „obwohl“, а не отдельные слова.'
+    },
+    {
+      id: 'L-T1-PARA-03',
+      skillNodeId: 'L.T1.CORR.M04',
+      taskFamilyId: 'L-T1-RF-CORR',
+      stimulusId: 'msg-club-course',
+      contentFingerprint: 'fp-club-course-v1',
+      variantGroupId: 'vg-para-course',
+      transferContextId: 'ctx-course',
+      origin: 'original_aligned',
+      minutes: 5,
+      text: 'Der Computerkurs ist für Vereinsmitglieder gratis. Gäste können auch teilnehmen, bezahlen aber acht Euro.',
+      statement: 'Mitglieder des Vereins müssen für den Kurs nichts bezahlen.',
+      options: ['Richtig', 'Falsch'],
+      correctIndex: 0,
+      explanation: '„Für Vereinsmitglieder gratis“ bedeutet, dass Mitglieder nichts bezahlen.',
+      hint: '„gratis“ и „nichts bezahlen“ передают один и тот же смысл.'
+    },
+    {
+      id: 'L-T1-NEG-01',
+      skillNodeId: 'L.T1.CORR.M05',
+      taskFamilyId: 'L-T1-RF-CORR',
+      stimulusId: 'msg-weekend-arrival',
+      contentFingerprint: 'fp-weekend-arrival-v1',
+      variantGroupId: 'vg-neg-arrival',
+      transferContextId: 'ctx-arrival',
+      origin: 'original_aligned',
+      minutes: 5,
+      text: 'Eigentlich wollte ich am Freitag kommen, aber ich schaffe es erst am Samstag. Bitte reserviere nichts für Freitag.',
+      statement: 'Die Person kommt am Freitag.',
+      options: ['Richtig', 'Falsch'],
+      correctIndex: 1,
+      explanation: 'План на пятницу отменён: „erst am Samstag“ означает, что человек приедет только в субботу.',
+      hint: 'Обрати внимание на коррекцию: „eigentlich … aber … erst am Samstag“.'
+    },
+    {
+      id: 'L-T1-NEG-02',
+      skillNodeId: 'L.T1.CORR.M05',
+      taskFamilyId: 'L-T1-RF-CORR',
+      stimulusId: 'msg-side-entrance',
+      contentFingerprint: 'fp-side-entrance-v1',
+      variantGroupId: 'vg-neg-entrance',
+      transferContextId: 'ctx-entrance',
+      origin: 'original_aligned',
+      minutes: 5,
+      text: 'Der Eingang an der Hauptstraße ist heute geschlossen. Besucher sollen den Seiteneingang benutzen.',
+      statement: 'Heute kann man das Gebäude nicht über den Haupteingang betreten.',
+      options: ['Richtig', 'Falsch'],
+      correctIndex: 0,
+      explanation: 'Если главный вход закрыт, войти через него сегодня нельзя.',
+      hint: 'Проверь ограничение „heute geschlossen“ и к какому входу оно относится.'
+    },
+    {
+      id: 'L-T1-NEG-03',
+      skillNodeId: 'L.T1.CORR.M05',
+      taskFamilyId: 'L-T1-RF-CORR',
+      stimulusId: 'msg-bike-yard',
+      contentFingerprint: 'fp-bike-yard-v1',
+      variantGroupId: 'vg-neg-bikes',
+      transferContextId: 'ctx-bikes',
+      origin: 'original_aligned',
+      minutes: 5,
+      text: 'Fahrräder dürfen im Hof abgestellt werden, aber nicht direkt vor der Eingangstür.',
+      statement: 'Fahrräder dürfen auch direkt vor der Eingangstür stehen.',
+      options: ['Richtig', 'Falsch'],
+      correctIndex: 1,
+      explanation: 'Фраза „aber nicht direkt vor der Eingangstür“ прямо запрещает это место.',
+      hint: 'Ищи ограничение после „aber nicht“.'
+    }
+  ];
+
+  const REASON_LABELS = {
+    REGRESSION_DETECTED: 'Эта ошибка вернулась — сначала восстановим навык.',
+    RETURNED_ERROR: 'Эта ошибка вернулась — сначала восстановим навык.',
+    ACTIVE_ERROR_REPAIR: 'Сначала исправим конкретную ошибку, прежде чем идти дальше.',
+    OVERDUE_REVIEW: 'Это повторение уже просрочено.',
+    DUE_REVIEW: 'Пора перепроверить навык после паузы.',
+    POST_REPAIR_CONFIRMATION: 'После исправления нужен новый независимый пример.',
+    TRANSFER_PENDING: 'Проверим этот же навык на новом материале.',
+    WEAK_SKILL: 'По этому навыку есть повторные ошибки.',
+    DEVELOPING_SKILL: 'Прогресс есть, но навыку ещё нужна самостоятельная практика.',
+    ASSISTANCE_DEPENDENCY: 'После подсказок проверим, получится ли самостоятельно.',
+    INSUFFICIENT_EVIDENCE: 'По этому микронавыку пока недостаточно самостоятельных данных.',
+    STALE_EVIDENCE: 'Этот навык давно не проверяли.',
+    EXAM_LIKE_EVIDENCE_GAP: 'Позже понадобится отдельная exam-like проверка.',
+    CONTENT_BLOCK_FALLBACK: 'Для приоритетной проверки сейчас нет валидного нового задания.'
+  };
+
+  function clone(v) {
+    return JSON.parse(JSON.stringify(v));
+  }
+
+  function iso(ts) {
+    return new Date(ts == null ? Date.now() : ts).toISOString();
+  }
+
+  function addDays(ts, n) {
+    return new Date(new Date(ts).getTime() + n * 86400000).toISOString();
+  }
+
+  function freshRuntime(now) {
+    const stamp = iso(now);
+    return {
+      version: 2,
+      seq: 0,
+      userId: 'local-preview-user',
+      activeModules: ['LESEN'],
+      selectedDuration: 25,
+      evidenceEvents: [],
+      assistanceEvents: [],
+      repairAttempts: [],
+      skillStates: {},
+      skillStateSnapshots: [],
+      errors: [],
+      reviews: [],
+      plannerInputSnapshots: [],
+      plannerDecisions: [],
+      plans: [],
+      planRevisions: [],
+      readinessInputSnapshots: [],
+      readinessSnapshots: [],
+      currentPlan: null,
+      session: null,
+      readiness: null,
+      ui: {
+        selectedAnswer: null,
+        hintLevel: 'none',
+        currentErrorId: null,
+        currentTaskStartedAt: null,
+        auditActionId: null,
+        message: ''
+      },
+      createdAt: stamp,
+      updatedAt: stamp
+    };
+  }
+
+  function nextId(rt, prefix) {
+    rt.seq = Number(rt.seq || 0) + 1;
+    return prefix + '-' + String(rt.seq).padStart(4, '0');
+  }
+
+  function getTask(id) {
+    return CONTENT.find(function (x) { return x.id === id; }) || null;
+  }
+
+  function getSkill(id) {
+    return SKILLS[id] || { module: 'LESEN', teil: 'T1', label: id, short: id };
+  }
+
+  function assistanceRank(level) {
+    return {
+      none: 0,
+      strategy: 1,
+      keyword: 2,
+      evidence_hint: 3,
+      phrase_start: 4,
+      full_model: 5
+    }[level] == null ? 0 : {
+      none: 0,
+      strategy: 1,
+      keyword: 2,
+      evidence_hint: 3,
+      phrase_start: 4,
+      full_model: 5
+    }[level];
+  }
+
+  function independenceFromAssistance(level) {
+    if (level === 'none') return 'independent';
+    if (level === 'strategy') return 'minimally_supported';
+    if (level === 'keyword' || level === 'evidence_hint') return 'supported';
+    if (level === 'phrase_start') return 'heavily_supported';
+    return 'model_exposed';
+  }
+
+  function isTransferSafe(source, target) {
+    if (!source || !target) return false;
+    return source.id !== target.id &&
+      source.contentFingerprint !== target.contentFingerprint &&
+      source.variantGroupId !== target.variantGroupId &&
+      source.stimulusId !== target.stimulusId &&
+      source.transferContextId !== target.transferContextId &&
+      source.skillNodeId === target.skillNodeId;
+  }
+
+  function classifyEvidence(opts) {
+    const assistance = opts.maxAssistanceConsumed || 'none';
+    const success = opts.outcomeStatus === 'success';
+    const stage = opts.stage || 'independent';
+
+    if (opts.selfRepairAttempt) {
+      return {
+        evidenceClass: null,
+        evidenceRole: 'self_repair',
+        independence: independenceFromAssistance(assistance)
+      };
+    }
+
+    if (success) {
+      if (assistance === 'none') {
+        return {
+          evidenceClass: stage === 'transfer' ? 'P4' : stage === 'exam_like' ? 'P5' : 'P3',
+          evidenceRole: stage,
+          independence: 'independent'
+        };
+      }
+      if (assistance === 'strategy') {
+        return { evidenceClass: 'P2', evidenceRole: stage, independence: 'minimally_supported' };
+      }
+      return { evidenceClass: 'P1', evidenceRole: stage, independence: independenceFromAssistance(assistance) };
+    }
+
+    if (assistance !== 'none') {
+      return { evidenceClass: 'N1', evidenceRole: stage, independence: independenceFromAssistance(assistance) };
+    }
+    if (stage === 'transfer') return { evidenceClass: 'N3', evidenceRole: stage, independence: 'independent' };
+    if (stage === 'exam_like') return { evidenceClass: 'N4', evidenceRole: stage, independence: 'independent' };
+    return { evidenceClass: 'N2', evidenceRole: stage, independence: 'independent' };
+  }
+
+  function makeEvidenceEvent(rt, task, opts) {
+    const completedAt = iso(opts.completedAt);
+    const classification = classifyEvidence(opts);
+    const eventId = nextId(rt, 'ev');
+    const event = {
+      event_id: eventId,
+      user_id: rt.userId,
+      session_id: opts.sessionId || (rt.session && rt.session.sessionId) || 'preview-no-session',
+      learning_occasion_id: opts.learningOccasionId || (rt.session && rt.session.learningOccasionId) || 'preview-occasion',
+      skill_node_id: task.skillNodeId,
+      module: 'Lesen',
+      teil_or_aufgabe: task.teil || 'T1',
+      task_instance_id: task.id,
+      task_family_id: task.taskFamilyId,
+      stimulus_id: task.stimulusId,
+      content_fingerprint: task.contentFingerprint,
+      variant_group_id: task.variantGroupId,
+      task_origin: task.origin,
+      transfer_context_id: opts.stage === 'transfer' ? task.transferContextId : null,
+      stage: opts.stage || 'independent',
+      attempt_number: Number(opts.attemptNumber || 1),
+      prior_exact_item_exposure_count: Number(opts.priorExactExposure || 0),
+      prior_task_family_exposure_count: Number(opts.priorFamilyExposure || 0),
+      started_at: opts.startedAt || completedAt,
+      completed_at: completedAt,
+      response_time_ms: Math.max(0, Number(opts.responseTimeMs || 0)),
+      completion_state: 'completed',
+      assistance_events: clone(opts.assistanceEvents || []),
+      max_assistance_consumed: opts.maxAssistanceConsumed || 'none',
+      assistance_offered_not_consumed: !!opts.assistanceOfferedNotConsumed,
+      exam_constraint_violation: false,
+      outcome_type: 'objective',
+      outcome_status: opts.outcomeStatus,
+      raw_response: opts.selectedAnswer,
+      evaluator_source: 'rule',
+      evaluator_confidence: 'high',
+      data_quality: 'valid',
+      linked_error_id: opts.linkedErrorId || null,
+      self_correction_attempted: !!opts.selfCorrectionAttempted,
+      self_correction_success: opts.selfCorrectionSuccess || 'not_applicable',
+      transfer_of_error_id: opts.transferOfErrorId || null,
+      delayed_review_of_error_id: opts.delayedReviewOfErrorId || null,
+      selected_answer: opts.selectedAnswer,
+      correct_answer: task.correctIndex,
+      item_correct: opts.outcomeStatus === 'success',
+      distractor_id: opts.outcomeStatus === 'success' ? null : 'selected-' + opts.selectedAnswer,
+      distractor_tag: task.skillNodeId === 'L.T1.CORR.M04' ? 'paraphrase_miss' : 'negation_limitation_miss',
+      question_target: task.skillNodeId === 'L.T1.CORR.M04' ? 'paraphrase' : 'negation_limitation',
+      evidence_span_selected: null,
+      answer_changed_after_assistance: assistanceRank(opts.maxAssistanceConsumed || 'none') > 0,
+      answer_changed_after_replay: false,
+      evidence_class: classification.evidenceClass,
+      evidence_role: classification.evidenceRole,
+      independence: classification.independence
+    };
+    (opts.assistanceEvents || []).forEach(function (a) {
+      const stored = rt.assistanceEvents.find(function (x) { return x.assistance_event_id === a.assistance_event_id; });
+      if (stored && !stored.event_id) stored.event_id = eventId;
+    });
+    rt.evidenceEvents.push(event);
+    return event;
+  }
+
+  function distinctByTask(events) {
+    const seen = new Set();
+    return events.filter(function (e) {
+      const key = e.task_instance_id + '|' + e.content_fingerprint + '|' + e.variant_group_id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function deriveSkillState(events, skillNodeId, previousState, now) {
+    const allRelevant = events.filter(function (e) {
+      return e.skill_node_id === skillNodeId && e.data_quality === 'valid' && e.completion_state === 'completed';
+    });
+    const relevant = allRelevant.filter(function (e) { return e.evidence_class; });
+    const failedSelfRepair = allRelevant.filter(function (e) {
+      return e.evidence_role === 'self_repair' && e.outcome_status === 'failure';
+    });
+    const successfulSelfRepair = allRelevant.filter(function (e) {
+      return e.evidence_role === 'self_repair' && e.outcome_status === 'success';
+    });
+    const unique = distinctByTask(relevant);
+    const strongPositive = unique.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); });
+    const anyPositive = unique.filter(function (e) { return ['P1', 'P2', 'P3', 'P4', 'P5'].includes(e.evidence_class); });
+    const strongNegative = unique.filter(function (e) { return ['N2', 'N3', 'N4'].includes(e.evidence_class); });
+    const prior = previousState && previousState.mastery_state ? previousState.mastery_state : 'M0';
+    let mastery = 'M0';
+    let reason = 'INSUFFICIENT_EVIDENCE';
+
+    const latestStrongPositive = strongPositive.length ? strongPositive[strongPositive.length - 1] : null;
+    const latestStrongNegative = strongNegative.length ? strongNegative[strongNegative.length - 1] : null;
+    const strongNegativeAfterPositive = latestStrongNegative && latestStrongPositive &&
+      new Date(latestStrongNegative.completed_at).getTime() > new Date(latestStrongPositive.completed_at).getTime();
+
+    if (['M3', 'M4', 'M5'].includes(prior) && strongNegative.length >= 2 && strongNegativeAfterPositive) {
+      mastery = 'M6';
+      reason = 'REGRESSION_CONFIRMED';
+    } else if (['M3', 'M4'].includes(prior) && strongNegativeAfterPositive) {
+      mastery = 'M5';
+      reason = 'STRONG_CONTRADICTION';
+    } else {
+      const contexts = new Set(strongPositive.map(function (e) { return e.transfer_context_id || e.stimulus_id; }));
+      const hasTransfer = strongPositive.some(function (e) { return e.evidence_class === 'P4' || e.evidence_class === 'P5'; });
+      const occasions = new Set(strongPositive.map(function (e) { return e.learning_occasion_id; }));
+      const hasUnresolvedNegative = latestStrongNegative && (!latestStrongPositive ||
+        new Date(latestStrongNegative.completed_at).getTime() > new Date(latestStrongPositive.completed_at).getTime());
+
+      if (prior === 'M3' && strongPositive.length >= 3 && hasTransfer && occasions.size >= 2 && !hasUnresolvedNegative) {
+        mastery = 'M4';
+        reason = 'LATER_INDEPENDENT_CONFIRMATION';
+      } else if (strongPositive.length >= 2 && hasTransfer && contexts.size >= 2 && !hasUnresolvedNegative) {
+        mastery = 'M3';
+        reason = 'INDEPENDENT_TRANSFER_CONFIRMED';
+      } else if (
+        (anyPositive.length >= 2 && anyPositive.some(function (e) { return ['P2', 'P3', 'P4', 'P5'].includes(e.evidence_class); })) ||
+        (successfulSelfRepair.length > 0 && strongPositive.length > 0)
+      ) {
+        mastery = 'M2';
+        reason = strongNegative.length ? 'MIXED_DEVELOPING' : 'POSITIVE_PROGRESS';
+      } else if (
+        (strongNegative.length >= 2 && anyPositive.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); }).length === 0) ||
+        (strongNegative.length >= 1 && failedSelfRepair.length >= 1 && strongPositive.length === 0)
+      ) {
+        mastery = 'M1';
+        reason = failedSelfRepair.length ? 'INDEPENDENT_FAILURE_PLUS_FAILED_REPAIR' : 'REPEATED_INDEPENDENT_FAILURE';
+      }
+    }
+
+    const lastValid = relevant.length ? relevant[relevant.length - 1].completed_at : null;
+    const lastIndependent = strongPositive.length ? strongPositive[strongPositive.length - 1].completed_at : null;
+    const lastNegative = strongNegative.length ? strongNegative[strongNegative.length - 1].completed_at : null;
+
+    return {
+      skill_node_id: skillNodeId,
+      mastery_state: mastery,
+      review_state: 'NOT_DUE',
+      policy_version: POLICY.mastery,
+      computed_at: iso(now),
+      basis_event_ids: relevant.map(function (e) { return e.event_id; }),
+      previous_state: prior,
+      transition_reason_code: reason,
+      latest_valid_evidence_at: lastValid,
+      latest_independent_success_at: lastIndependent,
+      latest_strong_negative_at: lastNegative,
+      freshness_status: lastValid ? 'fresh' : 'unknown'
+    };
+  }
+
+  function skillStateBasisKey(state) {
+    return JSON.stringify({
+      skill_node_id: state.skill_node_id,
+      mastery_state: state.mastery_state,
+      review_state: state.review_state,
+      basis_event_ids: state.basis_event_ids,
+      transition_reason_code: state.transition_reason_code,
+      freshness_status: state.freshness_status
+    });
+  }
+
+  function storeSkillState(rt, derived, now) {
+    const current = rt.skillStates[derived.skill_node_id] || null;
+    if (current && current.review_state && (!derived.review_state || derived.review_state === 'NOT_DUE')) {
+      derived.review_state = current.review_state;
+    }
+    const changed = !current || skillStateBasisKey(current) !== skillStateBasisKey(derived);
+    if (changed) {
+      const snapshot = clone(derived);
+      snapshot.state_snapshot_id = nextId(rt, 'skillstate');
+      snapshot.computed_at = iso(now);
+      rt.skillStateSnapshots.push(snapshot);
+      rt.skillStates[derived.skill_node_id] = clone(snapshot);
+    } else {
+      rt.skillStates[derived.skill_node_id] = clone(current);
+    }
+    return rt.skillStates[derived.skill_node_id];
+  }
+
+  function recomputeAllSkillStates(rt, now) {
+    if (!rt.skillStateSnapshots) rt.skillStateSnapshots = [];
+    Object.keys(SKILLS).forEach(function (skillId) {
+      const derived = deriveSkillState(rt.evidenceEvents, skillId, rt.skillStates[skillId], now);
+      storeSkillState(rt, derived, now);
+    });
+    return rt.skillStates;
+  }
+
+  function createErrorObject(rt, task, event, now) {
+    const existing = rt.errors.slice().reverse().find(function (e) {
+      return e.skill_node_id === task.skillNodeId && e.root_error_id == null;
+    });
+    if (existing) {
+      existing.related_event_ids.push(event.event_id);
+      existing.linked_evidence_event_ids = existing.linked_evidence_event_ids || [];
+      existing.linked_evidence_event_ids.push(event.event_id);
+      existing.last_seen_at = iso(now);
+      existing.current_task_id = task.id;
+      const returned = existing.status === 'REVIEW_SCHEDULED' || existing.status === 'PROVISIONALLY_RESOLVED' || existing.status === 'RESOLVED';
+      existing.status = returned ? 'RETURNED' : 'NEW';
+      if (returned) {
+        existing.recurrence_count = Number(existing.recurrence_count || 0) + 1;
+        existing.reopened_at = iso(now);
+      }
+      return existing;
+    }
+
+    const cause = task.skillNodeId === 'L.T1.CORR.M04'
+      ? 'Опора на формулировку вместо смыслового эквивалента.'
+      : 'Пропущено отрицание, ограничение или коррекция.';
+    const error = {
+      error_id: nextId(rt, 'err'),
+      user_id: rt.userId,
+      module: 'Lesen',
+      teil_or_aufgabe: 'T1',
+      parent_skill_id: 'L.T1.CORR',
+      micro_skill_id: task.skillNodeId,
+      skill_node_id: task.skillNodeId,
+      task_instance_id: task.id,
+      origin_task_id: task.id,
+      current_task_id: task.id,
+      originating_event_id: event.event_id,
+      related_event_ids: [event.event_id],
+      linked_evidence_event_ids: [event.event_id],
+      original_response: event.selected_answer,
+      original_action_type: 'objective_choice',
+      selected_answer: event.selected_answer,
+      learner_sample: null,
+      correct_answer: task.correctIndex,
+      evidence_basis: task.text,
+      expected_task_function: null,
+      error_type: task.skillNodeId === 'L.T1.CORR.M04' ? 'paraphrase_miss' : 'negation_limitation_miss',
+      error_cause_hypothesis: cause,
+      cause_hypothesis: cause,
+      cause_confidence: 'high',
+      classification_source: 'rule',
+      assistance_before_error: clone(event.assistance_events || []),
+      assistance_event_ids: [],
+      repair_attempt_ids: [],
+      repair_attempt_count: 0,
+      max_assistance_during_repair: 'none',
+      self_repair_result: 'pending',
+      transfer_event_ids: [],
+      transfer_status: 'pending',
+      delayed_review_event_ids: [],
+      review_status: 'NOT_DUE',
+      review_required: false,
+      review_reason: [],
+      next_review_at: null,
+      status: 'NEW',
+      recurrence_count: 0,
+      first_seen_at: iso(now),
+      last_seen_at: iso(now),
+      resolved_at: null,
+      reopened_at: null,
+      root_error_id: null,
+      related_error_ids: []
+    };
+    rt.errors.push(error);
+    return error;
+  }
+
+  function createReviewObligation(rt, error, transferEvent, now) {
+    const existing = rt.reviews.find(function (r) {
+      return r.linked_error_id === error.error_id && r.review_required && !['RESOLVED'].includes(r.review_state);
+    });
+    if (existing) return existing;
+    const review = {
+      review_id: nextId(rt, 'rev'),
+      skill_node_id: error.skill_node_id,
+      linked_error_id: error.error_id,
+      review_required: true,
+      review_reason: ['POST_REPAIR_CONFIRMATION'],
+      primary_review_reason: 'POST_REPAIR_CONFIRMATION',
+      source_reason: 'POST_REPAIR_CONFIRMATION',
+      review_state: 'SCHEDULED',
+      review_level: 0,
+      review_success_streak: 0,
+      policy_version: POLICY.review,
+      basis_event_ids: [transferEvent.event_id],
+      computed_at: iso(now),
+      baseline_event_id: transferEvent.event_id,
+      next_review_at: addDays(transferEvent.completed_at, 1),
+      last_review_result: null,
+      blocked_no_valid_item: false,
+      needs_evidence_collection: false
+    };
+    rt.reviews.push(review);
+    error.review_status = 'SCHEDULED';
+    error.review_required = true;
+    error.review_reason = ['POST_REPAIR_CONFIRMATION'];
+    error.next_review_at = review.next_review_at;
+    error.transfer_status = 'confirmed';
+    error.status = 'REVIEW_SCHEDULED';
+    return review;
+  }
+
+  function refreshReviewStates(rt, now) {
+    const nowMs = new Date(now == null ? Date.now() : now).getTime();
+    rt.reviews.forEach(function (r) {
+      if (!r.review_required || !r.next_review_at) return;
+      const dueMs = new Date(r.next_review_at).getTime();
+      if (nowMs >= dueMs + 3 * 86400000) r.review_state = 'OVERDUE';
+      else if (nowMs >= dueMs) r.review_state = 'DUE';
+      else r.review_state = 'SCHEDULED';
+      const skill = rt.skillStates[r.skill_node_id];
+      if (skill && skill.review_state !== r.review_state) {
+        const derived = clone(skill);
+        derived.previous_state = skill.mastery_state;
+        derived.review_state = r.review_state;
+        derived.transition_reason_code = 'REVIEW_' + r.review_state;
+        storeSkillState(rt, derived, now);
+      }
+    });
+  }
+
+  function taskUsedInOccasion(rt, taskId) {
+    if (!rt.session) return false;
+    return rt.evidenceEvents.some(function (e) {
+      return e.learning_occasion_id === rt.session.learningOccasionId && e.task_instance_id === taskId;
+    });
+  }
+
+  function unusedTasks(rt, skillId) {
+    const used = new Set(rt.evidenceEvents.map(function (e) { return e.task_instance_id; }));
+    return CONTENT.filter(function (t) { return t.skillNodeId === skillId && !used.has(t.id); });
+  }
+
+  function chooseUnusedTask(rt, skillId) {
+    return unusedTasks(rt, skillId)[0] || null;
+  }
+
+  function chooseTransferTask(rt, error) {
+    const source = getTask(error.origin_task_id);
+    const used = new Set(rt.evidenceEvents.map(function (e) { return e.task_instance_id; }));
+    return CONTENT.filter(function (t) {
+      return t.skillNodeId === error.skill_node_id && !used.has(t.id) && isTransferSafe(source, t);
+    })[0] || null;
+  }
+
+  function actionReason(actionType, state) {
+    if (actionType === 'RECOVERY_REPAIR') return 'ACTIVE_ERROR_REPAIR';
+    if (actionType === 'TRANSFER_CHECK') return 'TRANSFER_PENDING';
+    if (actionType === 'OVERDUE_REVIEW') return 'OVERDUE_REVIEW';
+    if (actionType === 'DUE_REVIEW') return 'DUE_REVIEW';
+    if (actionType === 'WEAK_SKILL_BUILD') return 'WEAK_SKILL';
+    if (actionType === 'DEVELOPING_SKILL_BUILD') return 'DEVELOPING_SKILL';
+    if (actionType === 'ASSISTANCE_DEPENDENCY_RECHECK') return 'ASSISTANCE_DEPENDENCY';
+    if (actionType === 'EVIDENCE_GAP_PROBE') return 'INSUFFICIENT_EVIDENCE';
+    if (actionType === 'STALE_MAINTENANCE') return 'STALE_EVIDENCE';
+    return state || 'INSUFFICIENT_EVIDENCE';
+  }
+
+  function candidatePriority(type) {
+    if (type === 'RECOVERY_REPAIR') return 0;
+    if (type === 'OVERDUE_REVIEW' || type === 'DUE_REVIEW') return 1;
+    if (type === 'TRANSFER_CHECK' || type === 'ASSISTANCE_DEPENDENCY_RECHECK') return 2;
+    if (type === 'WEAK_SKILL_BUILD' || type === 'DEVELOPING_SKILL_BUILD') return 3;
+    if (type === 'EVIDENCE_GAP_PROBE') return 4;
+    return 5;
+  }
+
+  function latestEvidenceForSkill(rt, skillId) {
+    return rt.evidenceEvents.filter(function (e) { return e.skill_node_id === skillId; }).slice(-1)[0] || null;
+  }
+
+  function enrichCandidate(rt, candidate) {
+    const skill = rt.skillStates[candidate.skill_node_id] || {};
+    const error = candidate.error_id ? rt.errors.find(function (e) { return e.error_id === candidate.error_id; }) : null;
+    const review = candidate.review_id ? rt.reviews.find(function (r) { return r.review_id === candidate.review_id; }) : null;
+    const recent = rt.evidenceEvents.filter(function (e) { return e.skill_node_id === candidate.skill_node_id; });
+    const independent = recent.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); });
+    const supported = recent.filter(function (e) { return ['P1', 'P2'].includes(e.evidence_class); });
+    const task = candidate.task_id ? getTask(candidate.task_id) : null;
+    const completed = rt.session && rt.session.completedActions ? rt.session.completedActions : [];
+
+    return Object.assign({
+      teil_or_aufgabe: (getSkill(candidate.skill_node_id).teil || 'T1'),
+      secondary_reason_codes: [],
+      source_error_ids: error ? [error.error_id] : [],
+      source_review_record_id: review ? review.review_id : null,
+      source_evidence_ids: skill.basis_event_ids ? clone(skill.basis_event_ids) : [],
+      mastery_state: skill.mastery_state || 'M0',
+      review_state: review ? review.review_state : (skill.review_state || 'NOT_DUE'),
+      evidence_sufficiency: skill.mastery_state && skill.mastery_state !== 'M0' ? 'MEANINGFUL_SKILL_EVIDENCE' : 'INSUFFICIENT_EVIDENCE',
+      independence_status: independent.length ? 'INDEPENDENT_EVIDENCE_PRESENT' : supported.length ? 'ASSISTED_ONLY' : 'NO_POSITIVE_EVIDENCE',
+      assistance_dependency: supported.length > 0 && independent.length === 0,
+      recurrence_count: error ? Number(error.recurrence_count || 0) : 0,
+      transfer_status: error ? (error.transfer_status || 'pending') : 'not_applicable',
+      freshness_status: skill.freshness_status || 'unknown',
+      exam_like_evidence_status: recent.some(function (e) { return e.evidence_class === 'P5'; }) ? 'PRESENT' : 'MISSING',
+      content_status: candidate.blocked ? 'BLOCKED_NO_VALID_CONTENT' : 'AVAILABLE',
+      blocked_no_valid_item: !!candidate.blocked,
+      estimated_duration_min: Number(candidate.minutes || (task && task.minutes) || 0),
+      stage_target: candidate.action_type === 'TRANSFER_CHECK' ? 'transfer' : 'independent',
+      candidate_content_ids: task ? [task.id] : [],
+      content_exclusion_metadata: task ? {
+        task_instance_id: task.id,
+        stimulus_id: task.stimulusId,
+        content_fingerprint: task.contentFingerprint,
+        variant_group_id: task.variantGroupId,
+        transfer_context_id: task.transferContextId
+      } : null,
+      last_selected_at: completed.filter(function (a) { return a.skill_node_id === candidate.skill_node_id; }).slice(-1)[0]?.completed_at || null,
+      recent_same_skill_minutes: completed.filter(function (a) { return a.skill_node_id === candidate.skill_node_id; }).reduce(function (sum, a) { return sum + Number(a.minutes || 0); }, 0),
+      recent_same_module_minutes: completed.filter(function (a) { return a.module === candidate.module; }).reduce(function (sum, a) { return sum + Number(a.minutes || 0); }, 0)
+    }, candidate);
+  }
+
+  function createPlannerInputSnapshot(rt, duration, now, learningOccasionId) {
+    if (!rt.plannerInputSnapshots) rt.plannerInputSnapshots = [];
+    const snapshot = {
+      planner_input_snapshot_id: nextId(rt, 'plannerinput'),
+      generated_at: iso(now),
+      active_modules: clone(rt.activeModules),
+      skill_state_refs: Object.values(rt.skillStates).map(function (s) {
+        return { state_snapshot_id: s.state_snapshot_id || null, skill_node_id: s.skill_node_id, policy_version: s.policy_version };
+      }),
+      active_error_refs: rt.errors.filter(function (e) { return e.status !== 'RESOLVED'; }).map(function (e) {
+        return { error_id: e.error_id, status: e.status, last_seen_at: e.last_seen_at };
+      }),
+      review_state_refs: rt.reviews.filter(function (r) { return r.review_required; }).map(function (r) {
+        return { review_id: r.review_id, review_state: r.review_state, policy_version: r.policy_version, next_review_at: r.next_review_at };
+      }),
+      content_catalog_version: CONTENT_CATALOG_VERSION,
+      content_availability_snapshot_id: 'content-' + CONTENT_CATALOG_VERSION,
+      planner_history_fairness_snapshot: {
+        prior_plan_ids: (rt.plans || []).map(function (p) { return p.plan_id; }),
+        active_module_count: rt.activeModules.length
+      },
+      requested_duration_min: Number(duration),
+      learning_occasion_id: learningOccasionId
+    };
+    rt.plannerInputSnapshots.push(clone(snapshot));
+    return snapshot;
+  }
+
+  function generateCandidates(rt, now) {
+    refreshReviewStates(rt, now);
+    const candidates = [];
+
+    rt.errors.forEach(function (err) {
+      if (['NEW', 'EXPLAINED', 'SELF_REPAIR_PENDING', 'RETURNED'].includes(err.status)) {
+        const task = getTask(err.current_task_id || err.origin_task_id);
+        if (task) {
+          candidates.push({
+            candidate_action_id: 'cand-repair-' + err.error_id,
+            action_type: 'RECOVERY_REPAIR',
+            error_id: err.error_id,
+            skill_node_id: err.skill_node_id,
+            task_id: task.id,
+            module: 'LESEN',
+            minutes: task.minutes || 6,
+            priority_class: 0,
+            primary_reason_code: actionReason('RECOVERY_REPAIR'),
+            counts_toward_review_cap: false,
+            blocked: false
+          });
+        }
+      } else if (err.status === 'TRANSFER_PENDING' || err.status === 'SELF_REPAIRED') {
+        const transfer = chooseTransferTask(rt, err);
+        candidates.push({
+          candidate_action_id: 'cand-transfer-' + err.error_id,
+          action_type: 'TRANSFER_CHECK',
+          error_id: err.error_id,
+          skill_node_id: err.skill_node_id,
+          task_id: transfer ? transfer.id : null,
+          module: 'LESEN',
+          minutes: 5,
+          priority_class: 2,
+          primary_reason_code: actionReason('TRANSFER_CHECK'),
+          counts_toward_review_cap: false,
+          blocked: !transfer,
+          block_reason: transfer ? null : 'BLOCKED_NO_VALID_CONTENT'
+        });
+      }
+    });
+
+    rt.reviews.forEach(function (review) {
+      if (!review.review_required || !['DUE', 'OVERDUE'].includes(review.review_state)) return;
+      const task = chooseUnusedTask(rt, review.skill_node_id);
+      const postRepair = review.primary_review_reason === 'POST_REPAIR_CONFIRMATION';
+      candidates.push({
+        candidate_action_id: 'cand-review-' + review.review_id,
+        action_type: postRepair ? 'POST_REPAIR_CONFIRMATION' : (review.review_state === 'OVERDUE' ? 'OVERDUE_REVIEW' : 'DUE_REVIEW'),
+        review_id: review.review_id,
+        skill_node_id: review.skill_node_id,
+        task_id: task ? task.id : null,
+        module: 'LESEN',
+        minutes: task ? task.minutes : 4,
+        priority_class: 1,
+        primary_reason_code: postRepair ? 'POST_REPAIR_CONFIRMATION' : (review.review_state === 'OVERDUE' ? 'OVERDUE_REVIEW' : 'DUE_REVIEW'),
+        counts_toward_review_cap: true,
+        blocked: !task,
+        block_reason: task ? null : 'BLOCKED_NO_VALID_CONTENT',
+        overdue_by_ms: review.review_state === 'OVERDUE' ? Math.max(0, new Date(now).getTime() - new Date(review.next_review_at).getTime()) : 0
+      });
+    });
+
+    Object.keys(SKILLS).sort().forEach(function (skillId) {
+      const state = rt.skillStates[skillId] || deriveSkillState(rt.evidenceEvents, skillId, null, now);
+      let type = 'EVIDENCE_GAP_PROBE';
+      if (state.mastery_state === 'M1') type = 'WEAK_SKILL_BUILD';
+      else if (state.mastery_state === 'M2') type = 'DEVELOPING_SKILL_BUILD';
+      else if (['M3', 'M4'].includes(state.mastery_state)) type = 'STALE_MAINTENANCE';
+
+      unusedTasks(rt, skillId).forEach(function (task, sequenceIndex) {
+        candidates.push({
+          candidate_action_id: 'cand-skill-' + skillId + '-' + task.id,
+          action_type: type,
+          skill_node_id: skillId,
+          task_id: task.id,
+          module: 'LESEN',
+          minutes: task.minutes,
+          priority_class: candidatePriority(type),
+          sequence_rank: sequenceIndex,
+          primary_reason_code: actionReason(type),
+          counts_toward_review_cap: type === 'STALE_MAINTENANCE',
+          blocked: false
+        });
+      });
+    });
+
+    return candidates.map(function (candidate) { return enrichCandidate(rt, candidate); });
+  }
+
+  function buildPlan(rt, duration, now, learningOccasionId) {
+    duration = Number(duration || 25);
+    const budgets = { 10: 9, 25: 22, 45: 41 };
+    const instructionalBudget = budgets[duration] || 22;
+    const reviewCap = duration === 10 ? 1 : duration === 45 ? 3 : 2;
+    refreshReviewStates(rt, now);
+    const occasionId = learningOccasionId || (rt.session && rt.session.learningOccasionId) || nextId(rt, 'occasion');
+    const inputSnapshot = createPlannerInputSnapshot(rt, duration, now, occasionId);
+    const candidates = generateCandidates(rt, now);
+
+    candidates.sort(function (a, b) {
+      if (a.blocked !== b.blocked) return a.blocked ? 1 : -1;
+      if (a.priority_class !== b.priority_class) return a.priority_class - b.priority_class;
+      const ao = Number(a.overdue_by_ms || 0), bo = Number(b.overdue_by_ms || 0);
+      if (ao !== bo) return bo - ao;
+      const as = Number(a.sequence_rank == null ? -1 : a.sequence_rank);
+      const bs = Number(b.sequence_rank == null ? -1 : b.sequence_rank);
+      if (as !== bs) return as - bs;
+      const ar = rt.errors.find(function (e) { return e.error_id === a.error_id; });
+      const br = rt.errors.find(function (e) { return e.error_id === b.error_id; });
+      const arec = ar ? Number(ar.recurrence_count || 0) : 0;
+      const brec = br ? Number(br.recurrence_count || 0) : 0;
+      if (arec !== brec) return brec - arec;
+      if (a.skill_node_id !== b.skill_node_id) return String(a.skill_node_id).localeCompare(String(b.skill_node_id));
+      return String(a.candidate_action_id).localeCompare(String(b.candidate_action_id));
+    });
+
+    const selected = [];
+    const deferred = [];
+    let minutes = 0;
+    let reviews = 0;
+    const skillMinutes = {};
+
+    candidates.forEach(function (c) {
+      if (c.blocked) {
+        deferred.push({ candidate_action_id: c.candidate_action_id, reason: c.block_reason || 'BLOCKED_NO_VALID_CONTENT' });
+        return;
+      }
+      if (selected.some(function (a) { return a.task_id === c.task_id && a.action_type !== 'RECOVERY_REPAIR'; })) {
+        deferred.push({ candidate_action_id: c.candidate_action_id, reason: 'ALREADY_COVERED_THIS_PLAN' });
+        return;
+      }
+      if (minutes + c.minutes > instructionalBudget) {
+        deferred.push({ candidate_action_id: c.candidate_action_id, reason: 'ACTION_EXCEEDS_TIME_BUDGET' });
+        return;
+      }
+      if (c.counts_toward_review_cap && reviews >= reviewCap) {
+        deferred.push({ candidate_action_id: c.candidate_action_id, reason: 'REVIEW_QUEUE_CAP' });
+        return;
+      }
+      const projectedSkill = Number(skillMinutes[c.skill_node_id] || 0) + c.minutes;
+      const cap = instructionalBudget * 0.5;
+      const critical = c.action_type === 'RECOVERY_REPAIR';
+      if (!critical && projectedSkill > cap) {
+        deferred.push({ candidate_action_id: c.candidate_action_id, reason: 'SAME_SKILL_CAP' });
+        return;
+      }
+      selected.push(clone(c));
+      minutes += c.minutes;
+      skillMinutes[c.skill_node_id] = projectedSkill;
+      if (c.counts_toward_review_cap) reviews += 1;
+    });
+
+    const plan = {
+      plan_id: nextId(rt, 'plan'),
+      plan_revision: rt.session ? Number(rt.session.planRevision || 0) + 1 : 1,
+      planner_policy_version: POLICY.planner,
+      generated_at: iso(now),
+      planner_input_snapshot_id: inputSnapshot.planner_input_snapshot_id,
+      learning_occasion_id: occasionId,
+      requested_duration: duration,
+      requested_duration_min: duration,
+      instructional_budget_min: instructionalBudget,
+      active_modules: clone(rt.activeModules),
+      source_state_refs: clone(inputSnapshot.skill_state_refs),
+      candidate_action_ids: candidates.map(function (x) { return x.candidate_action_id; }),
+      selected_action_ids: selected.map(function (x) { return x.candidate_action_id; }),
+      selected_actions: selected,
+      deferred_actions: deferred,
+      deferred_candidate_ids: deferred.map(function (x) { return x.candidate_action_id; }),
+      conflict_rule_applied: 'LEXICOGRAPHIC_PRIORITY',
+      anti_monopoly_rule_applied: 'SAME_MICRO_SKILL_50_PERCENT',
+      content_block_flags: deferred.filter(function (x) { return x.reason === 'BLOCKED_NO_VALID_CONTENT'; }),
+      estimated_total_work_min: minutes,
+      reserved_wrap_min: duration - instructionalBudget,
+      extension_flag: false
+    };
+
+    if (!rt.plans) rt.plans = [];
+    rt.plans.push(clone(plan));
+    rt.currentPlan = plan;
+    rt.plannerDecisions.push({
+      decision_id: nextId(rt, 'decision'),
+      plan_id: plan.plan_id,
+      planner_input_snapshot_id: plan.planner_input_snapshot_id,
+      generated_at: plan.generated_at,
+      selected: selected.map(function (a, index) {
+        return {
+          action_id: a.candidate_action_id,
+          position: index + 1,
+          reason_code: a.primary_reason_code,
+          reason_text: REASON_LABELS[a.primary_reason_code],
+          frozen_signals: {
+            skill_node_id: a.skill_node_id,
+            action_type: a.action_type
+          }
+        };
+      }),
+      deferred: clone(deferred)
+    });
+    return plan;
+  }
+
+  function moduleEvents(rt, configKey) {
+    const display = MODULE_CONFIG[configKey].display;
+    return rt.evidenceEvents.filter(function (e) { return e.module === display && e.data_quality === 'valid' && e.completion_state === 'completed'; });
+  }
+
+  function coverageTier(events, part) {
+    const partEvents = distinctByTask(events.filter(function (e) { return e.teil_or_aufgabe === part; }));
+    if (!partEvents.length) return { tier: 'T0', label: 'UNCHECKED', distinct_tasks: 0 };
+    const independent = partEvents.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); });
+    if (partEvents.length < 2 || independent.length < 1) return { tier: 'T1', label: 'OBSERVED', distinct_tasks: partEvents.length };
+    const strongContexts = new Set(independent.map(function (e) { return e.transfer_context_id || e.stimulus_id; }));
+    const hasTransfer = independent.some(function (e) { return ['P4', 'P5'].includes(e.evidence_class); });
+    const examLike = independent.some(function (e) { return e.evidence_class === 'P5' && !e.exam_constraint_violation; });
+    if (independent.length >= 2 && hasTransfer && strongContexts.size >= 2) {
+      return { tier: examLike ? 'T4' : 'T3', label: examLike ? 'EXAM_LIKE_CONFIRMED' : 'TRANSFER_CONFIRMED', distinct_tasks: partEvents.length };
+    }
+    return { tier: 'T2', label: 'INDEPENDENTLY_SAMPLED', distinct_tasks: partEvents.length };
+  }
+
+  function readinessBasisKey(snapshot) {
+    return JSON.stringify({
+      module: snapshot.module,
+      basis_state_snapshot_ids: snapshot.basis_state_snapshot_ids,
+      basis_evidence_event_ids: snapshot.basis_evidence_event_ids,
+      basis_error_ids: snapshot.basis_error_ids,
+      basis_review_record_ids: snapshot.basis_review_record_ids,
+      readiness_state: snapshot.readiness_state,
+      official_teil_coverage: snapshot.official_teil_coverage,
+      missing_data_flags: snapshot.missing_data_flags
+    });
+  }
+
+  function computeReadiness(rt, now) {
+    if (!rt.readinessInputSnapshots) rt.readinessInputSnapshots = [];
+    if (!rt.readinessSnapshots) rt.readinessSnapshots = [];
+
+    const outputs = [];
+    Object.keys(MODULE_CONFIG).forEach(function (moduleKey) {
+      const cfg = MODULE_CONFIG[moduleKey];
+      const events = moduleEvents(rt, moduleKey);
+      const relevantSkillStates = Object.values(rt.skillStates).filter(function (s) {
+        return (getSkill(s.skill_node_id).module || '').toUpperCase() === moduleKey;
+      });
+      const relevantErrors = rt.errors.filter(function (e) { return String(e.module || '').toUpperCase() === cfg.display.toUpperCase(); });
+      const relevantReviews = rt.reviews.filter(function (r) {
+        return relevantSkillStates.some(function (s) { return s.skill_node_id === r.skill_node_id; });
+      });
+      const partCoverage = cfg.parts.map(function (part) {
+        const tier = coverageTier(events, part);
+        return {
+          teil_or_aufgabe: part,
+          coverage_tier: tier.tier,
+          coverage_label: tier.label,
+          distinct_task_count: tier.distinct_tasks,
+          micro_skill_count: cfg.microCounts[part]
+        };
+      });
+      const independentEvents = events.filter(function (e) { return ['P3', 'P4', 'P5'].includes(e.evidence_class); });
+      const transferEvents = events.filter(function (e) { return ['P4', 'N3'].includes(e.evidence_class); });
+      const examLikeEvents = events.filter(function (e) { return ['P5', 'N4'].includes(e.evidence_class); });
+      const observedSkillIds = new Set(events.map(function (e) { return e.skill_node_id; }));
+      const independentSkillIds = new Set(independentEvents.map(function (e) { return e.skill_node_id; }));
+      const totalMicro = cfg.parts.reduce(function (sum, p) { return sum + cfg.microCounts[p]; }, 0);
+      const checkedParts = partCoverage.filter(function (p) { return ['T2', 'T3', 'T4'].includes(p.coverage_tier); }).length;
+      const allPartsT2 = checkedParts === cfg.parts.length;
+      const observedPct = totalMicro ? observedSkillIds.size / totalMicro : 0;
+      const independentPct = totalMicro ? independentSkillIds.size / totalMicro : 0;
+      const microFloorPass = observedPct >= 0.70 && independentPct >= 0.40;
+      const sufficient = allPartsT2 && microFloorPass;
+      const activeBlockers = [];
+      relevantSkillStates.forEach(function (s) {
+        if (['M5', 'M6'].includes(s.mastery_state)) activeBlockers.push(s.skill_node_id + ':' + s.mastery_state);
+      });
+      relevantErrors.forEach(function (e) {
+        if (e.status === 'RETURNED') activeBlockers.push(e.error_id + ':RETURNED');
+      });
+      const missingFlags = [];
+      partCoverage.forEach(function (p) {
+        if (!['T2', 'T3', 'T4'].includes(p.coverage_tier)) missingFlags.push('PART_NOT_INDEPENDENTLY_SAMPLED:' + p.teil_or_aufgabe);
+      });
+      if (observedPct < 0.70) missingFlags.push('MODULE_MICRO_SKILL_COVERAGE_BELOW_70');
+      if (independentPct < 0.40) missingFlags.push('MODULE_INDEPENDENT_MICRO_SKILL_COVERAGE_BELOW_40');
+      if (!examLikeEvents.length) missingFlags.push('NO_EXAM_LIKE_EVIDENCE');
+
+      const input = {
+        readiness_input_snapshot_id: nextId(rt, 'readinessinput'),
+        policy_version: POLICY.readiness,
+        module: cfg.display,
+        computed_at: iso(now),
+        coverage: partCoverage,
+        mastery: relevantSkillStates.map(function (s) { return { skill_node_id: s.skill_node_id, mastery_state: s.mastery_state, state_snapshot_id: s.state_snapshot_id || null }; }),
+        independence: {
+          independent_event_ids: independentEvents.map(function (e) { return e.event_id; }),
+          assisted_event_ids: events.filter(function (e) { return ['P1', 'P2'].includes(e.evidence_class); }).map(function (e) { return e.event_id; })
+        },
+        transfer: {
+          transfer_event_ids: transferEvents.map(function (e) { return e.event_id; }),
+          transfer_pending_error_ids: relevantErrors.filter(function (e) { return e.status === 'TRANSFER_PENDING'; }).map(function (e) { return e.error_id; })
+        },
+        freshness: {
+          due_review_ids: relevantReviews.filter(function (r) { return ['DUE', 'OVERDUE'].includes(r.review_state); }).map(function (r) { return r.review_id; }),
+          latest_independent_at: independentEvents.length ? independentEvents[independentEvents.length - 1].completed_at : null
+        },
+        errors: {
+          unresolved_error_ids: relevantErrors.filter(function (e) { return e.status !== 'RESOLVED'; }).map(function (e) { return e.error_id; }),
+          returned_error_ids: relevantErrors.filter(function (e) { return e.status === 'RETURNED'; }).map(function (e) { return e.error_id; })
+        },
+        timing: {
+          timed_event_ids: events.filter(function (e) { return Number.isFinite(e.response_time_ms); }).map(function (e) { return e.event_id; })
+        },
+        checkpoints_exam_like: {
+          event_ids: examLikeEvents.map(function (e) { return e.event_id; })
+        },
+        productive_skill_confidence: {
+          evaluator_sources: [],
+          evaluator_confidence: [],
+          missing_audio_flags: moduleKey === 'SPRECHEN' ? ['NO_RUNTIME_AUDIO_EVIDENCE_IN_B1_I01'] : []
+        },
+        missing_data_flags: clone(missingFlags)
+      };
+      const inputKey = JSON.stringify({
+        module: input.module,
+        coverage: input.coverage,
+        mastery: input.mastery,
+        evidence: events.map(function (e) { return e.event_id; }),
+        errors: input.errors,
+        reviews: relevantReviews.map(function (r) { return [r.review_id, r.review_state]; }),
+        missing: input.missing_data_flags
+      });
+      const lastInput = rt.readinessInputSnapshots.filter(function (x) { return x.module === cfg.display; }).slice(-1)[0];
+      if (!lastInput || lastInput.basis_key !== inputKey) {
+        input.basis_key = inputKey;
+        rt.readinessInputSnapshots.push(clone(input));
+      } else {
+        input.readiness_input_snapshot_id = lastInput.readiness_input_snapshot_id;
+        input.basis_key = lastInput.basis_key;
+      }
+
+      let state = 'R0';
+      let userLabel = 'Недостаточно данных';
+      let confidence = 'C0';
+      let confidenceLabel = 'Надёжность данных: низкая';
+      let auditReasons = ['SUFFICIENCY_GATE_FAILED'];
+      if (sufficient) {
+        const m1 = relevantSkillStates.filter(function (s) { return s.mastery_state === 'M1'; });
+        const m6 = relevantSkillStates.filter(function (s) { return s.mastery_state === 'M6'; });
+        const m5 = relevantSkillStates.filter(function (s) { return s.mastery_state === 'M5'; });
+        const due = relevantReviews.some(function (r) { return ['DUE', 'OVERDUE'].includes(r.review_state); });
+        if (m6.length || activeBlockers.some(function (x) { return x.includes('RETURNED'); })) {
+          state = 'R1'; userLabel = 'Требуется работа'; confidence = 'C2'; confidenceLabel = 'Надёжность данных: средняя'; auditReasons = ['MATERIAL_UNRESOLVED_NEGATIVE_EVIDENCE'];
+        } else if (m1.length || m5.length || !examLikeEvents.length) {
+          state = 'R2'; userLabel = 'Прогресс есть, но результат нестабилен'; confidence = 'C2'; confidenceLabel = 'Надёжность данных: средняя'; auditReasons = ['UNSTABLE_OR_EXAM_LIKE_GAP'];
+        } else if (due) {
+          state = 'R3'; userLabel = 'Нужна повторная проверка'; confidence = 'C2'; confidenceLabel = 'Надёжность данных: средняя'; auditReasons = ['RECHECK_DUE'];
+        } else {
+          state = 'R4'; userLabel = 'Устойчивые доказательства есть'; confidence = 'C3'; confidenceLabel = 'Надёжность данных: высокая'; auditReasons = ['READY_GATE_PASSED'];
+        }
+      }
+
+      const reason = state === 'R0'
+        ? (events.length ? 'Пока проверена только часть модуля. Для общей оценки данных недостаточно.' : 'Пока недостаточно самостоятельных проверок, чтобы оценить весь модуль.')
+        : state === 'R1' ? 'Данных уже достаточно, и есть повторяющаяся самостоятельная проблема.'
+        : state === 'R2' ? 'Данных достаточно для оценки, но самостоятельность или перенос навыка пока нестабильны.'
+        : state === 'R3' ? 'Результаты были устойчивыми, но часть подтверждений уже пора обновить.'
+        : 'Есть достаточные свежие самостоятельные подтверждения по всему модулю.';
+
+      const output = {
+        readiness_snapshot_id: nextId(rt, 'readiness'),
+        policy_version: POLICY.readiness,
+        module: cfg.display,
+        computed_at: iso(now),
+        basis_state_snapshot_ids: relevantSkillStates.map(function (s) { return s.state_snapshot_id; }).filter(Boolean),
+        basis_evidence_event_ids: events.map(function (e) { return e.event_id; }),
+        basis_error_ids: relevantErrors.map(function (e) { return e.error_id; }),
+        basis_review_record_ids: relevantReviews.map(function (r) { return r.review_id; }),
+        readiness_state: state,
+        confidence_level: confidence,
+        sufficiency_status: sufficient ? 'SUFFICIENT_FOR_READINESS_CLASSIFICATION' : 'INSUFFICIENT_FOR_READINESS_CLASSIFICATION',
+        official_teil_coverage: partCoverage,
+        micro_skill_coverage_summary: {
+          total_frozen_micro_skills: totalMicro,
+          observed_micro_skills: observedSkillIds.size,
+          independent_micro_skills: independentSkillIds.size,
+          observed_ratio: observedPct,
+          independent_ratio: independentPct
+        },
+        independence_summary: input.independence,
+        transfer_summary: input.transfer,
+        exam_like_summary: input.checkpoints_exam_like,
+        freshness_summary: input.freshness,
+        active_blockers: activeBlockers,
+        missing_data_flags: missingFlags,
+        evaluator_quality_summary: input.productive_skill_confidence,
+        user_label_key: state,
+        audit_reason_codes: auditReasons,
+        supersedes_snapshot_id: null,
+        user_label: userLabel,
+        confidence_label: confidenceLabel,
+        coverage: 'Проверено: ' + checkedParts + ' из ' + cfg.parts.length + ' ' + (cfg.partLabel === 'Teil' ? 'Teil' : 'Aufgaben'),
+        reason: reason,
+        next_step: moduleKey === 'LESEN'
+          ? (checkedParts < cfg.parts.length ? 'Продолжить самостоятельные задания и постепенно проверить остальные Teil.' : 'Добавить exam-like проверку без подсказок.')
+          : 'Следующий шаг появится, когда для этого модуля будут подключены реальные задания и сбор результатов.',
+        confirmed: checkedParts ? ['Самостоятельно проверено частей модуля: ' + checkedParts + '.'] : [],
+        missing: missingFlags.map(function (flag) {
+          if (flag.indexOf('PART_NOT_INDEPENDENTLY_SAMPLED:') === 0) return 'Ещё не проверено самостоятельно: ' + flag.split(':')[1] + '.';
+          if (flag === 'NO_EXAM_LIKE_EVIDENCE') return 'Нет полной проверки в условиях без учебных подсказок.';
+          return 'Нужно расширить покрытие микронавыков.';
+        }),
+        influenced_by: [
+          'Завершённых попыток: ' + events.length,
+          'Микронавыков с данными: ' + observedSkillIds.size + ' из ' + totalMicro
+        ]
+      };
+
+      const key = readinessBasisKey(output);
+      const last = rt.readinessSnapshots.filter(function (x) { return x.module === cfg.display; }).slice(-1)[0];
+      if (!last || last.basis_key !== key) {
+        output.supersedes_snapshot_id = last ? last.readiness_snapshot_id : null;
+        output.basis_key = key;
+        rt.readinessSnapshots.push(clone(output));
+      } else {
+        output.readiness_snapshot_id = last.readiness_snapshot_id;
+        output.supersedes_snapshot_id = last.supersedes_snapshot_id || null;
+        output.basis_key = last.basis_key;
+      }
+      outputs.push(output);
+    });
+
+    const wrapper = {
+      policy_version: POLICY.readiness,
+      computed_at: iso(now),
+      modules: outputs
+    };
+    rt.readiness = wrapper;
+    return wrapper;
+  }
+
+  function actionTypeLabel(type) {
+    return {
+      RECOVERY_REPAIR: 'исправить текущую ошибку',
+      OVERDUE_REVIEW: 'пройти просроченную перепроверку',
+      DUE_REVIEW: 'пройти повторную проверку',
+      POST_REPAIR_CONFIRMATION: 'подтвердить исправленный навык',
+      TRANSFER_CHECK: 'проверить навык на новом материале',
+      WEAK_SKILL_BUILD: 'усилить навык',
+      DEVELOPING_SKILL_BUILD: 'продолжить самостоятельную практику',
+      ASSISTANCE_DEPENDENCY_RECHECK: 'проверить навык без подсказки',
+      EVIDENCE_GAP_PROBE: 'собрать недостающие данные',
+      STALE_MAINTENANCE: 'обновить давно не проверявшийся навык',
+      EXAM_LIKE_CHECKPOINT: 'пройти проверку без учебных подсказок'
+    }[type] || 'продолжить подготовку';
+  }
+
+  function masteryLabel(state) {
+    return {
+      M0: 'Недостаточно данных',
+      M1: 'Нужно усилить',
+      M2: 'Навык развивается',
+      M3: 'Подтверждено на новом контексте',
+      M4: 'Стабильно подтверждено',
+      M5: 'Результат нестабилен',
+      M6: 'Навык вернулся в работу'
+    }[state] || 'Недостаточно данных';
+  }
+
+  function boot(root) {
+    if (typeof S === 'undefined' || typeof R === 'undefined' || typeof go !== 'function') return;
+
+    function ensure() {
+      if (!S.i01 || S.i01.version !== 2) S.i01 = freshRuntime();
+      const rt = S.i01;
+      if (!rt.skillStates) rt.skillStates = {};
+      ['repairAttempts','skillStateSnapshots','plannerInputSnapshots','plannerDecisions','plans','planRevisions','readinessInputSnapshots','readinessSnapshots'].forEach(function (key) {
+        if (!Array.isArray(rt[key])) rt[key] = [];
+      });
+      if (!rt.ui) rt.ui = freshRuntime().ui;
+      recomputeAllSkillStates(rt);
+      refreshReviewStates(rt, Date.now());
+      computeReadiness(rt, Date.now());
+      persist();
+      return rt;
+    }
+
+    function rt() { return ensure(); }
+    function e(x) { return typeof esc === 'function' ? esc(x) : String(x); }
+    function findError(id) { return rt().errors.find(function (x) { return x.error_id === id; }) || null; }
+    function currentAction() {
+      const state = rt();
+      if (!state.session || !state.session.remainingActions || !state.session.remainingActions.length) return null;
+      return state.session.remainingActions[0];
+    }
+
+    function reasonCard(action) {
+      const reason = action ? REASON_LABELS[action.primary_reason_code] || 'Это действие выбрано по текущим evidence.' : '';
+      return '<div class="card i01-reason"><b>Почему сейчас</b><p class="sub">' + e(reason) + '</p>' +
+        '<button class="i01-link" onclick="i01OpenAudit(\'' + e(action ? action.candidate_action_id : '') + '\')">Почему OTTO так решил?</button></div>';
+    }
+
+    function style() {
+      if (document.getElementById('i01-style')) return;
+      const s = document.createElement('style');
+      s.id = 'i01-style';
+      s.textContent = [
+        '.i01-kicker{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.09em;color:#8b6a52}',
+        '.i01-plan{display:grid;gap:9px;margin:13px 0}',
+        '.i01-step{border:1px solid #e8e0d8;border-radius:16px;padding:12px;background:#fff}',
+        '.i01-step b{display:block;margin-bottom:4px}',
+        '.i01-step small{color:var(--muted);line-height:1.35;display:block}',
+        '.i01-reason{border-left:4px solid #8b6a52}',
+        '.i01-link{border:0;background:transparent;padding:0;color:#6b4f3c;text-decoration:underline;font-weight:800;cursor:pointer}',
+        '.i01-text{font-size:15px;line-height:1.6;background:#f7f1eb;border-radius:16px;padding:15px;margin:12px 0}',
+        '.i01-statement{font-size:17px;line-height:1.45;margin:16px 0;font-weight:800}',
+        '.i01-meta{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}',
+        '.i01-meta span{background:#f3eee7;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:750}',
+        '.i01-help{background:#fff8ea;border:1px solid #ead7b7;border-radius:14px;padding:12px;margin:10px 0;font-size:13px;line-height:1.45}',
+        '.i01-cardgrid{display:grid;gap:10px}',
+        '.i01-readiness{border:1px solid #e8e0d8;border-radius:18px;padding:14px;background:#fff}',
+        '.i01-readiness h3{margin:0 0 6px;font-size:18px}',
+        '.i01-readiness .state{font-weight:900;margin-bottom:6px}',
+        '.i01-readiness .coverage{font-size:12px;color:#6f6259;margin:7px 0}',
+        '.i01-audit{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.5;white-space:pre-wrap;background:#f7f1eb;padding:12px;border-radius:14px}',
+        '.i01-summaryline{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #eee8e1}',
+        '.i01-summaryline:last-child{border-bottom:0}',
+        '.i01-badge{display:inline-block;padding:6px 9px;border-radius:999px;background:#eef2e9;font-size:11px;font-weight:850}',
+        '.i01-danger{background:#f8e9e5}',
+        '.i01-neutral{background:#f3eee7}'
+      ].join('');
+      document.head.appendChild(s);
+    }
+
+    function registerScreens() {
+      TITLES.readiness = 'Готовность по модулям';
+      [
+        ['my-prep', 'Моя подготовка'],
+        ['prep-task', 'Задание · Моя подготовка'],
+        ['prep-repair', 'Исправление ошибки'],
+        ['prep-summary', 'Итог занятия'],
+        ['prep-audit', 'Почему OTTO так решил?']
+      ].forEach(function (pair) {
+        TITLES[pair[0]] = pair[1];
+        if (!SCREENS.some(function (x) { return x[0] === pair[0]; })) SCREENS.push(pair);
+      });
+      by('mapItems').innerHTML = SCREENS.map(function (x, i) {
+        return '<button onclick="toggleMap();go(\'' + x[0] + '\')">' + (i + 1) + '. ' + x[1] + '</button>';
+      }).join('');
+    }
+
+    root.i01Reset = function () {
+      if (!confirm('Сбросить данные этой учебной версии на этом устройстве?')) return;
+      S.i01 = freshRuntime();
+      persist();
+      go('home');
+    };
+
+    root.i01SetDuration = function (minutes) {
+      const state = rt();
+      state.selectedDuration = Number(minutes);
+      persist();
+      render();
+    };
+
+    root.i01Start = function () {
+      const state = rt();
+      if (state.session && !state.session.finishedAt && state.session.remainingActions && state.session.remainingActions.length) {
+        go('my-prep');
+        return;
+      }
+      const now = Date.now();
+      recomputeAllSkillStates(state, now);
+      const occasionId = nextId(state, 'occasion');
+      const plan = buildPlan(state, state.selectedDuration || 25, now, occasionId);
+      state.session = {
+        sessionId: nextId(state, 'session'),
+        learningOccasionId: plan.learning_occasion_id,
+        startedAt: iso(now),
+        finishedAt: null,
+        requestedDuration: state.selectedDuration || 25,
+        minutesUsed: 0,
+        completedActions: [],
+        remainingActions: clone(plan.selected_actions),
+        planId: plan.plan_id,
+        planRevision: plan.plan_revision,
+        revisionReason: 'SESSION_START'
+      };
+      state.planRevisions.push({
+        revision: 1,
+        reason: 'SESSION_START',
+        at: iso(now),
+        plan_id: plan.plan_id,
+        planner_input_snapshot_id: plan.planner_input_snapshot_id,
+        selected_action_ids: plan.selected_actions.map(function (a) { return a.candidate_action_id; })
+      });
+      persist();
+      go('my-prep');
+    };
+
+    root.i01Replan = function (reason) {
+      const state = rt();
+      if (!state.session || state.session.finishedAt) return null;
+      recomputeAllSkillStates(state, Date.now());
+      computeReadiness(state, Date.now());
+      const plan = buildPlan(state, state.session.requestedDuration || 25, Date.now());
+      const completedTaskIds = new Set(state.session.completedActions.map(function (a) { return a.task_id; }));
+      let remainingBudget = Math.max(0, (state.session.requestedDuration === 10 ? 9 : state.session.requestedDuration === 45 ? 41 : 22) - Number(state.session.minutesUsed || 0));
+      const remaining = [];
+      plan.selected_actions.forEach(function (a) {
+        if (completedTaskIds.has(a.task_id) && a.action_type !== 'RECOVERY_REPAIR') return;
+        if (a.minutes > remainingBudget) return;
+        if (remaining.some(function (x) { return x.task_id === a.task_id && x.action_type !== 'RECOVERY_REPAIR'; })) return;
+        remaining.push(a);
+        remainingBudget -= a.minutes;
+      });
+      state.session.planRevision += 1;
+      state.session.planId = plan.plan_id;
+      state.session.remainingActions = remaining;
+      state.session.revisionReason = reason;
+      state.planRevisions.push({
+        revision: state.session.planRevision,
+        reason: reason,
+        at: iso(),
+        plan_id: plan.plan_id,
+        planner_input_snapshot_id: plan.planner_input_snapshot_id,
+        selected_action_ids: remaining.map(function (a) { return a.candidate_action_id; })
+      });
+      persist();
+      return remaining;
+    };
+
+    root.i01SelectAnswer = function (index) {
+      const state = rt();
+      state.ui.selectedAnswer = Number(index);
+      persist();
+      render();
+    };
+
+    root.i01UseHint = function (level) {
+      const state = rt();
+      const action = currentAction();
+      if (!action) return;
+      const task = getTask(action.task_id);
+      const event = {
+        assistance_event_id: nextId(state, 'assist'),
+        event_id: null,
+        task_instance_id: task ? task.id : null,
+        level: level || 'strategy',
+        offered_at: iso(),
+        consumed_at: iso(),
+        content_type: level === 'strategy' ? 'strategy' : 'evidence_hint',
+        automatic_or_requested: 'requested',
+        source: 'OTTO',
+        affected_skill_node_id: action.skill_node_id
+      };
+      state.assistanceEvents.push(event);
+      state.ui.hintLevel = level || 'strategy';
+      state.ui.message = (level === 'strategy')
+        ? 'Стратегия: сначала сравни смысл утверждения со всем сообщением, потом выбирай Richtig/Falsch.'
+        : task.hint;
+      persist();
+      render();
+    };
+
+    function assistanceForCurrentTask(state, task) {
+      return state.assistanceEvents.filter(function (a) {
+        return a.affected_skill_node_id === task.skillNodeId &&
+          state.session && new Date(a.consumed_at).getTime() >= new Date(state.session.startedAt).getTime();
+      }).filter(function (a) {
+        return a._task_id ? a._task_id === task.id : true;
+      });
+    }
+
+    function currentMaxAssistance(state) {
+      return state.ui.hintLevel || 'none';
+    }
+
+    function clearTaskUI(state) {
+      state.ui.selectedAnswer = null;
+      state.ui.hintLevel = 'none';
+      state.ui.message = '';
+      state.ui.currentTaskStartedAt = null;
+    }
+
+    function markActionCompleted(state, action, outcome) {
+      if (!state.session || !action) return;
+      state.session.completedActions.push({
+        action_id: action.candidate_action_id,
+        action_type: action.action_type,
+        task_id: action.task_id,
+        skill_node_id: action.skill_node_id,
+        reason_code: action.primary_reason_code,
+        outcome: outcome,
+        module: action.module,
+        minutes: Number(action.minutes || action.estimated_duration_min || 0),
+        completed_at: iso()
+      });
+      state.session.minutesUsed += Number(action.minutes || 0);
+      state.session.remainingActions = state.session.remainingActions.filter(function (a) {
+        return a.candidate_action_id !== action.candidate_action_id;
+      });
+    }
+
+    root.i01SubmitTask = function () {
+      const state = rt();
+      const action = currentAction();
+      if (!action) return;
+      const task = getTask(action.task_id);
+      if (!task) return;
+      if (state.ui.selectedAnswer == null) return alert('Выбери Richtig или Falsch.');
+
+      const ok = state.ui.selectedAnswer === task.correctIndex;
+      const maxHelp = currentMaxAssistance(state);
+      const linkedError = action.error_id ? findError(action.error_id) : null;
+      const stage = action.action_type === 'TRANSFER_CHECK' ? 'transfer' :
+        (action.action_type === 'DUE_REVIEW' || action.action_type === 'OVERDUE_REVIEW' || action.action_type === 'POST_REPAIR_CONFIRMATION') ? 'independent' : 'independent';
+
+      const priorExact = state.evidenceEvents.filter(function (e) { return e.task_instance_id === task.id; }).length;
+      const priorFamily = state.evidenceEvents.filter(function (e) { return e.task_family_id === task.taskFamilyId; }).length;
+      const started = state.ui.currentTaskStartedAt || iso();
+      const event = makeEvidenceEvent(state, task, {
+        stage: stage,
+        attemptNumber: priorExact + 1,
+        priorExactExposure: priorExact,
+        priorFamilyExposure: priorFamily,
+        startedAt: started,
+        completedAt: Date.now(),
+        responseTimeMs: Math.max(0, Date.now() - new Date(started).getTime()),
+        maxAssistanceConsumed: maxHelp,
+        assistanceEvents: state.assistanceEvents.filter(function (a) {
+          return a.affected_skill_node_id === task.skillNodeId && a.task_instance_id === task.id && !a.event_id;
+        }),
+        selectedAnswer: state.ui.selectedAnswer,
+        outcomeStatus: ok ? 'success' : 'failure',
+        linkedErrorId: linkedError ? linkedError.error_id : null,
+        transferOfErrorId: action.action_type === 'TRANSFER_CHECK' && linkedError ? linkedError.error_id : null,
+        delayedReviewOfErrorId: action.review_id ? ((state.reviews.find(function (r) { return r.review_id === action.review_id; }) || {}).linked_error_id || null) : null
+      });
+
+      if (!ok) {
+        let error = linkedError;
+        if (!error) error = createErrorObject(state, task, event, Date.now());
+        if (action.review_id) {
+          const failedReview = state.reviews.find(function (r) { return r.review_id === action.review_id; });
+          if (failedReview) {
+            failedReview.last_review_result = 'failure';
+            failedReview.review_state = 'REGRESSION_DETECTED';
+            failedReview.basis_event_ids.push(event.event_id);
+            error.review_status = 'REGRESSION_DETECTED';
+            error.review_required = true;
+          }
+        }
+        else {
+          error.related_event_ids.push(event.event_id);
+          error.current_task_id = task.id;
+          error.last_seen_at = iso();
+          if (stage === 'transfer') error.transfer_event_ids.push(event.event_id);
+        }
+        error.status = 'EXPLAINED';
+        markActionCompleted(state, action, 'failure');
+        clearTaskUI(state);
+        state.ui.currentErrorId = error.error_id;
+        recomputeAllSkillStates(state, Date.now());
+        root.i01Replan(stage === 'transfer' ? 'TRANSFER_FAILURE' : 'NEW_ERROR');
+        persist();
+        go('prep-repair');
+        return;
+      }
+
+      if (stage === 'transfer' && linkedError && maxHelp === 'none' && event.evidence_class === 'P4') {
+        linkedError.transfer_event_ids.push(event.event_id);
+        linkedError.linked_evidence_event_ids = linkedError.linked_evidence_event_ids || [];
+        linkedError.linked_evidence_event_ids.push(event.event_id);
+        linkedError.transfer_status = 'success';
+        linkedError.status = 'PROVISIONALLY_RESOLVED';
+        createReviewObligation(state, linkedError, event, Date.now());
+      }
+
+      if (action.review_id && ok && maxHelp === 'none') {
+        const review = state.reviews.find(function (r) { return r.review_id === action.review_id; });
+        if (review) {
+          review.last_review_result = 'success';
+          review.review_success_streak = Number(review.review_success_streak || 0) + 1;
+          review.review_level = Math.min(5, Number(review.review_level || 0) + 1);
+          const intervals = [1, 3, 7, 14, 30, 30];
+          review.next_review_at = addDays(event.completed_at, intervals[review.review_level]);
+          review.review_state = 'SCHEDULED';
+          review.basis_event_ids.push(event.event_id);
+          const err = findError(review.linked_error_id);
+          if (err) {
+            err.delayed_review_event_ids = err.delayed_review_event_ids || [];
+            err.delayed_review_event_ids.push(event.event_id);
+            err.review_status = 'SCHEDULED';
+            err.status = 'RESOLVED';
+            err.resolved_at = event.completed_at;
+          }
+        }
+      }
+
+      markActionCompleted(state, action, ok ? 'success' : 'failure');
+      recomputeAllSkillStates(state, Date.now());
+      computeReadiness(state, Date.now());
+      clearTaskUI(state);
+      root.i01Replan('NEW_EVIDENCE');
+      persist();
+
+      if (!state.session.remainingActions.length || state.session.minutesUsed >= 18) {
+        root.i01FinishSession();
+      } else {
+        go('prep-task');
+      }
+    };
+
+    root.i01SubmitRepair = function () {
+      const state = rt();
+      const error = findError(state.ui.currentErrorId);
+      if (!error) return go('my-prep');
+      const task = getTask(error.current_task_id || error.origin_task_id);
+      if (state.ui.selectedAnswer == null) return alert('Выбери исправленный ответ.');
+
+      const ok = state.ui.selectedAnswer === task.correctIndex;
+      const help = currentMaxAssistance(state);
+      const priorExact = state.evidenceEvents.filter(function (e) { return e.task_instance_id === task.id; }).length;
+      const started = state.ui.currentTaskStartedAt || iso();
+
+      const event = makeEvidenceEvent(state, task, {
+        stage: help === 'none' ? 'independent' : 'guided',
+        selfRepairAttempt: true,
+        attemptNumber: priorExact + 1,
+        priorExactExposure: priorExact,
+        priorFamilyExposure: state.evidenceEvents.filter(function (e) { return e.task_family_id === task.taskFamilyId; }).length,
+        startedAt: started,
+        completedAt: Date.now(),
+        responseTimeMs: Math.max(0, Date.now() - new Date(started).getTime()),
+        maxAssistanceConsumed: help,
+        assistanceEvents: state.assistanceEvents.filter(function (a) {
+          return a.affected_skill_node_id === task.skillNodeId && a.task_instance_id === task.id && !a.event_id;
+        }),
+        selectedAnswer: state.ui.selectedAnswer,
+        outcomeStatus: ok ? 'success' : 'failure',
+        linkedErrorId: error.error_id,
+        selfCorrectionAttempted: true,
+        selfCorrectionSuccess: ok ? 'yes' : 'no'
+      });
+
+      const repairId = nextId(state, 'repair');
+      const consumedAssistance = clone(event.assistance_events || []);
+      const repairAttempt = {
+        repair_attempt_id: repairId,
+        error_id: error.error_id,
+        source_event_id: error.originating_event_id,
+        skill_node_id: error.skill_node_id,
+        learner_response_before: error.original_response,
+        learner_repair_response: state.ui.selectedAnswer,
+        assistance_event_ids: consumedAssistance.map(function (a) { return a.assistance_event_id; }),
+        max_assistance_consumed: help,
+        independence_class: independenceFromAssistance(help),
+        repair_result: ok ? 'success' : 'failure',
+        evaluator_source: 'rule',
+        evaluator_confidence: 'high',
+        learning_occasion_id: state.session ? state.session.learningOccasionId : event.learning_occasion_id,
+        started_at: started,
+        completed_at: event.completed_at,
+        created_at: iso()
+      };
+      state.repairAttempts.push(repairAttempt);
+      error.repair_attempt_ids.push(repairId);
+      error.repair_attempt_count = error.repair_attempt_ids.length;
+      error.max_assistance_during_repair = assistanceRank(help) > assistanceRank(error.max_assistance_during_repair || 'none') ? help : (error.max_assistance_during_repair || 'none');
+      error.self_repair_result = ok ? 'success' : 'failure';
+      error.related_event_ids.push(event.event_id);
+      error.linked_evidence_event_ids = error.linked_evidence_event_ids || [];
+      error.linked_evidence_event_ids.push(event.event_id);
+
+      if (ok) {
+        const repairAction = currentAction();
+        if (repairAction && repairAction.action_type === 'RECOVERY_REPAIR') {
+          markActionCompleted(state, repairAction, help === 'none' ? 'self_repair_success' : 'supported_repair_success');
+        }
+        error.status = (help === 'none' || help === 'strategy') ? 'SELF_REPAIRED' : 'SELF_REPAIR_PENDING';
+        error.current_task_id = task.id;
+        clearTaskUI(state);
+        error.status = 'TRANSFER_PENDING';
+        recomputeAllSkillStates(state, Date.now());
+        root.i01Replan(help === 'none' ? 'SELF_REPAIR_SUCCESS' : 'SUPPORTED_REPAIR_PROGRESS');
+        persist();
+        go('prep-task');
+      } else {
+        error.status = 'SELF_REPAIR_PENDING';
+        state.ui.message = 'Пока не получилось. Можно попробовать ещё раз или взять подсказку.';
+        clearTaskUI(state);
+        state.ui.currentErrorId = error.error_id;
+        persist();
+        render();
+      }
+    };
+
+    root.i01RevealRepairHint = function () {
+      const state = rt();
+      const error = findError(state.ui.currentErrorId);
+      if (!error) return;
+      const task = getTask(error.current_task_id || error.origin_task_id);
+      const event = {
+        assistance_event_id: nextId(state, 'assist'),
+        event_id: null,
+        task_instance_id: task.id,
+        level: 'evidence_hint',
+        offered_at: iso(),
+        consumed_at: iso(),
+        content_type: 'evidence_hint',
+        automatic_or_requested: 'requested',
+        source: 'OTTO',
+        affected_skill_node_id: task.skillNodeId
+      };
+      state.assistanceEvents.push(event);
+      error.assistance_event_ids.push(event.assistance_event_id);
+      state.ui.hintLevel = 'evidence_hint';
+      state.ui.message = task.hint;
+      persist();
+      render();
+    };
+
+    root.i01RevealAnswer = function () {
+      const state = rt();
+      const error = findError(state.ui.currentErrorId);
+      if (!error) return;
+      const task = getTask(error.current_task_id || error.origin_task_id);
+      const event = {
+        assistance_event_id: nextId(state, 'assist'),
+        event_id: null,
+        task_instance_id: task.id,
+        level: 'full_model',
+        offered_at: iso(),
+        consumed_at: iso(),
+        content_type: 'full_model',
+        automatic_or_requested: 'requested',
+        source: 'OTTO',
+        affected_skill_node_id: task.skillNodeId
+      };
+      state.assistanceEvents.push(event);
+      error.assistance_event_ids.push(event.assistance_event_id);
+      error.max_assistance_during_repair = 'full_model';
+      error.self_repair_result = 'model_exposed';
+      state.ui.hintLevel = 'full_model';
+      state.ui.message = task.explanation + ' Правильный ответ: ' + task.options[task.correctIndex] + '. После модели понадобится новый самостоятельный пример.';
+      const repairAction = currentAction();
+      if (repairAction && repairAction.action_type === 'RECOVERY_REPAIR') {
+        markActionCompleted(state, repairAction, 'model_exposed');
+      }
+      error.status = 'TRANSFER_PENDING';
+      clearTaskUI(state);
+      state.ui.message = 'Теперь проверь этот навык на новом материале самостоятельно.';
+      root.i01Replan('MODEL_EXPOSED_NEEDS_TRANSFER');
+      persist();
+      go('prep-task');
+    };
+
+    root.i01OpenAudit = function (actionId) {
+      const state = rt();
+      state.ui.auditActionId = actionId;
+      persist();
+      go('prep-audit');
+    };
+
+    root.i01FinishSession = function () {
+      const state = rt();
+      if (!state.session) return;
+      state.session.finishedAt = iso();
+      computeReadiness(state, Date.now());
+      persist();
+      go('prep-summary');
+    };
+
+    function planView() {
+      const state = rt();
+      const plan = state.currentPlan;
+      const session = state.session;
+      if (!session || !plan) {
+        return '<span class="i01-kicker">Моя подготовка</span><h1 class="h1">Готово начать</h1>' +
+          '<p class="sub">OTTO построит занятие по твоим результатам, ошибкам и тому, что пора повторить.</p>' +
+          '<div class="row"><button class="btn secondary" onclick="i01SetDuration(10)">10 минут</button><button class="btn primary" onclick="i01SetDuration(25)">25 минут</button><button class="btn secondary" onclick="i01SetDuration(45)">45 минут</button></div>' +
+          '<button class="btn primary" onclick="i01Start()">Построить план</button>';
+      }
+
+      const actions = session.remainingActions || [];
+      let html = '<span class="i01-kicker">Моя подготовка</span><h1 class="h1">План на ' + session.requestedDuration + ' минут</h1>';
+      html += '<p class="sub">OTTO выбирает порядок по твоим результатам, ошибкам и тому, что пора повторить. После важного ответа оставшаяся часть плана обновится.</p>';
+      html += '<div class="i01-plan">';
+      actions.forEach(function (a, i) {
+        const task = getTask(a.task_id);
+        html += '<div class="i01-step"><b>' + (i + 1) + '. ' + e(getSkill(a.skill_node_id).label) + '</b>' +
+          '<small>' + e(REASON_LABELS[a.primary_reason_code] || '') + '</small>' +
+          '<small>' + e(a.action_type === 'RECOVERY_REPAIR' ? 'Исправление текущей ошибки' : task ? 'Lesen Teil 1 · новое задание' : actionTypeLabel(a.action_type)) + '</small></div>';
+      });
+      html += '</div>';
+      if (!actions.length) {
+        html += '<div class="notice">Сейчас нет подходящего нового задания. OTTO не подставляет повтор почти того же задания только ради заполнения времени.</div>';
+        html += '<button class="btn primary" onclick="i01FinishSession()">Завершить занятие</button>';
+      } else {
+        html += reasonCard(actions[0]);
+        html += '<button class="btn primary" onclick="go(\'' + (actions[0].action_type === 'RECOVERY_REPAIR' ? 'prep-repair' : 'prep-task') + '\')">Начать мою подготовку</button>';
+      }
+      return html;
+    }
+
+    function taskView() {
+      const state = rt();
+      const action = currentAction();
+      if (!action) {
+        setTimeout(function () { root.i01FinishSession(); }, 0);
+        return '<h1 class="h1">Собираем итог…</h1>';
+      }
+      if (action.action_type === 'RECOVERY_REPAIR') {
+        setTimeout(function () { go('prep-repair'); }, 0);
+        return '<h1 class="h1">Переходим к исправлению…</h1>';
+      }
+      const task = getTask(action.task_id);
+      if (!task) {
+        return '<span class="i01-kicker">Моя подготовка</span><h1 class="h1">Нет валидного задания</h1><div class="notice">OTTO не использует точный или почти одинаковый повтор вместо нового материала.</div><button class="btn primary" onclick="i01Replan(\'CONTENT_BLOCK\');go(\'my-prep\')">Перестроить план</button>';
+      }
+      if (!state.ui.currentTaskStartedAt) {
+        state.ui.currentTaskStartedAt = iso();
+        persist();
+      }
+      let html = '<span class="i01-kicker">Lesen · Teil 1</span><h1 class="h1">' + e(getSkill(task.skillNodeId).label) + '</h1>';
+      html += reasonCard(action);
+      html += '<div class="i01-text">' + e(task.text) + '</div>';
+      html += '<div class="i01-statement">' + e(task.statement) + '</div>';
+      html += '<div class="i01-meta"><span>Richtig / Falsch</span><span>' + e(action.action_type === 'TRANSFER_CHECK' ? 'Новый контекст · перенос навыка' : 'Самостоятельная попытка') + '</span></div>';
+      task.options.forEach(function (opt, i) {
+        const sel = state.ui.selectedAnswer === i ? ' sel' : '';
+        html += '<button class="option' + sel + '" onclick="i01SelectAnswer(' + i + ')">' + e(opt) + '</button>';
+      });
+      if (state.ui.message) html += '<div class="i01-help">' + e(state.ui.message) + '</div>';
+      html += '<button class="btn primary" onclick="i01SubmitTask()">Ответить</button>';
+      if (state.ui.hintLevel === 'none') {
+        html += '<button class="btn secondary" onclick="i01UseHint(\'strategy\')">Совет Отто <small>· будет отмечен как помощь</small></button>';
+      } else if (state.ui.hintLevel === 'strategy') {
+        html += '<button class="btn ghost" onclick="i01UseHint(\'evidence_hint\')">Нужна более конкретная подсказка</button>';
+      }
+      return html;
+    }
+
+    function repairView() {
+      const state = rt();
+      let error = findError(state.ui.currentErrorId);
+      if (!error) {
+        const repairAction = currentAction();
+        if (repairAction && repairAction.error_id) {
+          error = findError(repairAction.error_id);
+          state.ui.currentErrorId = error ? error.error_id : null;
+        }
+      }
+      if (!error) return '<h1 class="h1">Активной ошибки нет</h1><button class="btn primary" onclick="go(\'my-prep\')">К плану</button>';
+      const task = getTask(error.current_task_id || error.origin_task_id);
+      if (['NEW', 'EXPLAINED', 'RETURNED'].includes(error.status)) error.status = 'SELF_REPAIR_PENDING';
+      if (!state.ui.currentTaskStartedAt) state.ui.currentTaskStartedAt = iso();
+      persist();
+
+      let html = '<span class="i01-kicker">Исправление ошибки</span><h1 class="h1">Сначала попробуй исправить сам</h1>';
+      html += '<div class="card bad"><b>Что произошло</b><p class="sub">' + e(error.cause_hypothesis) + '</p></div>';
+      html += '<div class="notice">OTTO пока не показывает готовый ответ. Сравни смысл текста и утверждения ещё раз.</div>';
+      html += '<div class="i01-text">' + e(task.text) + '</div><div class="i01-statement">' + e(task.statement) + '</div>';
+      task.options.forEach(function (opt, i) {
+        const sel = state.ui.selectedAnswer === i ? ' sel' : '';
+        html += '<button class="option' + sel + '" onclick="i01SelectAnswer(' + i + ')">' + e(opt) + '</button>';
+      });
+      if (state.ui.message) html += '<div class="i01-help">' + e(state.ui.message) + '</div>';
+      html += '<button class="btn primary" onclick="i01SubmitRepair()">Исправить самому</button>';
+      if (state.ui.hintLevel === 'none') html += '<button class="btn secondary" onclick="i01RevealRepairHint()">Нужна подсказка</button>';
+      if (state.ui.hintLevel !== 'full_model') html += '<button class="btn ghost" onclick="i01RevealAnswer()">Показать ответ и объяснение</button>';
+      return html;
+    }
+
+    function summaryView() {
+      const state = rt();
+      const session = state.session;
+      computeReadiness(state, Date.now());
+      const completed = session ? session.completedActions : [];
+      const independent = state.evidenceEvents.filter(function (ev) {
+        return session && ev.session_id === session.sessionId && ev.independence === 'independent' && ev.outcome_status === 'success' && ev.evidence_role !== 'self_repair';
+      }).length;
+      const assisted = state.evidenceEvents.filter(function (ev) {
+        return session && ev.session_id === session.sessionId && ev.outcome_status === 'success' && ev.independence !== 'independent';
+      }).length;
+      const reviews = state.reviews.filter(function (r) { return r.review_required; });
+      let html = '<span class="i01-kicker">Итог занятия</span><h1 class="h1">Что реально произошло</h1>';
+      html += '<div class="card"><div class="i01-summaryline"><b>Выполнено действий</b><span>' + completed.length + '</span></div>' +
+        '<div class="i01-summaryline"><b>Сделано самостоятельно</b><span>' + independent + '</span></div>' +
+        '<div class="i01-summaryline"><b>Получилось с подсказкой</b><span>' + assisted + '</span></div>' +
+        '<div class="i01-summaryline"><b>Повторных проверок запланировано</b><span>' + reviews.length + '</span></div></div>';
+
+      Object.keys(SKILLS).sort().forEach(function (skillId) {
+        const st = state.skillStates[skillId];
+        html += '<div class="card"><b>' + e(SKILLS[skillId].label) + '</b><p class="sub">' + e(masteryLabel(st ? st.mastery_state : 'M0')) + '</p></div>';
+      });
+
+      if (reviews.length) {
+        html += '<div class="card ok"><b>Исправлено — проверим позже</b><p class="sub">После успешного задания на новом материале создана отложенная самостоятельная перепроверка. Ближайшая: ' + e(new Date(reviews[0].next_review_at).toLocaleString('ru-RU')) + '.</p></div>';
+      }
+      html += '<div class="card soft"><b>Готовность</b><p class="sub">Lesen: <b>Недостаточно данных</b>. Эта версия покрывает только часть Lesen Teil 1, поэтому OTTO не выдумывает процент готовности.</p></div>';
+      html += '<button class="btn primary" onclick="go(\'readiness\')">Открыть готовность по модулям</button>';
+      html += '<button class="btn secondary" onclick="go(\'home\')">На главную</button>';
+      return html;
+    }
+
+    function auditView() {
+      const state = rt();
+      const actionId = state.ui.auditActionId;
+      const allPlans = [state.currentPlan].filter(Boolean);
+      const action = allPlans.reduce(function (found, p) {
+        return found || (p.selected_actions || []).find(function (a) { return a.candidate_action_id === actionId; });
+      }, null) || (state.session && state.session.remainingActions || []).find(function (a) { return a.candidate_action_id === actionId; });
+      const decision = state.plannerDecisions.slice().reverse().find(function (d) {
+        return d.selected.some(function (s) { return s.action_id === actionId; });
+      });
+      let html = '<span class="i01-kicker">Объяснение выбора</span><h1 class="h1">Почему OTTO так считает?</h1>';
+      if (!action || !decision) {
+        html += '<div class="notice">Для этого действия audit-запись не найдена.</div>';
+      } else {
+        const selected = decision.selected.find(function (s) { return s.action_id === actionId; });
+        html += '<div class="card"><b>Подтверждено</b><p class="sub">OTTO выбрал это действие по сохранённым результатам и текущим учебным приоритетам.</p></div>';
+        html += '<div class="card"><b>Почему сейчас</b><p class="sub">' + e(selected.reason_text) + '</p></div>';
+        html += '<div class="card"><b>Что повлияло</b><p class="sub">Навык: ' + e(getSkill(action.skill_node_id).label) + '. Следующий шаг: ' + e(actionTypeLabel(action.action_type)) + '.</p></div>';
+        html += '<div class="card"><b>Что дальше</b><p class="sub">После следующего ответа OTTO обновит состояние навыка и оставшуюся часть занятия.</p></div>';
+        html += '<details><summary>Технический audit для QA</summary><pre class="i01-audit">' + e(JSON.stringify({ selected: selected, deferred: decision.deferred }, null, 2)) + '</pre></details>';
+      }
+      html += '<button class="btn primary" onclick="back()">Назад</button>';
+      return html;
+    }
+
+    function readinessView() {
+      const state = rt();
+      const snapshot = computeReadiness(state, Date.now());
+      let html = '<span class="i01-kicker">Готовность к модулю — оценка OTTO</span><h1 class="h1">Четыре модуля — четыре отдельные картины</h1>';
+      html += '<p class="sub">Это внутренняя оценка OTTO, не официальный результат Goethe. Сильный модуль не компенсирует другой.</p><div class="i01-cardgrid">';
+      snapshot.modules.forEach(function (m) {
+        html += '<div class="i01-readiness"><h3>' + e(m.module) + '</h3><div class="state">' + e(m.user_label) + '</div>' +
+          '<p class="sub">' + e(m.reason) + '</p><div class="coverage">' + e(m.coverage) + '</div>' +
+          '<div class="i01-badge i01-neutral">' + e(m.confidence_label) + '</div>' +
+          '<p class="sub"><b>Дальше:</b> ' + e(m.next_step) + '</p>' +
+          '<details><summary>Почему OTTO так считает?</summary><p class="sub"><b>Подтверждено:</b> ' + e(m.confirmed.length ? m.confirmed.join(' ') : 'Пока нет достаточного подтверждения.') + '</p>' +
+          '<p class="sub"><b>Пока не подтверждено:</b> ' + e(m.missing.join(' ')) + '</p>' +
+          '<p class="sub"><b>Что повлияло:</b> ' + e(m.influenced_by.join(' ') || 'Пока данных недостаточно.') + '</p>' +
+          '<p class="sub"><b>Что дальше:</b> ' + e(m.next_step) + '</p></details></div>';
+      });
+      html += '</div><button class="btn primary" onclick="go(\'home\')">На главную</button>';
+      return html;
+    }
+
+    style();
+    registerScreens();
+    ensure();
+
+    R.splash = function () {
+      const state = rt();
+      const hasSession = state.session && !state.session.finishedAt;
+      return '<div class="hero center"><div class="otto"><img src="assets/otto.webp" alt="Отто"></div><h1>OTTO B1</h1><p>Персональная подготовка по твоим результатам, ошибкам и повторным проверкам.</p>' +
+        '<button class="btn ghost" onclick="i01Start()">' + (hasSession ? 'Продолжить мою подготовку' : 'Начать мою подготовку') + '</button></div>' +
+        '<div class="card soft"><b>Как работает эта версия</b><p class="sub">OTTO выбирает задания по твоим ответам, помогает разобрать ошибку и позже возвращает навык на повторную проверку.</p></div>';
+    };
+
+    R.home = function () {
+      const state = rt();
+      const sessionOpen = state.session && !state.session.finishedAt;
+      return '<span class="eyebrow">' + e(S.name || 'OTTO B1') + '</span><h1 class="h1">Моя подготовка</h1>' +
+        '<p class="sub">OTTO сам выбирает следующий полезный шаг по твоим результатам. Основной режим этой версии — 25 минут.</p>' +
+        '<div class="card soft"><b>Сегодня</b><p class="sub">' + (sessionOpen ? 'Занятие уже начато — можно продолжить.' : 'Новый план будет построен по текущим данным.') + '</p></div>' +
+        '<button class="btn primary" onclick="i01Start()">' + (sessionOpen ? 'Продолжить мою подготовку' : 'Начать мою подготовку') + '</button>' +
+        '<button class="btn secondary" onclick="go(\'time\')">Время: ' + state.selectedDuration + ' минут</button>' +
+        '<button class="btn secondary" onclick="go(\'readiness\')">Готовность по модулям</button>' +
+        '<button class="btn ghost" onclick="i01Reset()">Начать заново</button>';
+    };
+
+    R.time = function () {
+      const state = rt();
+      return '<span class="eyebrow">Время</span><h1 class="h1">Сколько времени есть?</h1><p class="sub">25 минут — основной полностью рабочий режим этой версии. Режимы 10 и 45 минут используют те же правила, но пока могут завершиться раньше, если подходящих заданий недостаточно.</p>' +
+        '<div class="grid">' + [10,25,45].map(function (n) {
+          return '<button class="module" onclick="i01SetDuration(' + n + ')"><b>' + n + ' минут</b><small>' + (n === 25 ? 'основной режим' : 'поддерживается ядром') + '</small></button>';
+        }).join('') + '</div><button class="btn primary" onclick="go(\'home\')">Готово</button>';
+    };
+
+    R['my-prep'] = planView;
+    R['prep-task'] = taskView;
+    R['prep-repair'] = repairView;
+    R['prep-summary'] = summaryView;
+    R['prep-audit'] = auditView;
+    R.readiness = readinessView;
+
+    R.route = function () {
+      const state = rt();
+      const skillCards = Object.keys(SKILLS).sort().map(function (skillId) {
+        const st = state.skillStates[skillId];
+        return '<div class="card"><b>' + e(SKILLS[skillId].label) + '</b><p class="sub">' + e(masteryLabel(st ? st.mastery_state : 'M0')) + '</p></div>';
+      }).join('');
+      return '<span class="eyebrow">Маршрут</span><h1 class="h1">Что идёт следующим</h1>' + skillCards +
+        '<button class="btn primary" onclick="i01Start()">Начать мою подготовку</button>';
+    };
+
+    R.errors = function () {
+      const state = rt();
+      const active = state.errors.slice().reverse();
+      return '<span class="eyebrow">Память ошибок</span><h1 class="h1">Мои ошибки</h1>' +
+        (active.length ? active.map(function (err) {
+          return '<div class="card ' + (err.status === 'REVIEW_SCHEDULED' || err.status === 'RESOLVED' ? 'ok' : 'bad') + '"><b>' +
+            e(getSkill(err.skill_node_id).label) + '</b><p class="sub">' + e(err.cause_hypothesis) + '</p><span class="i01-badge">' +
+            e(err.status === 'REVIEW_SCHEDULED' ? 'Исправлено — проверим позже' : err.status === 'RESOLVED' ? 'Подтверждено повторно' : 'Нужно ещё закрепить') +
+            '</span></div>';
+        }).join('') : '<div class="card soft"><b>Пока пусто</b><p class="sub">Ошибки появятся после реальных попыток.</p></div>') +
+        '<button class="btn primary" onclick="i01Start()">К моей подготовке</button>';
+    };
+
+    R.progress = function () {
+      const state = rt();
+      return '<span class="eyebrow">Прогресс</span><h1 class="h1">Результаты, а не активность</h1>' +
+        Object.keys(SKILLS).sort().map(function (skillId) {
+          const events = state.evidenceEvents.filter(function (x) { return x.skill_node_id === skillId; });
+          const st = state.skillStates[skillId];
+          return '<div class="card"><b>' + e(SKILLS[skillId].label) + '</b><p class="sub">' +
+            e(masteryLabel(st ? st.mastery_state : 'M0')) + ' · попыток: ' + events.length + '</p></div>';
+        }).join('') +
+        '<button class="btn primary" onclick="go(\'readiness\')">Готовность по модулям</button>';
+    };
+
+    render();
+  }
+
+  return {
+    POLICY: POLICY,
+    SKILLS: SKILLS,
+    CONTENT: CONTENT,
+    REASON_LABELS: REASON_LABELS,
+    MODULE_CONFIG: MODULE_CONFIG,
+    CONTENT_CATALOG_VERSION: CONTENT_CATALOG_VERSION,
+    freshRuntime: freshRuntime,
+    isTransferSafe: isTransferSafe,
+    classifyEvidence: classifyEvidence,
+    makeEvidenceEvent: makeEvidenceEvent,
+    deriveSkillState: deriveSkillState,
+    recomputeAllSkillStates: recomputeAllSkillStates,
+    createErrorObject: createErrorObject,
+    createReviewObligation: createReviewObligation,
+    createPlannerInputSnapshot: createPlannerInputSnapshot,
+    refreshReviewStates: refreshReviewStates,
+    generateCandidates: generateCandidates,
+    buildPlan: buildPlan,
+    computeReadiness: computeReadiness,
+    masteryLabel: masteryLabel,
+    boot: boot
+  };
+});
