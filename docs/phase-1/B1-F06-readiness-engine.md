@@ -1705,59 +1705,73 @@ Expected:
 ## Technical Architecture
 **PASS — FINAL**
 
-Resolved:
+Original architecture findings resolved:
 - deterministic blocker semantics without undefined criticality;
 - CheckpointCoverageManifest for full-module exam-like proof;
 - Teil-level freshness aggregation from F04;
 - machine-testable C0/C1/C2 confidence gates;
-- full frozen F01 Micro-skill denominator for R4;
-- QA-driven R1 aggregation, R0 blocker visibility and system-data-gap semantics.
+- full frozen F01 Micro-skill denominator for R4.
+
+Independent productive-skill QA later exposed three additional gaps. Technical re-check on the corrected spec confirms:
+- Aufgabe-scoped Schreiben criterion coverage is deterministic;
+- Sprechen pronunciation uses the frozen `pronunciation_observation` channel and cannot be inferred from audio presence;
+- Sprechen Aufgabe 1/3 interaction validity is machine-testable using frozen fields/Micro-skill observations;
+- all new records/flags are derived F06 metadata, not F02 schema rewrites.
 
 No frozen F01–F05 change request is required.
 
 ## QA
-**RE-CHECK REQUIRED after independent QA FAIL on prior head**
+**PASS — FINAL — F06-Q01..F06-Q20**
 
-The independent review of head `02f52f666f5e99188cb0c62657cd876de143d812` superseded the earlier 17/17 PASS and found three blocking productive-skill gaps:
-- Sprechen pronunciation could be missing while audio existed;
-- Sprechen interaction validity was not deterministic;
-- Schreiben criterion coverage was module-aggregated rather than Aufgabe-scoped.
+Historical note:
+- head `02f52f666f5e99188cb0c62657cd876de143d812` received an independent **QA FAIL** for three productive-skill blockers;
+- that FAIL superseded the earlier 17/17 PASS for that head;
+- the current spec addresses all three blockers and adds Q18–Q20.
 
-The current spec addresses all three and adds F06-Q18..Q20.
+Verified on the corrected head:
+- audio presence cannot substitute for pronunciation evidence;
+- Sprechen interaction evidence is deterministic for Aufgaben 1/3;
+- Schreiben criterion evidence is scoped independently to every Aufgabe;
+- section references are corrected;
+- original Q01–Q17 still pass;
+- Q18 pronunciation-missing: PASS;
+- Q19 interaction-missing: PASS;
+- Q20 Aufgabe criterion-missing: PASS.
 
-Final QA status must be set only after re-running F06-Q01..Q20 on the updated head.
+**Final QA: 20/20 PASS.**
 
 ## GOETHE boundary
 **PASS — FINAL**
 
-- R/T/C states and internal thresholds are OTTO_METHOD.
+- R/T/C states and internal thresholds remain OTTO_METHOD.
 - Official Module/Teil/Aufgabe structure remains frozen from F01.
+- Schreiben Aufgabe-scoped criterion coverage follows the F01 criterion map for each Aufgabe.
+- Sprechen interaction sufficiency rules are explicitly OTTO_METHOD operationalization of official interactive task behavior.
+- Aussprache remains an official module criterion across Aufgaben 1–3; F06's per-Aufgabe pronunciation evidence gate is explicitly conservative OTTO_METHOD, not a claim of separate official per-Aufgabe pronunciation scoring.
 - 60/100 is not used as an OTTO threshold.
 - No official score, pass/fail or pass probability is calculated.
-- Final UX explicitly states OTTO readiness is not an official Goethe result.
 - Hören/Schreiben/Sprechen exam-like boundaries remain intact.
 
 ## UX / DESIGN
 **PASS — FINAL AFTER DEEP REVIEW**
 
-The earlier UX contract passed basic wording review but later received a deeper PR-level review with **DESIGN FAIL** because the presentation contract could still be implemented as a technical dashboard.
-
-Deep-review findings UX-F06-01..UX-F06-09 are now resolved.
+Historical note:
+- the first UX wording pass was later superseded by a deeper **DESIGN FAIL** because the contract could still be implemented as a technical dashboard;
+- UX-F06-01..UX-F06-09 are now resolved.
 
 The final spec freezes:
 - four independent cards in fixed order: Lesen → Hören → Schreiben → Sprechen;
-- no global percentage, average, gauge, or whole-exam “B1 ready” verdict;
+- no global percentage, average, gauge or whole-exam “B1 ready” verdict;
 - one card anatomy: state → plain-language reason → coverage → data reliability → next step → “Почему OTTO так считает?”;
-- state-specific explanatory copy, not label-only output;
+- state-specific explanatory copy;
 - assisted-heavy success as a first-class unstable-readiness UX case;
 - progressive disclosure through “Подтверждено / Пока не подтверждено / Что повлияло / Что дальше”;
-- missing coverage visually/verbally distinct from weakness;
-- SYSTEM_DATA_GAP explicitly framed as an OTTO limitation, not learner failure;
+- missing coverage distinct from weakness;
+- SYSTEM_DATA_GAP framed as an OTTO limitation, not learner failure;
 - module-specific explanation language for Hören/Schreiben/Sprechen;
-- text-first visual semantics with score rings, gauges, pass/fail stamps and certificate metaphors prohibited;
-- 15 complete UX acceptance examples, including productive-evidence gaps;
-- R0 with known weakness shows both insufficient module-wide data and the known problem;
-- OTTO-vs-Goethe disclaimer remains persistent in readiness details.
+- score rings, gauges, pass/fail stamps and certificate metaphors prohibited;
+- **15 complete UX acceptance examples**, including pronunciation, interaction and Aufgabe-criterion missing-data cases;
+- persistent OTTO-vs-Goethe disclaimer.
 
 ---
 
@@ -1796,15 +1810,16 @@ Implementation must still:
 
 ---
 
-# 27. Current status after blocking QA findings
+# 27. Final status
 
-**B1-F06 — QA RE-CHECK REQUIRED**
+**B1-F06 SPEC READY TO FREEZE**
 
-The three blocking productive-skill findings have been addressed in the spec, but freeze is not allowed until:
-- QA re-runs F06-Q01..Q20 and passes;
-- Technical Architecture confirms deterministic implementability of the new gates;
-- GOETHE boundary re-check confirms the Aufgabe/criterion and Sprechen interaction/pronunciation boundary;
-- UX/DESIGN confirms the new missing-evidence explanations remain non-technical.
+Final independent route:
+- Technical Architecture: PASS — FINAL;
+- QA: PASS — 20/20;
+- GOETHE boundary: PASS — FINAL;
+- UX / DESIGN: PASS — FINAL after deep review;
+- Director scope check: required before owner freeze decision.
 
 DEV runtime remains blocked.  
 Implementation has not started.  
