@@ -1,6 +1,6 @@
 # B1-F04 — Review / Spaced Retrieval Scheduler
 
-Status: **DRAFT FOR INDEPENDENT REVIEW**  
+Status: **B1-F04 SPEC READY TO FREEZE**  
 Phase: **PHASE 1 — FOUNDATION**  
 Parent: **#2 OTTO B1 — PRODUCT REVIEW & REDESIGN**  
 Task: **#8 [B1-F04] Review / Spaced Retrieval Scheduler**  
@@ -708,32 +708,89 @@ Does not advance level; follow-up due +1 day after instructional follow-up.
 
 # 24. Acceptance checklist
 
-- [ ] review_required rules deterministic.
-- [ ] next_review_at deterministic.
-- [ ] policy versioned.
-- [ ] all ReviewState transitions defined.
-- [ ] success interval progression explicit.
-- [ ] failure/restart explicit.
-- [ ] assistance effect explicit.
-- [ ] recurrence effect explicit.
-- [ ] stable/stale behavior explicit.
-- [ ] exact/near-duplicate protection explicit.
-- [ ] insufficient evidence behavior explicit.
-- [ ] multiple obligations consolidated deterministically.
-- [ ] learning occasions/validity respected.
-- [ ] B1-F05 output contract defined.
-- [ ] no planner implementation.
-- [ ] no readiness arithmetic.
-- [ ] F02 unchanged.
+- [x] review_required rules deterministic.
+- [x] next_review_at deterministic.
+- [x] policy versioned.
+- [x] all ReviewState transitions defined.
+- [x] success interval progression explicit.
+- [x] failure/restart explicit.
+- [x] assistance effect explicit.
+- [x] recurrence effect explicit.
+- [x] stable/stale behavior explicit.
+- [x] exact/near-duplicate protection explicit.
+- [x] insufficient evidence behavior explicit.
+- [x] multiple obligations consolidated deterministically.
+- [x] learning occasions/validity respected.
+- [x] B1-F05 output contract defined.
+- [x] no planner implementation.
+- [x] no readiness arithmetic.
+- [x] F02 unchanged.
 
 ---
 
-# 25. Current review status
+# 25. Independent review results
 
-Technical findings TA-01..TA-05 are incorporated.
-QA findings QA-01..QA-05 are incorporated.
+## Technical Architecture
+**PASS**
 
-Next:
-**QA re-check → GOETHE boundary (exam-like boundary is touched) → Director scope check**
+Resolved:
+- evidence-history bootstrap of review_level;
+- immutable first unassisted outcome before later help;
+- level-specific assistance semantics;
+- auditable policy migration;
+- blocked-content state without scheduler churn.
+
+Final delta after QA changes: PASS.
+
+## QA
+**PASS**
+
+Required scenario set F04-Q01..F04-Q16 passes.
+
+Key break tests:
+- early practice does not falsely advance spacing level;
+- overdue success schedules from actual completion;
+- M0 + repaired error can still require review;
+- invalid/near-duplicate review item cannot advance;
+- repeated assisted attempts do not create duplicate obligations;
+- stable-but-stale becomes due without being called forgotten;
+- exact item / near duplicate rejected;
+- interrupted invalid attempt does not satisfy review;
+- policy migration preserves history.
+
+## GOETHE boundary
+**PASS**
+
+Spacing intervals and scheduler states are OTTO_METHOD.
+Official exam-like constraints from F01 remain unchanged.
+No official Goethe score/pass state is created.
+
+## Frozen-contract compatibility
+**PASS**
+
+- no B1-F02 field or semantic rewritten;
+- no F02 change request required;
+- F04 consumes F03-compatible `review_required/review_reason` handoff without owning repair.
+
+---
+
+# 26. Unresolved questions / change requests
+
+**No blocking unresolved questions.**
+
+**No change request against frozen B1-F02 is required.**
+
+Intentional deferral:
+- final daily ranking and 10/25/45 composition → B1-F05;
+- readiness arithmetic → B1-F06;
+- runtime/storage implementation → future DEV contract.
+
+---
+
+# 27. Final status
+
+**B1-F04 SPEC READY TO FREEZE**
 
 DEV runtime remains blocked.
+main unchanged.
+production unchanged.
