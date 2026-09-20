@@ -1544,14 +1544,26 @@ Validated:
 - Hören/Schreiben/Sprechen exam-like boundaries remain intact.
 
 ## UX / DESIGN
-**PASS**
+**PASS — FINAL AFTER DEEP REVIEW**
 
-- module heading: “Готовность к модулю — оценка OTTO”;
-- no official-looking readiness percentage;
-- readiness state and data reliability are shown separately;
-- coverage shown as Teil coverage, not score;
-- R0 with known weakness does not hide the known problem;
-- R4 wording no longer sounds like certification.
+The earlier UX contract passed basic wording review but later received a deeper PR-level review with **DESIGN FAIL** because the presentation contract could still be implemented as a technical dashboard.
+
+Deep-review findings UX-F06-01..UX-F06-09 are now resolved.
+
+The final spec freezes:
+- four independent cards in fixed order: Lesen → Hören → Schreiben → Sprechen;
+- no global percentage, average, gauge, or whole-exam “B1 ready” verdict;
+- one card anatomy: state → plain-language reason → coverage → data reliability → next step → “Почему OTTO так считает?”;
+- state-specific explanatory copy, not label-only output;
+- assisted-heavy success as a first-class unstable-readiness UX case;
+- progressive disclosure through “Подтверждено / Пока не подтверждено / Что повлияло / Что дальше”;
+- missing coverage visually/verbally distinct from weakness;
+- SYSTEM_DATA_GAP explicitly framed as an OTTO limitation, not learner failure;
+- module-specific explanation language for Hören/Schreiben/Sprechen;
+- text-first visual semantics with score rings, gauges, pass/fail stamps and certificate metaphors prohibited;
+- 12 complete UX acceptance examples;
+- R0 with known weakness shows both insufficient module-wide data and the known problem;
+- OTTO-vs-Goethe disclaimer remains persistent in readiness details.
 
 ---
 
