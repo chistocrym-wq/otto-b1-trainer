@@ -141,11 +141,13 @@ Meaning:
 Data coverage is sufficient to make a conclusion, and current evidence shows material unresolved learning problems.
 
 Typical blockers:
-- M6 REGRESSED;
-- repeated M1 WEAK across covered targets;
-- returned/active errors with failed transfer/review;
-- repeated N3/N4 in the same important Teil;
+- M6 REGRESSED on a Micro-skill included in the current Teil readiness basis;
+- M1 WEAK on a readiness-basis Micro-skill when frozen F02 repeated-negative entry criteria are satisfied;
+- returned/active errors with failed transfer/review linked to a readiness-basis Micro-skill;
+- repeated N3/N4 on distinct valid task instances for the same readiness-basis Micro-skill;
 - productive criterion failure supported by reliable evidence.
+
+F06 does **not** use an undefined “critical skill” or severity flag. Blockers are derived only from frozen F01/F02/F03 states/events.
 
 User label:
 **«Требуется работа»**
@@ -314,10 +316,23 @@ Every official Teil/Aufgabe must be at least **T3 TRANSFER_CONFIRMED**.
 One of these must be true:
 
 ### Path A — full-module exam-like
-A valid module checkpoint/mock:
-- covers all official Teil/Aufgaben;
-- respects the relevant frozen F01 constraints;
-- produces valid independent P5-style evidence.
+A valid module checkpoint/mock must include a deterministic `CheckpointCoverageManifest`:
+
+- checkpoint_id;
+- module;
+- official_teil_ids_covered[];
+- evidence_event_ids_by_teil;
+- exam_constraints_valid;
+- completed_at;
+- learning_occasion_id.
+
+Path A passes only if:
+- every official Teil/Aufgabe from frozen F01 is explicitly present in `official_teil_ids_covered`;
+- every covered Teil links to valid EvidenceEvents;
+- exam_constraints_valid = true;
+- the resulting evidence is independent P5-style evidence.
+
+A checkpoint label alone cannot prove full-module coverage.
 
 ### Path B — distributed Teil exam-like
 Every official Teil/Aufgabe has at least one recent valid P5 event.
@@ -328,13 +343,16 @@ If neither path exists, R4 is blocked by:
 ## 7.3 Mastery profile
 
 For each official Teil:
-- no Micro-skill used as a readiness basis may be M6 REGRESSED or M5 UNSTABLE;
-- no currently sampled critical target may remain M1 WEAK with unresolved recent negative evidence;
-- at least **70% of covered Micro-skills** in the Teil must be M3 PROVISIONALLY_DEMONSTRATED or M4 STABLE;
-- remaining covered Micro-skills must be at least M2 DEVELOPING.
+- denominator = **all frozen F01 Micro-skills in that Teil**, not only the subset already observed;
+- no readiness-basis Micro-skill may be M6 REGRESSED or M5 UNSTABLE;
+- no readiness-basis Micro-skill may remain M1 WEAK with unresolved recent negative evidence meeting frozen F02 criteria;
+- at least **70% of the full frozen Micro-skill set** in the Teil must be M3 PROVISIONALLY_DEMONSTRATED or M4 STABLE;
+- every remaining frozen Micro-skill must be at least M2 DEVELOPING for R4.
 
 Module-wide:
-- no major official Teil may be carried by one strong Micro-skill while others remain M0.
+- no official Teil may be carried by one strong Micro-skill while unobserved Micro-skills are removed from the denominator.
+
+Covered-only ratios may be shown in diagnostics, but they never drive R4.
 
 ## 7.4 Independence
 
@@ -347,13 +365,26 @@ Minimum:
 
 ## 7.5 Freshness / review
 
-R4 is blocked if any readiness-basis Teil has:
-- REGRESSION_DETECTED;
-- OVERDUE review tied to the readiness basis;
-- unresolved failed delayed review;
-- a stale basis that F04 says needs recheck.
+F06 derives one `teil_freshness_state` for each official Teil from all Micro-skills currently used in that Teil's readiness basis.
 
-A simple DUE/OVERDUE freshness obligation without negative evidence resolves to R3, not R1.
+Precedence:
+1. REGRESSION_DETECTED
+2. OVERDUE
+3. DUE
+4. FRESH
+
+Rules:
+- if any basis Micro-skill is REGRESSION_DETECTED → Teil = REGRESSION_DETECTED;
+- else if any basis Micro-skill is OVERDUE → Teil = OVERDUE;
+- else if any basis Micro-skill is DUE → Teil = DUE;
+- otherwise Teil = FRESH.
+
+Module effects:
+- any Teil REGRESSION_DETECTED → resolve through R1/R2 using frozen Mastery, never R3;
+- no regression, but any Teil OVERDUE or DUE while the remaining Ready Gate is otherwise satisfied → R3 RECHECK_DUE;
+- isolated stale/aging observations that F04 has **not** made DUE/OVERDUE do not change readiness state by themselves; they may lower confidence only if confidence rules say so.
+
+A freshness obligation without negative evidence is never treated as forgetting.
 
 ## 7.6 Error blockers
 
@@ -413,7 +444,44 @@ Confidence is not displayed as a percentage in V1.
 
 ---
 
-# 9. Effect of new evidence on readiness
+# 10. Deterministic confidence gates
+
+Confidence is resolved **after** readiness_state and uses machine-testable conditions.
+
+## C0 — LOW
+
+Set C0 if any is true:
+- readiness_state = R0 INSUFFICIENT_DATA;
+- any decisive productive readiness-basis observation has evaluator_confidence = low and no medium/high replacement evidence exists;
+- any official Teil has unresolved contradiction between recent P3/P4/P5 and N2/N3/N4 such that consistency is not established;
+- data-quality invalidity affects a decisive readiness-basis event.
+
+## C2 — HIGH
+
+Set C2 only if all are true:
+- every official Teil is T3 or T4;
+- every official Teil has valid readiness-basis evidence on at least **2 distinct learning_occasion_id** values;
+- no official Teil freshness state is DUE, OVERDUE, or REGRESSION_DETECTED;
+- no unresolved recent contradiction exists on any readiness-basis Micro-skill;
+- for Schreiben/Sprechen, every decisive productive observation has evaluator_confidence medium or high;
+- no major missing-data flag from section 15 remains;
+- if readiness_state = R4, exam-like coverage under section 7.2 passes.
+
+## C1 — MEDIUM
+
+Use C1 for every classifiable module that is neither C0 nor C2.
+
+This includes:
+- sufficiency gate passed but one or more Teil are only T2;
+- evidence spans only one learning occasion in a Teil;
+- readiness is R3 because a recheck is due;
+- evidence is adequate but not rich enough for C2.
+
+Confidence measures evidence reliability, not positivity. NEEDS_WORK can therefore be C2 when negative evidence is broad, recent, and consistent.
+
+---
+
+# 10. Effect of new evidence on readiness
 
 ## Independent success P3
 
@@ -500,7 +568,7 @@ For productive modules:
 
 ---
 
-# 10. Official Teil coverage rules
+# 11. Official Teil coverage rules
 
 Readiness is module-wide but cannot average away an unchecked official part.
 
@@ -530,7 +598,7 @@ No official Teil may be substituted by stronger evidence from another Teil.
 
 ---
 
-# 11. Schreiben readiness rules
+# 12. Schreiben readiness rules
 
 Schreiben readiness is not binary correct/incorrect and is never based on word count alone.
 
@@ -567,7 +635,7 @@ Word count is context metadata, not readiness proof.
 
 ---
 
-# 12. Sprechen readiness rules
+# 13. Sprechen readiness rules
 
 Sprechen uses separate evidence channels.
 
@@ -613,7 +681,7 @@ If audio/evaluator confidence is low on decisive Sprechen evidence:
 
 ---
 
-# 13. Hören replay rule
+# 14. Hören replay rule
 
 Hören readiness must distinguish:
 
@@ -632,7 +700,7 @@ If all Hören success depends on extra replay:
 
 ---
 
-# 14. Timing evidence
+# 15. Timing evidence
 
 Timing is supportive, not a substitute for correctness/independence.
 
@@ -645,7 +713,7 @@ F06 never invents new Goethe timing rules; it consumes frozen F01 constraints.
 
 ---
 
-# 15. Missing-data flags
+# 16. Missing-data flags
 
 Canonical flags include:
 
@@ -670,7 +738,7 @@ A content gap is a system limitation, not negative learner evidence.
 
 ---
 
-# 16. Audit reason codes
+# 17. Audit reason codes
 
 Canonical reason codes:
 
@@ -698,7 +766,7 @@ Each ReadinessSnapshot records all applicable reasons and one primary resolution
 
 ---
 
-# 17. Deterministic computation algorithm
+# 18. Deterministic computation algorithm
 
 For one module:
 
@@ -720,7 +788,7 @@ No stochastic step is allowed.
 
 ---
 
-# 18. F05 interface without Planner rewrite
+# 19. F05 interface without Planner rewrite
 
 F06 may emit **planner advisory signals** only.
 
@@ -753,7 +821,7 @@ F05 remains the owner of daily selection.
 
 ---
 
-# 19. User-facing UX labels
+# 20. User-facing UX labels
 
 Internal codes R0–R4 / C0–C2 are not shown by default.
 
@@ -789,7 +857,7 @@ Do not say:
 
 ---
 
-# 20. Numeric display policy
+# 21. Numeric display policy
 
 B1-F06 does **not** require a user-facing numeric readiness score.
 
@@ -805,7 +873,7 @@ If a future product version introduces a numeric indicator, it requires a new re
 
 ---
 
-# 21. Destructive scenario matrix
+# 22. Destructive scenario matrix
 
 ## F06-Q01 — one perfect task
 Expected:
@@ -897,7 +965,7 @@ Expected:
 
 ---
 
-# 22. Acceptance checklist
+# 23. Acceptance checklist
 
 - [ ] separate readiness per module.
 - [ ] R0–R4 deterministic.
@@ -924,9 +992,11 @@ Expected:
 
 ---
 
-# 23. Current review status
+# 24. Current review status
 
-Ready for:
-**Technical Architecture → QA + GOETHE → UX / DESIGN → Director scope check**
+Technical findings TA-01..TA-05 are incorporated.
+
+Next:
+**Technical re-check → QA + GOETHE → UX / DESIGN → Director scope check**
 
 DEV runtime remains blocked.
