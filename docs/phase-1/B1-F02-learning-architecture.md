@@ -1581,7 +1581,7 @@ These are not gaps in the B1-F02 contract. B1-F02 defines the inputs and invaria
 
 ---
 
-# 17. Downstream contracts
+# 19. Downstream contracts
 
 ## For B1-F03 — Error Repair Loop
 
@@ -1631,7 +1631,7 @@ F02 does not define readiness arithmetic or labels beyond preserving INSUFFICIEN
 
 ---
 
-# 19. Technical invariants
+# 20. Technical invariants
 
 1. EvidenceEvent is immutable/append-only.
 2. F01 skill IDs are immutable in F02.
@@ -1649,7 +1649,7 @@ F02 does not define readiness arithmetic or labels beyond preserving INSUFFICIEN
 
 ---
 
-# 20. Independent-review status
+# 21. Independent-review status
 
 Technical Architecture findings TA-01..TA-05 have been incorporated:
 - content/variant identity added for transfer validity;
@@ -1679,7 +1679,7 @@ GOETHE boundary review must verify:
 
 ---
 
-# 21. Independent review results
+# 22. Independent review results
 
 ## Technical Architecture
 
@@ -1723,7 +1723,7 @@ Verified:
 
 ---
 
-# 22. B1-F02 acceptance checklist
+# 23. B1-F02 acceptance checklist
 
 - [x] Canonical EvidenceEvent schema exists.
 - [x] Every event references a B1-F01 Micro-skill.
@@ -1753,7 +1753,7 @@ Verified:
 
 ---
 
-# 23. Frozen output contract for downstream Phase 1 tasks
+# 24. Frozen output contract for downstream Phase 1 tasks
 
 After owner acceptance, this specification becomes the source input for:
 
