@@ -101,8 +101,8 @@ test('owner preview scenario works end-to-end and produces honest state', async 
   expect(transfer.variant_group_id).not.toBe(source.variant_group_id);
 
   // Audit/reason path is user-visible.
-  if (await page.getByRole('button', { name: 'Почему OTTO так решил?' }).count()) {
-    await page.getByRole('button', { name: 'Почему OTTO так решил?' }).first().click();
+  if (await page.locator('.i01-reason .i01-link').count()) {
+    await page.locator('.i01-reason .i01-link').first().click();
     await expect(page.getByText('Почему OTTO так считает?')).toBeVisible();
     await expect(page.getByText('Что дальше')).toBeVisible();
     await page.getByRole('button', { name: 'Назад' }).click();
