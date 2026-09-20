@@ -1,0 +1,11 @@
+{
+  "name": "otto-b1-trainer",
+  "private": true,
+  "version": "0.0.0-b1-i01",
+  "scripts": {
+    "build": "node tests/b1-i01-build.cjs",
+    "typecheck": "node --check app/i01.js && node --check tests/b1-i01-build.cjs && node --check tests/b1-i01.test.cjs",
+    "test": "node --test tests/b1-i01.test.cjs",
+    "verify": "npm run build && npm run typecheck && npm test"
+  }
+}
