@@ -191,23 +191,45 @@ Classification revision is **not new learner evidence**.
 
 # 6. Stage 3 — EXPLAIN
 
-Explanation occurs before the repair attempt, but it must follow **minimum necessary disclosure**.
+F03 splits explanation into two UX moments while preserving the frozen F02 order `detect → explain → self-repair`.
+
+## 6.0 Default disclosure rule
+
+Before the first repair attempt, show only **minimal diagnostic feedback**:
+- what kind of mismatch occurred;
+- which Micro-skill is involved in learner-facing language;
+- why the current response cannot stand;
+- no complete correct answer/model by default.
+
+The primary CTA immediately after this minimal explanation is:
+
+**“Исправить самому”**
+
+A **full explanation** is shown:
+- after the learner's repair attempt; or
+- earlier only when the learner explicitly requests more help or cannot proceed.
 
 The purpose is to explain the specific problem without stealing the learner's repair opportunity.
 
 ## Explanation levels
 
 ### E1 — diagnostic explanation
+Default pre-repair layer.
+
 States:
 - what kind of mismatch occurred;
 - which Micro-skill is involved;
 - why the current answer/action does not satisfy the task.
 
 Does not reveal:
-- the complete correct answer/model.
+- the complete correct answer/model;
+- the correct multiple-choice option;
+- a finished productive response.
 
 Typical assistance impact:
 - none or strategy, depending on content.
+
+After E1, the primary action is self-repair, not “show answer”.
 
 ### E2 — evidence-directed explanation
 Points the learner to:
@@ -658,18 +680,44 @@ Show in this order:
 
 1. **What happened**
    - short, neutral outcome.
-2. **Why**
-   - one concrete reason tied to Micro-skill.
+2. **Minimal why**
+   - one concrete non-answer-revealing reason tied to the Micro-skill.
 3. **Your action**
    - primary CTA: **“Исправить самому”** when feasible.
 4. **Need help?**
-   - progressive assistance, not all hints at once.
+   - expose only the next assistance level, not the whole ladder.
 5. **Check**
    - validate repair.
-6. **New example**
+6. **Full why / explanation**
+   - after the repair attempt, or earlier only by explicit help escalation.
+7. **New example**
    - clearly indicate this is a new context.
-7. **Later**
+8. **Later**
    - if transfer succeeds, explain that OTTO will check it again later.
+
+## Progressive help control
+
+Only one next help level is exposed at a time:
+
+`strategy → keyword/evidence_hint → phrase_start → full_model`
+
+The user may stop as soon as they can continue. Unused higher levels are not recorded as consumed assistance.
+
+## Productive repair queue
+
+A single Schreiben/Sprechen response may yield many valid ErrorObjects.
+
+Default repair cycle:
+- surface **1–3 highest-priority targets**;
+- preserve all remaining valid ErrorObjects in a queue;
+- do not discard lower-priority findings;
+- prioritize:
+  1. task/function/meaning;
+  2. coherence/interaction;
+  3. high-impact structures/vocabulary;
+  4. lower-impact surface polish.
+
+The next repair cycle may pull queued items after the current set is repaired/parked.
 
 ## Do not show
 
@@ -692,6 +740,13 @@ RESOLVED:
 
 RETURNED:
 “Эта ошибка вернулась — разберём её ещё раз.”
+
+### Closure display rule
+
+- same-session repair must never show RESOLVED;
+- same-session transfer success shows REPAIRED_PENDING_CONFIRMATION;
+- only qualifying delayed review can unlock RESOLVED;
+- recurrence changes the visible state to RETURNED/ACTIVE while preserving prior history.
 
 These are OTTO messages, not Goethe judgments.
 
@@ -828,7 +883,9 @@ Expected:
 
 # 22. Current review status
 
-Ready for:
-**UX/DESIGN → Technical Architecture → QA → GOETHE boundary → Director scope check**
+UX/DESIGN findings UX-01..UX-04 are incorporated.
+
+Next:
+**Technical Architecture → QA → GOETHE boundary → Director scope check**
 
 DEV runtime remains blocked.
