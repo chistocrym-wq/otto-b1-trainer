@@ -74,11 +74,31 @@ Canonical Phase 1 policy:
 
 **OTTO_DAILY_PLANNER_V1**
 
+## 2.1 Immutable planner input snapshot
+
+Every plan/revision is computed from one immutable `PlannerInputSnapshot`:
+
+- `planner_input_snapshot_id`;
+- generated_at;
+- active_modules;
+- SkillState snapshot IDs / policy versions consumed;
+- active ErrorObject IDs + lifecycle/version references consumed;
+- ReviewState/scheduler record IDs + policy versions consumed;
+- content_catalog_version;
+- content_availability_snapshot_id;
+- planner-history/fairness snapshot;
+- requested_duration_min.
+
+Candidate generation and ranking may not mix records from different input snapshots inside one plan revision.
+
+If relevant state changes after snapshot creation, F05 creates a new `plan_revision` using a new snapshot.
+
 Every plan stores:
 - planner_policy_version;
 - generated_at;
 - plan_id;
 - plan_revision;
+- planner_input_snapshot_id;
 - learning_occasion_id;
 - requested_duration_min;
 - active_modules;
@@ -123,6 +143,31 @@ Rules:
 # 4. Planner candidate model
 
 A `PlannerCandidateAction` represents one possible useful next action.
+
+## 4.0 Deterministic duration source
+
+Every executable candidate must have `estimated_duration_min`.
+
+Priority of duration source:
+
+1. explicit task/content metadata from the versioned content catalog;
+2. if absent, `OTTO_DAILY_PLANNER_V1` action-type default:
+   - RECOVERY_REPAIR = 6 min
+   - OVERDUE_REVIEW = 4 min
+   - DUE_REVIEW = 4 min
+   - POST_REPAIR_CONFIRMATION = 4 min
+   - TRANSFER_CHECK = 5 min
+   - WEAK_SKILL_BUILD = 8 min
+   - DEVELOPING_SKILL_BUILD = 7 min
+   - ASSISTANCE_DEPENDENCY_RECHECK = 5 min
+   - EVIDENCE_GAP_PROBE = 5 min
+   - STALE_MAINTENANCE = 4 min
+   - EXAM_LIKE_CHECKPOINT = 10 min unless content metadata supplies a longer required minimum;
+3. if neither content metadata nor a valid policy default can safely represent the action, set `content_status=BLOCKED_MISSING_DURATION`.
+
+No AI duration guess is permitted.
+
+A blocked-duration candidate is non-executable and handled like other content blocks.
 
 Required fields:
 
@@ -313,11 +358,24 @@ For an active module with at least one executable candidate:
 - debt increases by 1 after each completed session in which the module receives no work;
 - debt resets to 0 when the module receives a meaningful action.
 
-For sessions of 25/45 minutes:
-- an active executable module with debt >= 2 receives a fairness boost sufficient to claim one eligible slot unless a P0 recovery occupies all safe capacity.
+## Deterministic fairness injection
+
+For 25/45-minute plans:
+
+1. P0 recovery is never displaced by module fairness.
+2. If P0/P1 obligations exist, serve at least one highest-ranked executable P0/P1 action first.
+3. At the **next eligible non-P0 slot**, if an active module has starvation debt >= 2 and an executable candidate that fits, reserve that slot for the highest-debt module.
+4. Debt tie-break:
+   - greater debt;
+   - older last_planned_session_id / least recently planned;
+   - higher candidate priority class;
+   - stable module order LESEN → HÖREN → SCHREIBEN → SPRECHEN only as final deterministic tie-break.
+5. After the fairness slot, return to normal global ranking.
+
+If no P0/P1 exists, the highest-debt eligible module may claim the first non-P0 slot.
 
 For 10-minute sessions:
-- starvation debt is a tie-break; the short session is not required to cover multiple modules.
+- starvation debt is only a tie-break; the short session is not required to cover multiple modules.
 
 Planner history cannot change Mastery.
 
@@ -338,6 +396,15 @@ Exception:
 For 25/45 minutes with another active module having valid work:
 - reserve at least one meaningful action outside the monopolizing Micro-skill.
 
+### Cap evaluation
+
+Before inserting an indivisible action, compute projected same-skill share.
+
+- if projected share stays within cap → allow;
+- if it exceeds cap and another valid action fits the slot → defer with `SAME_SKILL_CAP`;
+- if the single indivisible action itself exceeds the cap and no alternative valid action can satisfy the slot, allow it and record `CAP_EXCEPTION_INDIVISIBLE_ACTION`;
+- the exception does not permit adding further same-skill actions beyond that indivisible action.
+
 ## Same module cap
 
 When 2+ active modules have executable candidates:
@@ -345,19 +412,36 @@ When 2+ active modules have executable candidates:
 For 25/45 minutes:
 - one module should not exceed **70% of instructional minutes** unless all other modules are blocked/ineligible.
 
+Before insertion, evaluate projected module share:
+- if another valid-module action fits and projected share would exceed 70%, defer with `SAME_MODULE_CAP`;
+- a single indivisible long action may exceed the cap only when no alternative valid action can fill the slot; record `CAP_EXCEPTION_INDIVISIBLE_ACTION`.
+
 For 10 minutes:
 - no hard module split is required.
 
 ## Review queue cap
 
-Maximum review actions in the base daily plan:
-- 10 min: **1** review action;
-- 25 min: **2** review actions;
-- 45 min: **3** review actions.
+A candidate counts toward the ordinary review cap when `counts_toward_review_cap=true`.
 
-P0 repair work is not counted as ordinary review.
+Set true for:
+- OVERDUE_REVIEW;
+- DUE_REVIEW;
+- POST_REPAIR_CONFIRMATION;
+- STALE_MAINTENANCE when it is generated from an active F04 review obligation.
 
-Remaining overdue work stays deferred with `REVIEW_QUEUE_CAP`.
+Set false for:
+- RECOVERY_REPAIR;
+- TRANSFER_CHECK owned by the active F03 learning/repair flow;
+- EVIDENCE_GAP_PROBE;
+- ordinary WEAK/DEVELOPING skill building;
+- exam-like checkpoint unless it is explicitly fulfilling an F04 review obligation.
+
+Maximum ordinary review actions in the base daily plan:
+- 10 min: **1**;
+- 25 min: **2**;
+- 45 min: **3**.
+
+Remaining review obligations stay deferred with `REVIEW_QUEUE_CAP`.
 
 ## Repeated-repair cap
 
@@ -959,7 +1043,9 @@ Expected:
 
 # 30. Current review status
 
-Ready for:
-**Technical Architecture → UX / DESIGN → QA destructive scenarios → GOETHE boundary (exam-like touched) → Director scope check**
+Technical findings TA-01..TA-05 are incorporated.
+
+Next:
+**Technical re-check → UX / DESIGN → QA destructive scenarios → GOETHE boundary (exam-like touched) → Director scope check**
 
 DEV runtime remains blocked.
