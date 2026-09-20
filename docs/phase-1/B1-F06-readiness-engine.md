@@ -133,19 +133,26 @@ User label:
 
 This state is mandatory whenever the sufficiency gate in section 6 fails.
 
-Known weaknesses may still be listed as blockers, but the system does not pretend the module has been fully assessed.
+Known weaknesses are **not hidden**:
+- `active_blockers` still records any observed M5/M6/returned-error/failed-review evidence;
+- the explanation may say that problems were observed in the checked areas even though the whole module lacks enough coverage.
+
+R0 means “not enough module-wide evidence to classify readiness”, not “no problems observed”.
 
 ## R1 — NEEDS_WORK
 
 Meaning:
 Data coverage is sufficient to make a conclusion, and current evidence shows material unresolved learning problems.
 
-Typical blockers:
-- M6 REGRESSED on a Micro-skill included in the current Teil readiness basis;
-- M1 WEAK on a readiness-basis Micro-skill when frozen F02 repeated-negative entry criteria are satisfied;
-- returned/active errors with failed transfer/review linked to a readiness-basis Micro-skill;
-- repeated N3/N4 on distinct valid task instances for the same readiness-basis Micro-skill;
-- productive criterion failure supported by reliable evidence.
+Module-level R1 aggregation is deterministic.
+
+R1 is selected if any is true:
+- at least one readiness-basis Micro-skill is M6 REGRESSED;
+- at least 2 M1 WEAK Micro-skills exist in the same official Teil;
+- one M1 Micro-skill has repeated N3/N4 or a RETURNED error after prior repair/transfer confirmation;
+- a productive criterion/function problem is repeated strongly enough to satisfy the equivalent frozen M1/M6 evidence conditions.
+
+A single isolated M1 Micro-skill still blocks R4, but by itself resolves the module to R2 DEVELOPING_UNSTABLE rather than R1.
 
 F06 does **not** use an undefined “critical skill” or severity flag. Blockers are derived only from frozen F01/F02/F03 states/events.
 
@@ -331,6 +338,16 @@ Path A passes only if:
 - every covered Teil links to valid EvidenceEvents;
 - exam_constraints_valid = true;
 - the resulting evidence is independent P5-style evidence.
+
+**Path A satisfies only the exam-like coverage component of R4.**
+
+It does **not** replace the wider Ready Gate:
+- every Teil must still be T3;
+- distinct-task independent evidence must still exist;
+- transfer history must still exist;
+- Mastery profile requirements still apply.
+
+One excellent full-module run cannot manufacture a complete readiness history.
 
 A checkpoint label alone cannot prove full-module coverage.
 
@@ -734,7 +751,15 @@ Canonical flags include:
 
 Flags are audit/explanation signals.
 
+## System-data-gap rule
+
 A content gap is a system limitation, not negative learner evidence.
+
+Therefore:
+- a content gap may keep the module in R0 because required evidence cannot yet be collected;
+- it cannot by itself cause R1 NEEDS_WORK or R2 DEVELOPING_UNSTABLE;
+- it must be labeled in audit as `SYSTEM_DATA_GAP`, separate from learner-performance blockers;
+- when valid content becomes available, readiness is recomputed from learner evidence without any negative penalty for the prior gap.
 
 ---
 
@@ -995,8 +1020,10 @@ Expected:
 # 24. Current review status
 
 Technical findings TA-01..TA-05 are incorporated.
+QA findings QA-01..QA-04 are incorporated.
+GOETHE boundary: PASS subject to final UX wording preserving OTTO/non-official framing.
 
 Next:
-**Technical re-check → QA + GOETHE → UX / DESIGN → Director scope check**
+**QA re-check → Technical final delta → UX / DESIGN → Director scope check**
 
 DEV runtime remains blocked.
