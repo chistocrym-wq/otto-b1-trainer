@@ -1,6 +1,6 @@
 # B1-F02 — Evidence / Mastery / Learning Architecture
 
-Status: **DRAFT FOR INDEPENDENT REVIEW**  
+Status: **B1-F02 SPEC READY FOR FOUNDATION IMPLEMENTATION**  
 Phase: **PHASE 1 — FOUNDATION**  
 Parent: **#2 OTTO B1 — PRODUCT REVIEW & REDESIGN**  
 Task: **#5 [B1-F02] Evidence / Mastery / Learning Architecture**  
@@ -1503,11 +1503,126 @@ GOETHE boundary review must verify:
 
 ---
 
-# 20. Current draft status
+# 20. Independent review results
 
-Technical Architecture and first-pass QA changes are incorporated.
+## Technical Architecture
 
-Next independent route:
-**QA re-check → GOETHE boundary check → Director scope check**.
+**PASS**
 
-DEV remains blocked.
+Resolved:
+- transfer identity / near-duplicate protection;
+- policy-versioned reproducible SkillState;
+- deterministic transition precedence;
+- separated learning occasions;
+- review obligation before scheduler date.
+
+## QA
+
+**PASS**
+
+Verified:
+- all 16 required scenarios;
+- one-attempt protection;
+- mixed-evidence handling;
+- assistance/independence distinction;
+- same-item ≠ transfer;
+- Hören replay handling;
+- Sprechen audio boundary;
+- error repair/recurrence;
+- INSUFFICIENT_EVIDENCE as first-class state;
+- activity count ≠ mastery.
+
+## GOETHE boundary
+
+**PASS**
+
+Verified:
+- F01 structure and IDs preserved;
+- OTTO mastery states are not presented as Goethe states;
+- learning stages and assistance ladder remain OTTO_METHOD;
+- productive criterion observations remain task-scoped to F01;
+- official scoring remains separate;
+- 60/100 is not reused as an OTTO mastery/readiness threshold;
+- exam_like is an OTTO simulation state, not an official examination/certificate result.
+
+---
+
+# 21. B1-F02 acceptance checklist
+
+- [x] Canonical EvidenceEvent schema exists.
+- [x] Every event references a B1-F01 Micro-skill.
+- [x] Objective and productive evidence payloads are separated appropriately.
+- [x] Evidence strength is multidimensional rather than one magic score.
+- [x] Assistance consumed is distinct from assistance offered.
+- [x] Independent, supported, transfer, and exam-like evidence are distinguishable.
+- [x] Same-item repetition cannot satisfy transfer.
+- [x] Mastery states are explicit and transitions are testable.
+- [x] INSUFFICIENT_EVIDENCE is first-class.
+- [x] One isolated success cannot create stable mastery.
+- [x] One isolated error cannot automatically label a skill WEAK.
+- [x] Time passage creates freshness/review consequences, not fictional forgetting.
+- [x] ErrorObject captures cause, assistance, repair, transfer, recurrence, and review obligation.
+- [x] Error Repair Contract requires self-repair when possible, transfer, and delayed review.
+- [x] Assisted/model-exposed repair cannot masquerade as independent closure.
+- [x] Review contract is usable by B1-F04 without implementing the scheduler here.
+- [x] Learning stages are separate from mastery states.
+- [x] EXAM_LIKE supports both learning progression and direct diagnostic/checkpoint/mock entry.
+- [x] Readiness Input Contract exists without readiness arithmetic.
+- [x] OTTO Readiness remains separate from official Goethe score.
+- [x] Text-only Sprechen cannot generate pronunciation evidence.
+- [x] Technical Architecture PASS.
+- [x] QA PASS.
+- [x] GOETHE boundary PASS.
+- [x] No app/runtime implementation in B1-F02.
+
+---
+
+# 22. Frozen output contract for downstream Phase 1 tasks
+
+After owner acceptance, this specification becomes the source input for:
+
+## B1-F03 — Error Repair Loop
+Consumes:
+- EvidenceEvent;
+- ErrorObject;
+- RepairAttempt;
+- assistance semantics;
+- Error lifecycle;
+- transfer/closure rules.
+
+## B1-F04 — Review Scheduler
+Consumes:
+- ReviewState;
+- review_required/review_reason;
+- next_review_at contract;
+- freshness inputs;
+- recurrence/history;
+- mastery state;
+- learning_occasion identity.
+
+## B1-F05 — Adaptive Daily Planner
+Consumes:
+- mastery states;
+- due/overdue review states;
+- weak/unstable/regressed skills;
+- independence/support history;
+- stale evidence;
+- unresolved errors;
+- later session-time inputs.
+
+## B1-F06 — Readiness Engine
+Consumes:
+- module/Teil coverage;
+- mastery distribution;
+- evidence sufficiency;
+- independence;
+- transfer confirmation;
+- freshness;
+- recurring errors;
+- exam-like/checkpoint evidence;
+- productive evaluator confidence;
+- missing-data flags.
+
+B1-F02 does not authorize implementation of any of these tasks by itself.
+
+DEV remains blocked until the owner accepts B1-F02 and explicitly launches the next implementation task.
