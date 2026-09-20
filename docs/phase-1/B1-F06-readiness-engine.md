@@ -932,13 +932,13 @@ For one module:
 6. For Sprechen, compute separate audio, pronunciation and interaction sufficiency gates; audio presence must never substitute for pronunciation/interaction observations.
 7. Evaluate data-quality/productive-confidence floor.
 8. If sufficiency gate fails → R0.
-7. Evaluate M6/material negative blockers → R1 if present.
-8. Evaluate M5/conflict/assistance/transfer/exam-like blockers → R2 if present.
-9. Evaluate F04 freshness/review due/overdue blockers → R3 if otherwise ready-capable.
-10. Evaluate full Ready Gate → R4 if all conditions pass.
-11. Otherwise → R2.
-12. Compute confidence separately.
-13. Store audit/missing-data/supporting evidence references.
+9. Evaluate M6/module-level negative blockers → R1 if present.
+10. Evaluate M5/conflict/assistance/transfer/exam-like blockers → R2 if present.
+11. Evaluate F04 freshness/review due/overdue blockers → R3 if otherwise ready-capable.
+12. Evaluate full Ready Gate → R4 if all conditions pass.
+13. Otherwise → R2.
+14. Compute confidence separately.
+15. Store audit/missing-data/supporting evidence references.
 
 No stochastic step is allowed.
 
