@@ -205,3 +205,47 @@ test('25-minute plan survives reload without changing the chosen actions', async
   });
   expect(after).toEqual(before);
 });
+
+
+test('help used before an error does not contaminate independent self-repair', async ({ page }) => {
+  await page.goto(baseURL, { waitUntil:'networkidle' });
+  await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
+  await page.getByRole('button', { name: 'Начать мою подготовку' }).click();
+
+  await page.getByRole('button', { name: 'Совет Отто · будет отмечен как помощь', exact: true }).click();
+  await page.getByRole('button', { name: 'Falsch', exact:true }).click();
+  await page.getByRole('button', { name: 'Ответить' }).click();
+
+  await expect(page.getByText('Сначала попробуй исправить сам')).toBeVisible();
+  await page.getByRole('button', { name: 'Richtig', exact:true }).click();
+  await page.getByRole('button', { name: 'Исправить самому' }).click();
+
+  const state = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}').i01);
+  const source = state.evidenceEvents.find(e => e.outcome_status === 'failure');
+  expect(source.evidence_class).toBe('N1');
+  expect(state.errors[0].assistance_before_error.length).toBeGreaterThan(0);
+  expect(state.repairAttempts[0].max_assistance_consumed).toBe('none');
+  expect(state.repairAttempts[0].independence_class).toBe('independent');
+});
+
+test('full model exposure on repair cannot downgrade the following independent transfer', async ({ page }) => {
+  await page.goto(baseURL, { waitUntil:'networkidle' });
+  await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
+  await page.getByRole('button', { name: 'Начать мою подготовку' }).click();
+
+  await page.getByRole('button', { name: 'Falsch', exact:true }).click();
+  await page.getByRole('button', { name: 'Ответить' }).click();
+  await page.getByRole('button', { name: 'Показать ответ и объяснение' }).click();
+
+  await expect(page.getByText('Новый контекст · перенос навыка')).toBeVisible();
+  await page.getByRole('button', { name: 'Richtig', exact:true }).click();
+  await page.getByRole('button', { name: 'Ответить' }).click();
+
+  const state = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}').i01);
+  expect(state.assistanceEvents.some(a => a.level === 'full_model')).toBe(true);
+  const transfer = state.evidenceEvents.find(e => e.evidence_class === 'P4');
+  expect(transfer).toBeTruthy();
+  expect(transfer.max_assistance_consumed).toBe('none');
+  expect(transfer.independence).toBe('independent');
+  expect(state.reviews.some(r => r.review_reason.includes('POST_REPAIR_CONFIRMATION'))).toBe(true);
+});
