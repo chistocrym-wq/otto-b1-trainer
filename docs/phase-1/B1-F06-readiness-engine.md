@@ -799,20 +799,27 @@ A valid `pronunciation_observation` must:
 
 ### Pronunciation sufficiency gate
 
-For Sprechen to pass module-level productive sufficiency:
-- at least **2 valid pronunciation_observations** from distinct task instances are required;
-- observations must span at least **2 of the 3 official Aufgaben**;
-- if this is not met, set `SPRECHEN_PRONUNCIATION_MISSING` and readiness remains R0 unless other missing-data precedence already applies.
+Pronunciation coverage is tracked separately for **each official Aufgabe 1–3**.
+
+For an Aufgabe to count as T2+ productive readiness coverage:
+- at least **1 valid pronunciation_observation** must be linked to a real-audio independent sample for that Aufgabe;
+- the observation must be scorable (not missing / not_scorable);
+- evaluator provenance must be recorded;
+- evaluator confidence must be >= medium.
+
+If any official Aufgabe lacks this pronunciation evidence:
+- set `SPRECHEN_PRONUNCIATION_MISSING`;
+- that Aufgabe cannot satisfy the productive T2 gate;
+- module-wide readiness sufficiency therefore remains R0 until the missing pronunciation evidence exists.
 
 ### Pronunciation R4 gate
 
 R4 additionally requires:
-- at least **1 valid pronunciation_observation for each Aufgabe 1, 2 and 3** across the readiness-basis evidence;
-- at least 1 pronunciation observation must come from a P4/P5 sample;
-- at least 2 distinct learning occasions across the pronunciation basis;
+- at least **1 valid P4/P5-linked pronunciation_observation for each Aufgabe 1, 2 and 3**;
+- pronunciation-basis evidence must span at least **2 distinct learning occasions**;
 - no decisive pronunciation observation may be low-confidence.
 
-Thus fresh P4/P5 audio events with missing/not_scorable pronunciation **cannot** satisfy Sprechen R4.
+Thus fresh P4/P5 audio events with missing/not_scorable pronunciation **cannot** satisfy Sprechen R4, and audio presence never substitutes for pronunciation assessment.
 
 ## Evaluator confidence
 
