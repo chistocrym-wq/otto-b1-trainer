@@ -1,47 +1,48 @@
 # Тренажёр Otto — Goethe-Zertifikat B1
 
-Owner Preview после первого визуального/UX-review.
+Owner Preview / adaptive diagnostic foundation.
 
-## Текущий пользовательский сценарий
+## Current flow
 
-1. Регистрация: имя + обращение + Email/Telegram + дата экзамена + 10/25/45 минут.
-2. Подтверждение (в Preview email-код: `111111`; Telegram — UX-заглушка до backend/Mini App).
-3. Обязательный экран «Провести диагностику». До завершения диагностики остальные разделы закрыты.
-4. Диагностика: language baseline + Lesen + Hören + Schreiben + Sprechen.
-5. Отчёт без фиктивного Goethe-score.
-6. Два режима после диагностики:
-   - **Otto ведёт меня** — персональный маршрут;
-   - **Выбрать самому** — отдельный вход в Lesen / Hören / Schreiben / Sprechen и их Teil/Aufgabe.
-7. Ошибка Lesen → объяснение → self-correction → transfer → future review.
-8. Weekly checkpoint.
-9. Отдельный Exam mode.
-10. Otto Personal shell.
+1. Registration with preserved draft state.
+2. Mandatory initial diagnostic before training/module access.
+3. Adaptive closed-task placement: wide screening → branch → independent boundary probes → extra evidence for borderline cases.
+4. Range-dependent Schreiben productive sample.
+5. Range-dependent Sprechen sample; B1 range includes an interactive probe with Otto.
+6. Result with cautious internal placement band, separate skill profiles, confidence/evidence, B1 gap evidence and explanation.
+7. Initial personal route: FOUNDATION_FIRST / BRIDGE_TO_B1 / B1_EXAM_FOCUSED.
 
-## Goethe task map в Preview
+## Content safety
 
-- Lesen: 5 Teil.
-- Hören: 4 Teil.
-- Schreiben: 3 Aufgaben.
-- Sprechen: 3 Aufgaben.
-- Для каждого task family есть representative original_aligned sample.
-- В Training доступны перевод/стратегия; в Exam они скрыты.
+Old demo `SAMPLES`, `TRANSFER`, shallow `DIAG`, weekly and exam-preview items are not available as confirmed B1 training.
 
-## Sprechen
+The module screens currently show only the Goethe B1 task map and a **training content QA pending** state.
 
-Aufgabe 1 содержит голосовой диалог с Otto: браузерная запись микрофона + Speech Recognition (если браузер поддерживает) + озвученный scripted response Otto. Если распознавание речи недоступно, остаётся реальная запись микрофона. Полноценный AI semantic/pronunciation review пока не подключён.
+New diagnostic bank: 42 closed ORIGINAL_ALIGNED items + 6 productive probes, each with metadata/source basis.
 
-## Preview boundaries
+## Sources
 
-Это не production и не полный банк:
-- регистрация не создаёт реальный серверный аккаунт;
-- email/Telegram verification пока preview interaction;
-- Hören использует browser de-DE speech synthesis вместо финального versioned audio bank;
-- Schreiben не получает финальную AI-rubric assessment;
-- Exam mode показывает поведение и структуру, но не выдаётся за полноценный mock.
+See `docs/diagnostic-methodology.md`. Primary families: Council of Europe CEFR Companion Volume/descriptors; official Goethe A1, A2 and B1 practice materials; current Goethe-Zertifikat B1 rules.
+
+## Important interpretation
+
+A1.1/A1.2/A2.1/A2.2/B1.1/B1.2 are internal OTTO placement bands, not official CEFR certificates.
+
+Productive evidence is not falsified: Schreiben and Sprechen can remain NEED_CONFIRMATION / needs review.
+
+## QA commands
+
+- `npm run check`
+- `npm run build:check`
+- `npm run test:diagnostic`
+- `npm run test:e2e`
+
+Regression covers clear A1, A2.2→B1 boundary, borderline extra evidence, one-error/one-guess robustness, uneven profiles, insufficient Sprechen evidence, three route families, profile update after new evidence, legacy quarantine, metadata, registration persistence, diagnostic resume, desktop Chromium and mobile 390.
 
 ## Safety
 
-- Branch: `preview/clean-v1`
-- Draft PR only
-- `main` не изменён
-- Production не публикуется без отдельной команды владельца
+- branch: `preview/clean-v1`
+- Draft PR #21
+- no merge
+- `main` untouched
+- production untouched
