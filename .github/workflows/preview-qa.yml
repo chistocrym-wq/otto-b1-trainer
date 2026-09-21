@@ -14,13 +14,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --check app.js
+      - name: Syntax checks
+        run: npm run check
+      - name: Diagnostic/content regression
+        run: npm run test:diagnostic
       - run: npm install --no-save @playwright/test@1.63.0
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test tests/preview.spec.cjs --browser=chromium --reporter=line
+      - name: Browser desktop/mobile regression
+        run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: otto-b1-owner-preview-screens
+          name: otto-b1-diagnostic-v2-qa
           path: test-results/**/*
           if-no-files-found: warn
