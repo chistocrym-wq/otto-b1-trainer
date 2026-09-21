@@ -133,3 +133,6 @@ html,body{
 @media(max-width:430px){
   .bottom-nav button span{font-size:17px}.bottom-nav button small{font-size:9px}.share-utility{padding:7px 10px;font-size:11px}.guide-section summary{padding:16px}.guide-body{padding:0 16px 16px}
 }
+
+.beta-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 7px;border-radius:999px;background:rgba(31,95,159,.12);border:1px solid rgba(31,95,159,.24);color:#1f5f9f;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;vertical-align:middle}
+@media(max-width:430px){.beta-badge{font-size:9px;padding:3px 6px}.brand{gap:6px}}
