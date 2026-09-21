@@ -20,6 +20,8 @@ jobs:
         run: npm run build:check
       - name: Diagnostic/content regression
         run: npm run test:diagnostic
+      - name: Content bundle readiness regression
+        run: npm run test:content
       - run: npm install --no-save @playwright/test@1.63.0
       - run: npx playwright install --with-deps chromium
       - name: Browser desktop/mobile regression
