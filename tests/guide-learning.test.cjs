@@ -46,7 +46,7 @@ assert.ok(t.questions.every(q=>q.evidence&&q.why&&q.trap));
 const readiness=validateTask(t);
 assert.equal(readiness.ok,true,readiness.errors.join('\n'));
 
-assert.deepEqual(L.pending.Lesen,[2,3,4,5]);
-assert.deepEqual(L.pending.Hören,[1,2,3,4]);
+assert.deepEqual(Array.from(L.pending.Lesen),[2,3,4,5]);
+assert.deepEqual(Array.from(L.pending.Hören),[1,2,3,4]);
 
 console.log('guide/learning regression: PASS');
