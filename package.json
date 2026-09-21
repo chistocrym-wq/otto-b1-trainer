@@ -1,9 +1,10 @@
 {
   "name": "otto-b1-preview",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scripts": {
-    "check": "node --check app.js",
+    "check": "node --check diagnostic-bank.js && node --check diagnostic-engine.js && node --check app.js",
+    "test:diagnostic": "node tests/diagnostic-engine.test.cjs",
     "test:e2e": "playwright test tests/preview.spec.cjs --browser=chromium --reporter=line"
   }
 }
