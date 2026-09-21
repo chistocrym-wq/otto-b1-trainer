@@ -1,0 +1,26 @@
+name: Preview QA
+on:
+  push:
+    branches:
+      - preview/clean-v1
+  pull_request:
+    branches:
+      - main
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check app.js
+      - run: npm install --no-save @playwright/test@1.63.0
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/preview.spec.cjs --browser=chromium --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: otto-b1-owner-preview-screens
+          path: test-results/**/*
+          if-no-files-found: warn
