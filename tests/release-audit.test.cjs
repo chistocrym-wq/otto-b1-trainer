@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'..');
 
 const frontend=[
   'index.html','app.js','styles.css','guide-data.js','learning-bank.js',
-  'diagnostic-bank.js','diagnostic-engine.js','content-readiness.js','netlify.toml'
+  'diagnostic-bank.js','diagnostic-engine.js','content-readiness.js','netlify.toml','beta.html'
 ];
 
 const secretPatterns=[
@@ -36,6 +36,9 @@ assert.equal(/content QA pending|QA_PENDING|source_status/i.test(app),false,'tec
 assert.equal(/CONTENT_READY/.test(index),false,'technical readiness term leaks to index');
 assert.ok(/beta-badge/.test(index),'Beta badge missing');
 assert.ok(/Otto Personal скоро будет доступен/.test(app),'Ask Otto must show honest Beta state');
+const beta=fs.readFileSync(path.join(root,'beta.html'),'utf8');
+assert.equal(/<script\s+src=/i.test(beta),false,'self-contained beta must not depend on external script files');
+assert.equal(/<link[^>]+stylesheet/i.test(beta),false,'self-contained beta must not depend on external stylesheet');
 assert.ok(/const data=\{url:location\.origin\+location\.pathname\}/.test(app),'Share must default to URL only');
 
 console.log('release/no-secrets regression: PASS');
