@@ -124,8 +124,7 @@ test('legacy demo training is quarantined; module task map stays visible',async(
     s.diagnostic.result=engine.result(ds);
     window.__OTTO_TEST__.setState(s);
   });
-  await page.evaluate(()=>location.hash='#modules');
-  await page.waitForTimeout(50);
+  await page.locator('[data-nav="modules"]').click();
   await expect(page.getByText(/Старые SAMPLES/)).toBeVisible();
   await page.locator('[data-module="Lesen"]').first().click();
   expect(await page.locator('.teil-row').count()).toBe(5);
