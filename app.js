@@ -108,7 +108,7 @@ function pill(t,k=''){return '<span class="pill '+k+'">'+esc(t)+'</span>';}
 function card(title,body,kind=''){return '<div class="card '+kind+'"><div class="card-title">'+esc(title)+'</div><div class="muted">'+body+'</div></div>';}
 function domainLabel(d){
   return {
-    language_system:'Language system',vocabulary:'Vocabulary',grammar:'Grammar',
+    language_system:'Языковая база',vocabulary:'Словарный запас',grammar:'Грамматика',
     Lesen:'Lesen',Hören:'Hören',Schreiben:'Schreiben',Sprechen:'Sprechen'
   }[d]||d;
 }
@@ -332,6 +332,20 @@ function humanRouteTitle(type){
   if(type==='B1_EXAM_FOCUSED')return 'Фокус на формате Goethe B1';
   return 'Персональный маршрут Otto';
 }
+function humanRouteCopy(text){
+  return String(text||'')
+    .replace(/B1 tasks/gi,'задания уровня B1')
+    .replace(/Goethe B1 task families/gi,'типы заданий Goethe B1')
+    .replace(/task families/gi,'типы экзаменационных заданий')
+    .replace(/B1 practice/gi,'практики уровня B1')
+    .replace(/practice/gi,'практики')
+    .replace(/Timing \+ mocks/gi,'Работа на время и пробные экзамены')
+    .replace(/timing/gi,'работу на время')
+    .replace(/mocks/gi,'пробные экзамены')
+    .replace(/paraphrase/gi,'перефразирование')
+    .replace(/B1-oriented/gi,'уровня B1')
+    .replace(/Lesen\/Hören/g,'чтение и понимание речи');
+}
 function reportView(){
   const r=ensureResult();
   if(!r)return diagnosticGate();
@@ -341,7 +355,7 @@ function reportView(){
     domains+=card(domainLabel(d),profileLine(v),v.status==='NEED_CONFIRMATION'?'warn':'');
   });
   domains+='</div>';
-  let gaps=r.gaps.length?r.gaps.map(function(g){return '<li><b>'+esc(domainLabel(g.module))+'</b> — '+esc(g.reason)+'</li>';}).join(''):'<li>Сейчас нет одного явного провала. Дальше Otto будет уточнять профиль на новых заданиях.</li>';
+  let gaps=r.gaps.length?r.gaps.map(function(g){return '<li><b>'+esc(domainLabel(g.module))+'</b> — '+esc(humanRouteCopy(g.reason))+'</li>';}).join(''):'<li>Сейчас нет одного явного провала. Дальше Otto будет уточнять профиль на новых заданиях.</li>';
   return '<span class="eyebrow">Результат диагностики</span><h1 class="h2">'+esc(placementHeading(r))+'</h1><p class="lead">Это учебный ориентир для маршрута, а не официальный сертификат уровня. Если данных мало, Otto не будет придумывать точность.</p>'+
     card('Насколько уверенно можно использовать результат',confidenceRu(r.placement.confidence),r.placement.status==='NEED_CONFIRMATION'?'warn':'good')+
     '<h3>Что видно по отдельным навыкам</h3>'+domains+
@@ -353,16 +367,16 @@ function homeView(){
   const r=ensureResult();if(!r)return diagnosticGate();
   const p=r.placement.status==='NEED_CONFIRMATION'?'результат ещё уточняется':(r.placement.band||r.placement.closerTo||'результат уточняется');
   return '<span class="eyebrow">Моя подготовка</span><h1 class="h2">Здравствуйте, '+esc(S.name)+'</h1><p class="lead">Текущий ориентир: '+esc(p)+'. Otto будет менять маршрут по мере появления новых независимых доказательств.</p>'+
-    '<div class="mode-grid"><div class="mode-card primary-mode"><span class="subtle-label">Основной режим</span><h3>Otto ведёт меня</h3><p class="muted">'+esc(r.route.summary)+'</p>'+button('Посмотреть мой маршрут','open-route')+'</div>'+
+    '<div class="mode-grid"><div class="mode-card primary-mode"><span class="subtle-label">Основной режим</span><h3>Otto ведёт меня</h3><p class="muted">'+esc(humanRouteCopy(r.route.summary))+'</p>'+button('Посмотреть мой маршрут','open-route')+'</div>'+
     '<div class="mode-card"><span class="subtle-label">Свободная практика</span><h3>Выбрать модуль</h3><p class="muted">Можно отдельно открыть Lesen, Hören, Schreiben или Sprechen. Непроверенные задания по-прежнему не выдаются за готовый контент.</p>'+button('Открыть модули','open-modules','secondary')+'</div></div>'+
     '<div class="grid2"><div class="card soft"><span class="eyebrow">Учебный справочник</span><h3>Гид B1</h3><p class="muted">Как проходит экзамен, стратегии, образцы, шаблоны и подсказки — простым русским языком.</p>'+button('Открыть Гид B1','open-guide','secondary')+'</div>'+
     '<div class="card soft"><span class="eyebrow">Training → Exam</span><h3>Помощи становится меньше</h3><p class="muted">Сначала можно учиться с объяснениями. Затем перевод, шаблоны и подсказки постепенно убираются. В Exam во время попытки помощи нет.</p></div></div>';
 }
 function routeView(){
   const r=ensureResult();if(!r)return diagnosticGate();
-  let html='<span class="eyebrow">Персональный маршрут</span><h1 class="route-human">'+esc(humanRouteTitle(r.route.routeType))+'</h1><p class="lead">'+esc(r.route.summary)+'</p><p class="muted">Настройка '+S.dailyMinutes+' минут влияет на объём будущего занятия, но не меняет результат диагностики.</p><div class="stack">';
+  let html='<span class="eyebrow">Персональный маршрут</span><h1 class="route-human">'+esc(humanRouteTitle(r.route.routeType))+'</h1><p class="lead">'+esc(humanRouteCopy(r.route.summary))+'</p><p class="muted">Настройка '+S.dailyMinutes+' минут влияет на объём будущего занятия, но не меняет результат диагностики.</p><div class="stack">';
   r.route.blocks.forEach(function(b,i){
-    html+=card((i+1)+'. '+b.label,esc(b.why)+(b.weight?' · ориентир по времени '+b.weight+'%':''),b.id&&b.id.includes('confirm')?'warn':'');
+    html+=card((i+1)+'. '+humanRouteCopy(b.label),esc(humanRouteCopy(b.why))+(b.weight?' · ориентир по времени '+b.weight+'%':''),b.id&&b.id.includes('confirm')?'warn':'');
   });
   html+='</div><div class="button-row">'+button('Модули','open-modules','ghost')+button('Гид B1','open-guide','secondary')+button('Прогресс','open-progress','secondary')+'</div>';return html;
 }
@@ -448,7 +462,7 @@ function renderWritingSamples(g){
   let html='';
   [1,2,3].forEach(function(n){
     const s=g.samples&&g.samples[n]&&g.samples[n][0];if(!s)return;
-    html+='<div class="sample-card"><span class="pill">Aufgabe '+n+'</span><h4>'+esc(s.title)+'</h4><div class="small"><b>Условие:</b> '+esc(s.task)+'</div><div class="sample-text">'+esc(s.text)+'</div><details class="guide-section"><summary>Показать перевод и разбор</summary><div class="guide-body"><p>'+esc(s.translation)+'</p><p><b>Структура:</b> '+esc(s.structure.join(' → '))+'</p><p><b>Почему это работает:</b> '+esc(s.why)+'</p></div></details></div>';
+    html+='<div class="sample-card"><span class="pill">Aufgabe '+n+'</span><h4>'+esc(s.title)+'</h4><div class="small"><b>Условие:</b> '+esc(s.task)+'</div><div class="sample-text">'+esc(s.text)+'</div><details class="guide-section"><summary>Показать перевод и разбор</summary><div class="guide-body"><p>'+esc(s.translation)+'</p><p><b>Структура:</b> '+esc(s.structure.join(' → '))+'</p><p><b>Почему это работает:</b> '+esc(s.why)+'</p>'+(s.vocabulary&&s.vocabulary.length?'<p><b>Vocabulary:</b></p><ul>'+s.vocabulary.map(function(v){return '<li><b>'+esc(v[0])+'</b> — '+esc(v[1])+'</li>';}).join('')+'</ul>':'')+'</div></details></div>';
   });
   return html;
 }
@@ -575,8 +589,8 @@ function learnView(){
   const task=learningTask(),l=S.learning,i=l.index,q=task.questions[i];
   if(l.completed)return learningSummaryView();
   const exam=l.mode==='exam';
-  let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(exam?'Exam-like · без помощи':'Training · русская поддержка')+'</span><h1 class="h2">Lesen Teil 1 — верно или неверно</h1></div><div class="learning-progress">Задание '+(i+1)+' из 6</div></div><div class="progress-line"><i style="width:'+(((i+1)/6)*100)+'%"></i></div>';
-  if(exam)html+='<div class="exam-lock"><b>Без помощи во время задания.</b> Как на экзамене: перевод, словарь, стратегия, образцы и помощь скрыты до завершения Teil.</div>';
+  let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(exam?'Exam-like':'Training · русская поддержка')+'</span><h1 class="h2">'+(exam?'Lesen · Teil 1':'Lesen Teil 1 — верно или неверно')+'</h1></div><div class="learning-progress">'+(exam?'Aufgabe ':'Задание ')+(i+1)+' / 6</div></div><div class="progress-line"><i style="width:'+(((i+1)/6)*100)+'%"></i></div>';
+  if(exam)html+='<div class="exam-lock"><b>Prüfungsmodus.</b> Keine Übersetzung, kein Wörterbuch und keine Tipps während der Bearbeitung.</div>';
   else html+=supportLevels();
   html+='<div class="card soft"><div class="small">Немецкая инструкция</div><b>'+esc(task.german_instruction)+'</b></div>';
   if(!exam)html+=trainingTools(task);
