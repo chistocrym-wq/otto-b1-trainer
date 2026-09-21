@@ -646,25 +646,39 @@ async function shareApp(){
   const ta=document.createElement('textarea');ta.value=data.url;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert('Ссылка скопирована.');
 }
 
+
 function render(){
+  normalizeRuntimeState();
   let r=route();
   if(!S.auth.verified&&!['register','verify'].includes(r)){r='register';history.replaceState(null,'','#register');}
   if(S.auth.verified&&!S.diagnostic.session.completed&&!['diagnostic-gate','diagnostic'].includes(r)){r='diagnostic-gate';history.replaceState(null,'','#diagnostic-gate');}
   const views={
     register:registerView,verify:verifyView,'diagnostic-gate':diagnosticGate,diagnostic:diagnosticView,
     report:reportView,home:homeView,route:routeView,modules:modulesView,module:moduleView,
+    guide:guideView,learn:learnView,'learn-summary':learningSummaryView,
     errors:errorsView,progress:progressView
   };
   $('#screen').innerHTML=(views[r]||registerView)();
   const locked=['register','verify','diagnostic-gate','diagnostic'].includes(r);
   $('#bottomNav').classList.toggle('hidden',locked);
-  $('#ottoFab').classList.add('hidden');
-  document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===r));
+  $('#guideButton').classList.toggle('hidden',locked);
+  $('#shareButton').classList.toggle('hidden',locked);
+  $('#ottoDecor').classList.toggle('hidden',locked);
+  $('#ottoDecor').src=window.OTTO_SRC||'';
+  $('#ottoNavImg').src=window.OTTO_SRC||'';
+  document.querySelectorAll('[data-nav]').forEach(function(b){b.classList.toggle('active',b.dataset.nav===r);});
+  renderModal();
 }
 
 function click(e){
   const nav=e.target.closest('[data-nav]');if(nav){go(nav.dataset.nav);return;}
-  const mod=e.target.closest('[data-module]');if(mod){S.selectedModule=mod.dataset.module;save();go('module');return;}
+  const guideTab=e.target.closest('[data-guide-module]');if(guideTab){S.selectedGuide=guideTab.dataset.guideModule;save();render();return;}
+  const startLearn=e.target.closest('[data-start-learning]');if(startLearn){startLearning(Number(startLearn.dataset.startLearning),'training');return;}
+  const startExam=e.target.closest('[data-start-exam]');if(startExam){startLearning(Number(startExam.dataset.startExam),'exam');return;}
+  const learnChoice=e.target.closest('[data-learn-choice]');if(learnChoice){if(!S.learning.checked[S.learning.index]){S.learning.answers[S.learning.index]=Number(learnChoice.dataset.learnChoice);save();render();}return;}
+  const support=e.target.closest('[data-support-level]');if(support){S.learning.supportLevel=Number(support.dataset.supportLevel);S.learning.translation=false;S.learning.instructionHelp=false;S.learning.strategy=false;S.learning.dictionary=false;save();render();return;}
+  const speakWord=e.target.closest('[data-speak-word]');if(speakWord){speakText(speakWord.dataset.speakWord);return;}
+  const mod=e.target.closest('[data-module]');if(mod){S.selectedModule=mod.dataset.module;S.selectedGuide=S.selectedModule;save();go('module');return;}
   const mins=e.target.closest('[data-minutes]');if(mins){captureRegistrationDraft();S.dailyMinutes=Number(mins.dataset.minutes);save();render();return;}
   const ch=e.target.closest('[data-diag-choice]');if(ch){answerDiagnostic(Number(ch.dataset.diagChoice));return;}
   const a=e.target.closest('[data-action]');if(!a)return;
@@ -686,6 +700,27 @@ function click(e){
   else if(x==='open-home')go('home');
   else if(x==='open-modules')go('modules');
   else if(x==='open-progress')go('progress');
+  else if(x==='open-guide'){S.selectedGuide=S.selectedGuide||S.selectedModule||'Lesen';save();go('guide');}
+  else if(x==='open-guide-module'){S.selectedGuide=S.selectedModule;save();go('guide');}
+  else if(x==='guide-to-module'){S.selectedModule=S.selectedGuide;save();go('module');}
+  else if(x==='open-help')openHelp();
+  else if(x==='help-open-guide'){S.ui.helpOpen=false;S.selectedGuide=S.selectedModule;save();go('guide');}
+  else if(x==='ask-otto'){S.ui.ottoOpen=true;S.ui.helpOpen=false;save();renderModal();}
+  else if(x==='close-modal'){S.ui.helpOpen=false;S.ui.ottoOpen=false;save();renderModal();}
+  else if(x==='share-app')shareApp();
+  else if(x==='guide-speak-sample')speakText(GUIDE.modules.Sprechen.presentation.sample);
+  else if(x==='instruction-help'){S.learning.instructionHelp=!S.learning.instructionHelp;if(S.learning.instructionHelp)recordAssistance('instruction_help','Lesen Teil 1');save();render();}
+  else if(x==='toggle-translation'){S.learning.translation=!S.learning.translation;if(S.learning.translation)recordAssistance('translation_used','Lesen Teil 1');save();render();}
+  else if(x==='toggle-strategy'){S.learning.strategy=!S.learning.strategy;if(S.learning.strategy)recordAssistance('strategy_used','Lesen Teil 1');save();render();}
+  else if(x==='toggle-dictionary'){S.learning.dictionary=!S.learning.dictionary;if(S.learning.dictionary)recordAssistance('dictionary_used','Lesen Teil 1');save();render();}
+  else if(x==='dictionary-all'){S.learning.dictionaryAll=!S.learning.dictionaryAll;save();render();}
+  else if(x==='learn-check')learnCheck();
+  else if(x==='learn-next')learnNext();
+  else if(x==='learn-exam-next')learnExamNext();
+  else if(x==='learn-back')learnBack();
+  else if(x==='learn-review'){S.learning.review=true;save();render();}
+  else if(x==='learn-module'){S.selectedModule='Lesen';save();go('module');}
+  else if(x==='learn-guide'){S.selectedGuide='Lesen';save();go('guide');}
 }
 document.addEventListener('click',click);
 $('#resetButton').addEventListener('click',()=>{if(confirm('Сбросить Preview и диагностику?'))reset();});
