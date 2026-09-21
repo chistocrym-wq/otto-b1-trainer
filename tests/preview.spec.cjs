@@ -140,9 +140,9 @@ test('Guide B1 is global and contextual; Schreiben/Sprechen structure is correct
   await expect(page.getByText('30 заданий').first()).toBeVisible();
 
   await page.locator('[data-guide-module="Schreiben"]').click();
-  await expect(page.getByText('Aufgabe 1 — E-Mail')).toHaveCount(1);
-  await expect(page.getByText('Aufgabe 2 — Diskussionsbeitrag')).toHaveCount(1);
-  await expect(page.getByText('Aufgabe 3 — короткая E-Mail')).toHaveCount(1);
+  await expect(page.getByText('Aufgabe 1 — E-Mail',{exact:true})).toHaveCount(1);
+  await expect(page.getByText('Aufgabe 2 — Diskussionsbeitrag',{exact:true})).toHaveCount(1);
+  await expect(page.getByText('Aufgabe 3 — короткая E-Mail',{exact:true})).toHaveCount(1);
   await expect(page.getByText('Один хороший вариант · Aufgabe 1')).toBeVisible();
   await expect(page.getByText('Phrase bank')).toHaveCount(1);
   await expect(page.getByText('Шаблон')).toHaveCount(1);
@@ -179,7 +179,7 @@ test('full Lesen Teil 1: Russian support, translation evidence, dictionary, feed
   await expect(page.getByText(/Всем привет!/)).toBeVisible();
 
   await page.getByRole('button',{name:/Словарь задания/}).click();
-  await expect(page.getByText('inzwischen')).toBeVisible();
+  await expect(page.locator('.dictionary-row').filter({hasText:'inzwischen'}).first()).toBeVisible();
   await expect(page.locator('[data-speak-word]').first()).toBeVisible();
 
   // Q1 intentionally wrong: Richtig instead of Falsch.
@@ -187,7 +187,7 @@ test('full Lesen Teil 1: Russian support, translation evidence, dictionary, feed
   await page.getByRole('button',{name:'Проверить'}).click();
   await expect(page.getByText('Нужно разобрать')).toBeVisible();
   await expect(page.getByText(/Где ловушка:/)).toBeVisible();
-  await expect(page.getByText(/Gemeinschaftsraum/)).toBeVisible();
+  await expect(page.locator('.feedback-card').getByText(/Gemeinschaftsraum/)).toBeVisible();
 
   await page.getByRole('button',{name:'Далее →'}).click();
   await expect(page.getByText('Задание 2 из 6')).toBeVisible();
