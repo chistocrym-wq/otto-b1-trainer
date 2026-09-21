@@ -1,0 +1,91 @@
+'use strict';
+
+const FINAL_AUDIO_FORBIDDEN = new Set(['speechSynthesis','browser_speech_synthesis','tts_browser_placeholder']);
+
+function nonEmptyString(v){return typeof v==='string'&&v.trim().length>0;}
+function isArray(v){return Array.isArray(v);}
+function uniq(xs){return new Set(xs).size===xs.length;}
+
+function validateCommon(task){
+  const errors=[];
+  const req=['task_id','module','teil','task_type','skill','micro_skill','difficulty','topic','version','qa_status','source_basis','explanation','strategy'];
+  req.forEach(k=>{if(task[k]==null||task[k]===''||(isArray(task[k])&&!task[k].length))errors.push('MISSING_'+k.toUpperCase());});
+  if(!isArray(task.glossary)||task.glossary.length===0)errors.push('MISSING_GLOSSARY');
+  if(!nonEmptyString(task.translation))errors.push('MISSING_TRANSLATION');
+  const hasAnswer=task.answer_key_status==='VERIFIED'&&(task.correct_answer!==undefined||task.answer_key!==undefined);
+  const hasRubric=task.rubric_status==='VERIFIED'&&task.rubric;
+  if(!hasAnswer&&!hasRubric)errors.push('UNVERIFIED_ANSWER_KEY_OR_RUBRIC');
+  return errors;
+}
+
+function validateSpeakers(audio,task){
+  const errors=[];
+  if(!isArray(audio.speakers)||audio.speakers.length===0)return ['MISSING_SPEAKERS'];
+  const ids=audio.speakers.map(s=>s&&s.speaker_id).filter(Boolean);
+  if(ids.length!==audio.speakers.length||!uniq(ids))errors.push('INVALID_SPEAKER_IDS');
+  const voiceBySpeaker=new Map();
+  for(const s of audio.speakers){
+    if(!s||!nonEmptyString(s.speaker_id)||!nonEmptyString(s.voice_id)){errors.push('MISSING_SPEAKER_OR_VOICE_ID');continue;}
+    if(voiceBySpeaker.has(s.speaker_id)&&voiceBySpeaker.get(s.speaker_id)!==s.voice_id)errors.push('SPEAKER_VOICE_NOT_STABLE');
+    voiceBySpeaker.set(s.speaker_id,s.voice_id);
+  }
+  const voices=[...voiceBySpeaker.values()];
+  if(ids.length>1&&new Set(voices).size!==ids.length)errors.push('MULTISPEAKER_REUSES_VOICE');
+  if(String(task.teil)==='4'&&ids.length<2)errors.push('HOEREN_TEIL4_REQUIRES_MULTISPEAKER');
+  return errors;
+}
+
+function validateAudio(task){
+  const errors=[];
+  const a=task.audio;
+  if(!a||typeof a!=='object')return ['MISSING_AUDIO'];
+  ['audio_id','task_id','version','transcript','duration_seconds','playback_rules','source_status','production_status'].forEach(k=>{
+    if(a[k]==null||a[k]==='')errors.push('MISSING_AUDIO_'+k.toUpperCase());
+  });
+  if(a.task_id!==task.task_id)errors.push('AUDIO_TASK_ID_MISMATCH');
+  if(FINAL_AUDIO_FORBIDDEN.has(a.source_type))errors.push('BROWSER_SPEECH_SYNTHESIS_NOT_FINAL');
+  if(a.production_status==='FINAL'&&!nonEmptyString(a.asset_src))errors.push('FINAL_AUDIO_ASSET_MISSING');
+  const p=a.playback_rules||{};
+  if(!Number.isInteger(p.exam_play_count)||p.exam_play_count<1)errors.push('INVALID_EXAM_PLAY_COUNT');
+  if(p.extra_training_plays_are_assisted!==true)errors.push('EXTRA_TRAINING_PLAYS_MUST_BE_ASSISTED');
+  errors.push(...validateSpeakers(a,task));
+  return errors;
+}
+
+function validateImage(task){
+  const errors=[];
+  const i=task.image;
+  if(!i||typeof i!=='object')return ['MISSING_IMAGE'];
+  ['image_id','task_id','version','src','alt','scene_context','art_direction_version','source_status'].forEach(k=>{
+    if(i[k]==null||i[k]==='')errors.push('MISSING_IMAGE_'+k.toUpperCase());
+  });
+  if(i.task_id!==task.task_id)errors.push('IMAGE_TASK_ID_MISMATCH');
+  if(i.context_only!==true)errors.push('IMAGE_MUST_BE_CONTEXT_ONLY');
+  if(i.answer_leak_review!=='PASSED')errors.push('IMAGE_ANSWER_LEAK_REVIEW_REQUIRED');
+  const serialized=JSON.stringify(i);
+  if(/correct_answer|answer_key|correctOption|solution/i.test(serialized))errors.push('IMAGE_METADATA_CONTAINS_ANSWER_DATA');
+  return errors;
+}
+
+function validateHoeren(task){
+  const errors=[];
+  errors.push(...validateAudio(task));
+  errors.push(...validateImage(task));
+  return errors;
+}
+
+function validateTask(task){
+  const errors=validateCommon(task);
+  if(task.module==='Hören'||task.module==='Hoeren')errors.push(...validateHoeren(task));
+  const ready=errors.length===0;
+  if(task.content_status==='CONTENT_READY'&&!ready)errors.unshift('CONTENT_READY_WITH_INCOMPLETE_BUNDLE');
+  return {ok:ready,errors};
+}
+
+function assertCanPublish(task){
+  const r=validateTask(task);
+  if(!r.ok)throw new Error('Task '+(task.task_id||'<unknown>')+' is not content-ready: '+r.errors.join(', '));
+  return true;
+}
+
+module.exports={validateTask,assertCanPublish,FINAL_AUDIO_FORBIDDEN};
