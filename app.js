@@ -330,5 +330,11 @@ document.addEventListener('click',click);
 $('#resetButton').addEventListener('click',()=>{if(confirm('Сбросить Preview и диагностику?'))reset();});
 window.addEventListener('popstate',render);
 window.addEventListener('hashchange',render);
+window.__OTTO_TEST__={
+  getState:()=>JSON.parse(JSON.stringify(S)),
+  currentItem:()=>{const x=ENGINE.nextItem(S.diagnostic);return x?JSON.parse(JSON.stringify(x)):null;},
+  result:()=>S.diagnostic.completed?ENGINE.result(S.diagnostic):null
+};
+
 if(!location.hash)history.replaceState(null,'','#register');
 render();
