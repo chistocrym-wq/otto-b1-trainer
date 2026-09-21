@@ -46,3 +46,20 @@ Regression covers clear A1, A2.2→B1 boundary, borderline extra evidence, one-e
 - no merge
 - `main` untouched
 - production untouched
+
+## Mandatory content-ready gate
+
+Новый owner requirement зафиксирован в `docs/content-readiness-standard.md` и защищён `content-readiness.js` + `tests/content-readiness.test.cjs`.
+
+Задание не считается готовым без полного bundle: task + translation + detailed explanation + glossary + Otto strategy + verified answer key/versioned rubric + source/QA metadata + audio where required + Hören scene image.
+
+Для Hören:
+- final audio не может быть browser `speechSynthesis`;
+- versioned audio metadata обязательно;
+- multi-speaker task требует стабильные разные speaker/voice IDs;
+- Hören Teil 4 не может использовать один voice для всех участников;
+- playback rules задаются metadata;
+- extra training plays должны фиксироваться как assisted evidence;
+- transcript/translation/glossary/strategy скрыты в Exam/Mock;
+- каждый Hören learning task требует context-only image, прошедший answer-leak review;
+- image не является экзаменационным материалом, если его нет в официальной механике task family.
