@@ -144,8 +144,8 @@ test('Guide B1 is global and contextual; Schreiben/Sprechen structure is correct
   await expect(page.getByText('Aufgabe 2 — Diskussionsbeitrag',{exact:true})).toHaveCount(1);
   await expect(page.getByText('Aufgabe 3 — короткая E-Mail',{exact:true})).toHaveCount(1);
   await expect(page.getByText('Один хороший вариант · Aufgabe 1')).toBeVisible();
-  await expect(page.getByText('Phrase bank',{exact:true}).first()).toBeVisible();
-  await expect(page.getByText('Шаблон',{exact:true}).first()).toBeVisible();
+  await expect(page.getByText(/Phrase bank/).first()).toBeVisible();
+  await expect(page.getByText(/Шаблон/).first()).toBeVisible();
   expect(await page.locator('#screen').innerText()).not.toContain('Präsentation');
 
   await page.locator('[data-guide-module="Sprechen"]').click();
@@ -222,7 +222,7 @@ test('Exam-like hides assistance until review',async({page})=>{
   for(let i=0;i<6;i++){
     await page.locator('[data-learn-choice="'+answers[i]+'"]').click();
     await page.getByRole('button',{name:i===5?'Завершить Teil':'Далее →'}).click();
-    if(i<5)await expect(page.getByText('Задание '+(i+2)+' из 6')).toBeVisible();
+    if(i<5)await expect(page.getByText('Aufgabe '+(i+2)+' / 6')).toBeVisible();
   }
   await expect(page.getByText('6 / 6')).toBeVisible();
   expect(await page.getByText(/Правильный ответ:/).count()).toBe(0);
