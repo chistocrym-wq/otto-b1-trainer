@@ -170,7 +170,7 @@ test('Representative Hören, Schreiben, Sprechen partner and exam-like flows wor
   await page.getByRole('button', {name:'Не согласиться и объяснить'}).click();
   await expect(page.getByText(/компромисс/i)).toBeVisible();
   await page.getByRole('button', {name:'Предложить альтернативу'}).click();
-  await page.getByRole('button', {name:'Распределить задачи'}).click();
+  await page.getByRole('button', {name:'Взять одну задачу и предложить вторую партнёру'}).click();
   await expect(page.getByText('Парная тренировка завершена')).toBeVisible();
   await expect(page.getByText(/Что НЕ оценено/)).toBeVisible();
 
