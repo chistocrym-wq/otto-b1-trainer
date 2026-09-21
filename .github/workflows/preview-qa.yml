@@ -32,7 +32,7 @@ jobs:
         run: npm run test:e2e
       - name: Public Beta anonymous smoke
         env:
-          PUBLIC_BETA_URL: https://cdn.jsdelivr.net/gh/chistocrym-wq/otto-b1-trainer@${{ github.event.pull_request.head.sha || github.sha }}/index.html
+          PUBLIC_BETA_URL: https://raw.githack.com/chistocrym-wq/otto-b1-trainer/${{ github.event.pull_request.head.sha || github.sha }}/index.html
         run: |
           ok=0
           for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
