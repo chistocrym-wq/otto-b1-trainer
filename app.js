@@ -246,7 +246,7 @@ function taskTools(sample){
 function closedTask(sample,mode){
   var html='';
   if(sample.text)html+='<div class="task-text">'+esc(sample.text).replace(/\n/g,'<br>')+'</div>';
-  if(sample.kind==='audio')html+='<div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><div><b>Hören · аудио</b><div class="small">В Preview используется немецкая системная озвучка. Правило количества прослушиваний уже соответствует выбранному Teil.</div></div></div>'+button('▶ Воспроизвести','play-audio','secondary');
+  if(sample.kind==='audio')html+='<div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><div><b>Hören · аудио</b><div class="small">Preview-аудио: немецкая системная озвучка · максимум '+(sample.plays||2)+' прослушивани'+((sample.plays||2)===1?'е':'я')+' для этого Teil.</div></div></div>'+button('▶ Воспроизвести','play-audio','secondary');
   if(mode==='training')html+=taskTools(sample);
   html+='<p class="lead" style="font-size:17px"><b>'+esc(sample.prompt)+'</b></p><div class="choice-grid">';
   sample.options.forEach(function(x,i){html+='<button class="choice '+(S.ui.selected===i?'selected':'')+'" data-choice="'+i+'">'+esc(x)+'</button>';});
@@ -325,7 +325,7 @@ function moduleView(){
   html+='</div><div class="button-row">'+button('← Все модули','open-modules','ghost')+button('Exam mode этого модуля','exam-current','secondary')+'</div>';return html;
 }
 function openModule(m){S.selectedModule=m;S.selectedTeil=1;save();go('module');}
-function openTeil(n){S.selectedTeil=Number(n);S.ui.selected=null;S.ui.translation=false;S.ui.strategy=false;S.freeResult=null;if(S.selectedModule==='Sprechen'&&S.selectedTeil===1){S.speaking={turn:0,history:[],lastTranscript:'',finished:false};}save();go('module-task');}
+function openTeil(n){S.selectedTeil=Number(n);S.ui.selected=null;S.ui.translation=false;S.ui.strategy=false;S.freeResult=null;if(S.selectedModule==='Sprechen'&&S.selectedTeil===1){S.speaking={turn:0,history:[],lastTranscript:'',finished:false,fromDaily:false};}save();go('module-task');}
 function currentSample(){return SAMPLES[S.selectedModule+'-'+S.selectedTeil];}
 function moduleTaskView(){
   var t=currentSample();if(!t)return card('Нет задания','Для этого Teil пока нет representative sample.','warn');
@@ -351,8 +351,13 @@ function freeSubmit(){
 function freeWriting(){
   var t=currentSample(),text=$('#freeWriting').value.trim(),a=writingCheck(text);
   if(!a.valid){alert('Пока это не пригодный немецкий ответ: нужен осмысленный текст по-немецки.');return;}
-  recordEvidence('Schreiben',t.skill,a.covered>=1,'free_training',{wordCount:a.words});
-  S.freeResult={ok:true};save();$('#screen').innerHTML='<span class="eyebrow">Schreiben · предварительный feedback</span><h1 class="h2">Текст принят для проверки</h1>'+card('Что уже можно подтвердить','Текст осмысленный и преимущественно немецкий. В production дальше запускается единый AI-review по экзаменационным критериям.','good')+card('Что мы НЕ называем баллом','Этот Preview не выдаёт фиктивный Goethe score по количеству символов.','warn')+'<div class="button-row">'+button('Назад к модулю','back-module','primary')+'</div>';
+  var fulfils=true,detail='';
+  if(t.teil===1){fulfils=a.covered>=2;detail='Проверены базовые коммуникативные функции письма; финальная оценка будет по Erfüllung, Kohärenz, Wortschatz, Strukturen.';}
+  if(t.teil===2){var opinion=/meiner meinung|ich finde|ich glaube|dafür|dagegen|weil|denn|deshalb|einerseits|andererseits/i.test(text);fulfils=opinion&&a.words>=35;detail='Проверено наличие развёрнутого мнения/обоснования. Финальный AI-review будет критериальным, а не по длине текста.';}
+  if(t.teil===3){var polite=/leider|entschuldig|könnten|bitte|termin|freundliche|viele grüße|grüße/i.test(text);fulfils=polite&&a.words>=20;detail='Проверено, что короткое сообщение похоже на уместную коммуникативную E-Mail.';}
+  recordEvidence('Schreiben',t.skill,fulfils,'free_training',{wordCount:a.words});
+  S.freeResult={ok:fulfils};save();
+  $('#screen').innerHTML='<span class="eyebrow">Schreiben · предварительный feedback</span><h1 class="h2">'+(fulfils?'Текст пригоден для полноценной проверки':'Нужно доработать выполнение задачи')+'</h1>'+card('Что уже можно подтвердить',esc(detail),fulfils?'good':'warn')+card('Что мы НЕ называем баллом','Этот Preview не выдаёт фиктивный Goethe score по количеству символов.','warn')+'<div class="button-row">'+button('Назад к модулю','back-module','primary')+'</div>';
 }
 
 function playText(text,rate){
@@ -360,8 +365,8 @@ function playText(text,rate){
   speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=rate||0.9;speechSynthesis.speak(u);
 }
 function playCurrentAudio(){
-  var t=currentSample()||DIAG[S.diagnostic.index];if(!t||!t.audio){return;}
-  var key=t.module+'-'+(t.teil||'diag'),used=S.diagnostic.audioPlays[key]||0,limit=t.plays||2;
+  var t=route()==='diagnostic'?DIAG[S.diagnostic.index]:currentSample();if(!t||!t.audio){return;}
+  var key=(route()==='diagnostic'?'diag-':t.module+'-')+(t.teil||S.diagnostic.index),used=S.diagnostic.audioPlays[key]||0,limit=t.plays||2;
   if(used>=limit){alert('Для этого Teil в текущем режиме лимит прослушиваний исчерпан.');return;}
   S.diagnostic.audioPlays[key]=used+1;save();playText(t.audio,0.88);render();
 }
@@ -394,7 +399,7 @@ function speakingPracticeView(t){
       '<div class="button-row">'+button('🔊 Otto говорит','otto-speak','secondary')+(S.speaking.finished?'':button('🎙 Ответить голосом','voice-dialogue','primary'))+button('Записать ответ без распознавания','free-record','ghost')+'</div>'+
       (S.speaking.lastTranscript?card('Распознано','«'+esc(S.speaking.lastTranscript)+'»','soft'):'')+
       (S.speaking.finished?card('Диалог завершён','Вы прошли три шага планирования: время → место → распределение задач. Это именно логика парной Aufgabe 1.','good'):'')+
-      '<div class="button-row">'+button('← К Sprechen','back-module','ghost')+'</div>';
+      '<div class="button-row">'+(S.speaking.finished&&S.speaking.fromDaily?button('Продолжить мою сессию','speaking-daily-continue','primary'):'')+button('← К Sprechen','back-module','ghost')+'</div>';
   }
   var promptText=t.teil===2?'Сначала выберите тему A или B, затем говорите по пяти пунктам около 3 минут.':'Сначала коротко отреагируйте на презентацию Otto, затем задайте вопрос и ответьте на его вопрос.';
   return '<span class="eyebrow">Sprechen · Aufgabe '+t.teil+'</span><h1 class="h2">'+esc(t.title)+'</h1><div class="task-text">'+esc(t.prompt)+'</div><div class="friendly-note">'+promptText+'</div><div class="record-box" style="margin-top:14px"><span class="record-dot"></span><b> Реальная запись микрофона</b><div class="button-row" style="justify-content:center">'+button('🎙 Начать / остановить','free-record','secondary')+'</div></div><div class="button-row">'+button('← К Sprechen','back-module','ghost')+'</div>';
@@ -454,7 +459,7 @@ function dailyWriting(){
   var text=$('#dailyWriting').value.trim(),a=writingCheck(text);if(!a.valid){alert('Нужен осмысленный немецкий текст.');return;}
   recordEvidence('Schreiben','task_fulfilment',a.covered>=2,'daily',{wordCount:a.words});S.daily.step++;save();render();
 }
-function dailySpeaking(){S.selectedModule='Sprechen';S.selectedTeil=1;S.speaking={turn:0,history:[],lastTranscript:'',finished:false};save();go('module-task');}
+function dailySpeaking(){S.selectedModule='Sprechen';S.selectedTeil=1;S.speaking={turn:0,history:[],lastTranscript:'',finished:false,fromDaily:true};save();go('module-task');}
 
 function repairView(){
   var e=S.errors.find(function(x){return x.id===S.activeError;})||S.errors.find(function(x){return x.status!=='resolved'&&x.module==='Lesen';});
@@ -576,6 +581,7 @@ function eventClick(e){
     playText(prompts[Math.min(S.speaking.turn,2)],0.92);
   }
   else if(x==='voice-dialogue')voiceDialogue();
+  else if(x==='speaking-daily-continue'){S.daily.step++;S.speaking.fromDaily=false;save();go('daily');}
   else if(x==='daily-submit')dailySubmit();
   else if(x==='daily-writing')dailyWriting();
   else if(x==='daily-speaking')dailySpeaking();
