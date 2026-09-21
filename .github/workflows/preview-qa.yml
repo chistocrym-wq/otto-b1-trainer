@@ -16,6 +16,8 @@ jobs:
           node-version: 22
       - name: Syntax checks
         run: npm run check
+      - name: Static build/content smoke
+        run: npm run build:check
       - name: Diagnostic/content regression
         run: npm run test:diagnostic
       - run: npm install --no-save @playwright/test@1.63.0
