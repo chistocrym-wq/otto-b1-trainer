@@ -187,7 +187,19 @@ function render(){
   document.querySelectorAll('[data-nav]').forEach(function(b){b.classList.toggle('active',b.dataset.nav===r);});
   renderModal();
 }
-function setAuthMethod(method){S.auth.method=method;save();render();}
+function captureRegistrationDraft(){
+  var nameEl=$('#regName'),genderEl=$('#regGender'),dateEl=$('#regExamDate'),contactEl=$('#regContact');
+  if(nameEl)S.name=nameEl.value;
+  if(genderEl)S.gender=genderEl.value;
+  if(dateEl)S.examDate=dateEl.value;
+  if(contactEl&&S.auth.method==='email')S.auth.contact=contactEl.value;
+}
+function setAuthMethod(method){
+  captureRegistrationDraft();
+  S.auth.method=method;
+  save();
+  render();
+}
 function registerView(){
   var contact=S.auth.method==='email'
     ? '<label><b>Email</b><input id="regContact" class="field" type="email" value="'+esc(S.auth.contact)+'" placeholder="name@example.com"></label>'
@@ -549,7 +561,7 @@ function eventClick(e){
   var mod=e.target.closest('[data-module]');if(mod){openModule(mod.dataset.module);return;}
   var teil=e.target.closest('[data-open-teil]');if(teil){openTeil(teil.dataset.openTeil);return;}
   var ex=e.target.closest('[data-exam-module]');if(ex){startExamModule(ex.dataset.examModule);return;}
-  var min=e.target.closest('[data-minutes]');if(min){S.dailyMinutes=Number(min.dataset.minutes);save();render();return;}
+  var min=e.target.closest('[data-minutes]');if(min){captureRegistrationDraft();S.dailyMinutes=Number(min.dataset.minutes);save();render();return;}
   var ch=e.target.closest('[data-choice]');if(ch){S.ui.selected=Number(ch.dataset.choice);save();render();return;}
   var a=e.target.closest('[data-action]');if(!a)return;
   var x=a.dataset.action;
