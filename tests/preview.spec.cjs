@@ -11,7 +11,7 @@ test.afterAll(async()=>{await new Promise(r=>server.close(r));});
 
 async function fresh(page){
   await page.goto(base,{waitUntil:'networkidle'});
-  await page.evaluate(()=>localStorage.clear());
+  await page.evaluate(()=>{localStorage.clear();location.hash='#register';});
   await page.reload({waitUntil:'networkidle'});
 }
 async function registerAndVerify(page){
@@ -19,6 +19,11 @@ async function registerAndVerify(page){
   await expect(page.getByText('Регистрация',{exact:true})).toBeVisible();
   await page.locator('#regName').fill('Anna');
   await page.locator('#regContact').fill('anna@example.com');
+  await page.locator('#regExamDate').fill('2026-12-15');
+  await page.locator('[data-minutes="45"]').click();
+  await expect(page.locator('#regName')).toHaveValue('Anna');
+  await expect(page.locator('#regContact')).toHaveValue('anna@example.com');
+  await expect(page.locator('#regExamDate')).toHaveValue('2026-12-15');
   await page.getByRole('button',{name:'Получить код'}).click();
   await expect(page.getByText('Введите код из письма')).toBeVisible();
   await page.locator('#verifyCode').fill('111111');
