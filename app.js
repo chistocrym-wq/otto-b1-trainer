@@ -115,7 +115,14 @@ function reset(){
   try{localStorage.removeItem(STORAGE);}catch(e){}
   memoryFallback=null;S=fresh();location.hash='#register';render();
 }
-function go(route){S.ui.selected=null;S.freeResult=null;save();location.hash='#'+route;render();}
+function go(nextRoute){
+  S.ui.selected=null;
+  S.freeResult=null;
+  save();
+  var nextHash='#'+nextRoute;
+  if(location.hash!==nextHash)history.pushState(null,'',nextHash);
+  render();
+}
 function route(){return (location.hash||'#register').slice(1);}
 function card(title,body,kind){return '<div class="card '+(kind||'')+'"><div class="card-title">'+title+'</div><div class="muted">'+body+'</div></div>';}
 function pill(text,kind){return '<span class="pill '+(kind||'')+'">'+esc(text)+'</span>';}
@@ -623,6 +630,7 @@ document.addEventListener('click',eventClick);
 $('#resetButton').addEventListener('click',function(){if(confirm('Сбросить данные Preview и начать регистрацию заново?'))reset();});
 $('#ottoFab').addEventListener('click',function(){S.ui.ottoOpen=true;save();renderModal();});
 window.addEventListener('hashchange',render);
+window.addEventListener('popstate',render);
 $('#ottoFabImg').src=window.OTTO_SRC||'';
 recompute();
 if(!location.hash)location.hash='#register';
