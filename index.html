@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#dfeeff">
   <meta name="description" content="Тренажёр Otto — подготовка к Goethe-Zertifikat B1">
   <title>Тренажёр Otto — сертификат B1</title>
   <link rel="stylesheet" href="./styles.css">
@@ -15,24 +15,28 @@
         <span class="brand-mark">Тренажёр Otto</span>
         <span class="brand-level">Goethe-Zertifikat B1</span>
       </button>
-      <button id="resetButton" class="icon-btn" title="Начать заново" aria-label="Начать заново">↻</button>
+      <div class="top-actions">
+        <button id="guideButton" class="top-guide hidden" data-action="open-guide" title="Гид B1">Гид B1</button>
+        <button id="resetButton" class="icon-btn" title="Начать заново" aria-label="Начать заново">↻</button>
+      </div>
     </header>
     <main id="screen" class="screen" aria-live="polite"></main>
+    <img id="ottoDecor" class="otto-decor hidden" alt="" aria-hidden="true">
+    <button id="shareButton" class="share-utility hidden" data-action="share-app">Поделиться</button>
     <nav id="bottomNav" class="bottom-nav hidden" aria-label="Основная навигация">
       <button data-nav="home"><span>⌂</span><small>Сегодня</small></button>
       <button data-nav="modules"><span>▦</span><small>Модули</small></button>
+      <button class="otto-nav" data-action="ask-otto" aria-label="Спросить Otto"><span class="otto-nav-face"><img id="ottoNavImg" alt="Otto"></span><small>Спросить Otto</small></button>
       <button data-nav="errors"><span>!</span><small>Ошибки</small></button>
       <button data-nav="progress"><span>◔</span><small>Прогресс</small></button>
     </nav>
-    <button id="ottoFab" class="otto-fab hidden" aria-label="Открыть Otto Personal">
-      <img id="ottoFabImg" alt="Otto">
-      <span>Спросить Otto</span>
-    </button>
     <div id="modalRoot"></div>
   </div>
   <script src="./otto.js"></script>
   <script src="./diagnostic-bank.js"></script>
   <script src="./diagnostic-engine.js"></script>
+  <script src="./guide-data.js"></script>
+  <script src="./learning-bank.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
