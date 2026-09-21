@@ -2,6 +2,8 @@
 
 const BANK=window.OTTO_DIAGNOSTIC_BANK;
 const ENGINE=window.OTTO_DIAGNOSTIC_ENGINE;
+const GUIDE=window.OTTO_GUIDE_B1;
+const LEARNING=window.OTTO_LEARNING_BANK;
 const STORAGE='ottoB1.diagnostic.v3';
 const MODULES=['Lesen','Hören','Schreiben','Sprechen'];
 
@@ -51,7 +53,16 @@ function fresh(){
       itemStartedAt:null,
       result:null
     },
-    selectedModule:'Lesen'
+    selectedModule:'Lesen',
+    selectedGuide:'Lesen',
+    assistanceEvidence:[],
+    learning:{
+      module:'Lesen',teil:1,mode:'training',supportLevel:1,index:0,
+      answers:[null,null,null,null,null,null],checked:[false,false,false,false,false,false],
+      translation:false,instructionHelp:false,strategy:false,dictionary:false,dictionaryAll:false,
+      helpOpen:false,review:false,completed:false
+    },
+    ui:{ottoOpen:false,helpOpen:false}
   };
 }
 
@@ -67,6 +78,15 @@ function load(){
   }catch(e){return memoryFallback||fresh();}
 }
 let S=load();
+function normalizeRuntimeState(){
+  if(!S.assistanceEvidence)S.assistanceEvidence=[];
+  if(!S.learning)S.learning=fresh().learning;
+  else S.learning=Object.assign(fresh().learning,S.learning);
+  if(!S.ui)S.ui={ottoOpen:false,helpOpen:false};
+  else S.ui=Object.assign({ottoOpen:false,helpOpen:false},S.ui);
+  if(!S.selectedGuide)S.selectedGuide=S.selectedModule||'Lesen';
+}
+normalizeRuntimeState();
 
 function save(){
   try{localStorage.setItem(STORAGE,JSON.stringify(S));}
@@ -74,7 +94,7 @@ function save(){
 }
 function reset(){
   try{localStorage.removeItem(STORAGE);}catch(e){}
-  memoryFallback=null;S=fresh();history.replaceState(null,'','#register');render();
+  memoryFallback=null;S=fresh();normalizeRuntimeState();history.replaceState(null,'','#register');render();
 }
 function go(r){
   save();
@@ -128,7 +148,7 @@ function diagnosticStarted(){
 }
 function diagnosticGate(){
   const resume=diagnosticStarted()&&!S.diagnostic.session.completed;
-  return '<div class="gate-card"><div class="plain-otto"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><span class="eyebrow">Первичная калибровка</span><h1 class="h1">'+(resume?'Продолжим диагностику':'Сначала — диагностика')+'</h1><p class="lead">Это не тест из шести случайных вопросов. Otto сначала делает wide screening, затем проверяет предполагаемую границу на новом материале и отдельно собирает productive evidence.</p><div class="friendly-note" style="text-align:left"><b>Важно:</b> A1.1 / A1.2 / A2.1 / A2.2 / B1.1 / B1.2 — внутренние учебные placement bands OTTO, а не официальный сертификат CEFR.<br><br><b>Зачем точнее:</b> чем точнее старт, тем меньше времени вы потратите на слишком лёгкие или слишком сложные задания.</div><div class="button-row">'+button(resume?'Продолжить с сохранённого места':'Начать диагностику',resume?'diag-resume':'diag-start')+'</div></div>';
+  return '<div class="gate-card"><div class="plain-otto"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><span class="eyebrow">Определяем точку старта</span><h1 class="h1">'+(resume?'Продолжим диагностику':'Сначала — диагностика')+'</h1><p class="lead">Otto постепенно проверит языковую базу, чтение, понимание речи, письмо и устную речь. Один удачный или неудачный ответ ничего не решает.</p><div class="friendly-note" style="text-align:left"><b>Зачем это нужно:</b> после диагностики тренажёр сам соберёт маршрут и будет давать больше практики именно там, где она полезнее всего.<br><br><b>Можно закрыть страницу:</b> ответы сохраняются, и вы продолжите с того же места.</div><div class="button-row">'+button(resume?'Продолжить с сохранённого места':'Начать диагностику',resume?'diag-resume':'diag-start')+'</div></div>';
 }
 function startDiagnostic(){
   S.diagnostic={
@@ -142,16 +162,17 @@ function startDiagnostic(){
   save();go('diagnostic');
 }
 function stageTitle(phase){
-  if(phase==='screening_core'||phase==='screening_path')return 'Этап A · Wide screening';
-  if(phase==='boundary'||phase==='boundary_extra')return 'Этап B · Adaptive boundary check';
-  if(phase==='closed_complete'||phase==='writing'||phase==='speaking')return 'Этап C · Productive evidence';
-  return 'Этап D · Результат';
+  if(phase==='screening_core'||phase==='screening_path')return 'Определяем ваш стартовый уровень';
+  if(phase==='boundary'||phase==='boundary_extra')return 'Уточняем результат';
+  if(phase==='closed_complete'||phase==='writing')return 'Проверяем письменную речь';
+  if(phase==='speaking')return 'Проверяем устную речь';
+  return 'Готовим результат';
 }
 function phaseCopy(phase){
-  if(phase==='screening_core')return 'Сначала быстро определяем вероятный диапазон. Один ответ ничего не решает.';
-  if(phase==='screening_path')return 'Screening уже разветвился по вашим ответам и проверяет подходящий диапазон.';
-  if(phase==='boundary')return 'Проверяем две соседние учебные зоны несколькими независимыми заданиями.';
-  if(phase==='boundary_extra')return 'Результат пограничный, поэтому добавлены новые подтверждающие задания.';
+  if(phase==='screening_core')return 'Начинаем с заданий разной сложности и постепенно сужаем диапазон.';
+  if(phase==='screening_path')return 'Otto уже подбирает следующие задания по вашим ответам.';
+  if(phase==='boundary')return 'Нужно ещё несколько независимых ответов, чтобы не делать вывод по одной случайной попытке.';
+  if(phase==='boundary_extra')return 'Ответы получились близкими по уровню, поэтому Otto добавил короткую перепроверку.';
   return '';
 }
 function remainingMinutes(){
@@ -181,7 +202,7 @@ function renderClosed(item){
   if(item.text)html+='<div class="task-text">'+esc(item.text).replace(/\n/g,'<br>')+'</div>';
   if(item.modality==='audio'){
     const used=S.diagnostic.audioPlays[item.item_id]||0;
-    html+='<div class="audio-card"><div><b>Hören · '+esc(item.target_band)+'</b><div class="small">Диагностическое аудио можно прослушать до 2 раз. Прослушано: '+used+'/2.</div></div>'+button('▶ Воспроизвести','diag-audio','secondary',used>=2?'disabled':'')+'</div>';
+    html+='<div class="audio-card"><div><b>Проверяем понимание речи</b><div class="small">Диагностическое аудио можно прослушать до 2 раз. Прослушано: '+used+'/2.</div></div>'+button('▶ Воспроизвести','diag-audio','secondary',used>=2?'disabled':'')+'</div>';
   }
   html+='<p class="lead" style="font-size:17px"><b>'+esc(item.prompt)+'</b></p><div class="choice-grid">';
   item.options.forEach((o,i)=>html+='<button class="choice" data-diag-choice="'+i+'">'+esc(o)+'</button>');
@@ -195,7 +216,8 @@ function diagnosticView(){
   const item=currentItem();
   if(!item)return '<div class="notice">Otto пересчитывает следующий шаг диагностики…</div>';
   const pct=s.phase==='screening_core'?18:s.phase==='screening_path'?35:s.phase==='boundary'?55:s.phase==='boundary_extra'?68:75;
-  return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">'+(s.phase.startsWith('boundary')?'Проверяем границу':'Сужаем диапазон')+'</h1><p class="muted">'+phaseCopy(s.phase)+'</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:'+pct+'%"></i></div><div class="meta-row">'+pill(item.target_band)+pill(item.skill)+pill(item.micro_skill)+'</div>'+renderClosed(item)+'<p class="small">Каждый ответ сохраняется автоматически. Закрыли страницу — продолжите с этого места.</p>';
+  const human=item.modality==='audio'?'Понимание речи':item.skill==='Lesen'?'Чтение':item.skill==='grammar'?'Грамматика':item.skill==='vocabulary'?'Лексика':'Языковая база';
+  return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">'+human+'</h1><p class="muted">'+phaseCopy(s.phase)+'</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:'+pct+'%"></i></div>'+renderClosed(item)+'<p class="small">Каждый ответ сохраняется автоматически. Закрыли страницу — продолжите с этого места.</p>';
 }
 function answerDiagnostic(index){
   const s=S.diagnostic.session,item=currentItem();
@@ -229,7 +251,7 @@ function productiveView(){
   const s=S.diagnostic.session;
   if(s.phase==='closed_complete'||s.phase==='writing'){
     const w=ENGINE.selectWritingPrompt(s);
-    return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">Schreiben · реальный productive sample</h1><p class="muted">Prompt выбран по предварительно найденной границе. Он сохраняется как evidence, но без надёжной оценки не превращается в выдуманный уровень.</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:80%"></i></div><div class="meta-row">'+pill(w.target_band)+pill(w.task_family)+'</div><div class="task-text">'+esc(w.prompt)+'</div><textarea id="writingSample" class="field" rows="11" placeholder="Schreiben Sie auf Deutsch…">'+esc(s.writing?.text||'')+'</textarea><div class="notice">Проверяем только пригодность sample. Итоговый статус сейчас: <b>NEEDS_REVIEW</b>. Ни количество символов, ни один AI-вызов не выдаются за официальный CEFR/Goethe результат.</div><div class="button-row">'+button('Сохранить и перейти к Sprechen','save-writing')+'</div>';
+    return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">Напишите короткий ответ по-немецки</h1><p class="muted">Нам нужен живой образец письма, чтобы не судить о Schreiben только по тестам с вариантами ответа.</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:80%"></i></div><div class="friendly-note"><b>Что делать:</b> прочитайте условие и напишите связный ответ по-немецки. Постарайтесь выполнить все пункты задания.</div><div class="task-text">'+esc(w.prompt)+'</div><textarea id="writingSample" class="field" rows="11" placeholder="Schreiben Sie auf Deutsch…">'+esc(s.writing?.text||'')+'</textarea><div class="notice">Этот текст сохраняется для оценки навыка. Пока он не прошёл надёжную проверку по критериям, Otto не будет придумывать вам точный уровень Schreiben.</div><div class="button-row">'+button('Сохранить и перейти к Sprechen','save-writing')+'</div>';
   }
   if(s.phase==='speaking')return speakingView();
   return reportView();
@@ -244,7 +266,7 @@ function speakingView(){
   const s=S.diagnostic.session,prompts=ENGINE.selectSpeakingPrompts(s),i=S.diagnostic.speakingIndex,p=prompts[i];
   if(!p){ENGINE.markComplete(s);S.diagnostic.result=ENGINE.result(s);save();return reportView();}
   const b1=p.item_id==='S-B1';
-  return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">Sprechen · '+esc(p.target_band)+' probe</h1><p class="muted">'+(b1?'Для приблизившегося к B1 обязательно проверяем interaction, а не только монолог.':'Собираем речевой sample подходящей сложности.')+'</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:'+(88+i*5)+'%"></i></div><div class="task-text">'+esc(p.prompt)+'</div>'+
+  return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">Sprechen · речевой образец</h1><p class="muted">'+(b1?'Здесь важно не только говорить самому, но и реагировать на партнёра.':'Запишите короткий ответ по-немецки. Главное — естественная понятная речь, а не заученный текст.')+'</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:'+(88+i*5)+'%"></i></div><div class="task-text">'+esc(p.prompt)+'</div>'+
     (b1?'<div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><div><b>Otto — партнёр</b><div class="muted">Wir könnten den Lerntag am Samstag ab zehn Uhr in der Bibliothek machen. Ich würde aber nur eine kurze Mittagspause planen. Was meinst du?</div></div></div><div class="button-row">'+button('🔊 Otto говорит','speak-otto','secondary')+'</div>':'')+
     '<div id="recordBox" class="record-box '+(recorder&&recorder.state==='recording'?'recording':'')+'"><span class="record-dot"></span><b> Реальная запись микрофона</b><div class="button-row" style="justify-content:center">'+button(recorder&&recorder.state==='recording'?'■ Остановить':'🎙 Начать запись','record-speaking','secondary')+'</div></div><div class="notice">Transcript ≠ оценка Sprechen. Без отдельной audio/rubric evaluation мы не придумываем pronunciation, fluency или B1.1/B1.2.</div><div class="button-row">'+button('Сохранить этот sample','finish-speaking')+button('Нет доступа к микрофону','skip-speaking','ghost')+'</div>';
 }
