@@ -42,8 +42,9 @@ async function register(page){
   await expect(page.locator('#regExamDate')).toHaveValue('2026-12-15');
 
   await page.getByRole('button',{name:'Получить код'}).click();
-  await page.locator('#verifyCode').fill('111111');
-  await page.getByRole('button',{name:'Подтвердить'}).click();
+  await expect(page.getByText('Профиль для тестовой версии')).toBeVisible();
+  await expect(page.getByText(/реальная отправка кода/)).toBeVisible();
+  await page.getByRole('button',{name:'Продолжить в Beta'}).click();
   await expect(page.getByText('Сначала — диагностика')).toBeVisible();
   await expect(page.locator('#bottomNav')).toHaveClass(/hidden/);
 }
@@ -254,7 +255,8 @@ test('blue canvas, mobile 390, bottom nav, Ask Otto, Share and decorative Otto a
   expect(await page.locator('#bottomNav button').count()).toBe(5);
   await expect(page.getByRole('button',{name:'Спросить Otto'})).toBeVisible();
   await page.getByRole('button',{name:'Спросить Otto'}).click();
-  await expect(page.getByText('Otto Personal · Preview')).toBeVisible();
+  await expect(page.getByText('Otto Personal скоро будет доступен')).toBeVisible();
+  await expect(page.locator('.modal textarea')).toHaveCount(0);
   await page.getByRole('button',{name:'×'}).click();
 
   await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async()=>{window.__shareCalled=true;}}));
@@ -266,4 +268,30 @@ test('blue canvas, mobile 390, bottom nav, Ask Otto, Share and decorative Otto a
   overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1);
   expect(overflow).toBe(false);
   await page.screenshot({path:testInfo.outputPath('guide-mobile-390.png'),fullPage:true});
+});
+
+
+test('Beta labels and pending modules do not expose technical release language or active tasks',async({page})=>{
+  await fresh(page);
+  await expect(page.locator('.beta-badge')).toHaveText('Beta');
+  await seedCompleted(page);
+  await page.evaluate(()=>{location.hash='#modules';});
+  await page.waitForTimeout(80);
+
+  for(const m of ['Lesen','Hören','Schreiben','Sprechen']){
+    await page.locator('[data-module="'+m+'"]').click();
+    const text=await page.locator('#screen').innerText();
+    expect(text).not.toMatch(/CONTENT_READY|QA_PENDING|source_status|content QA pending/i);
+    if(m==='Lesen'){
+      expect(await page.locator('[data-start-learning]').count()).toBe(1);
+      await expect(page.getByText('Доступно в Beta')).toBeVisible();
+      expect(await page.getByText('Готовится').count()).toBe(4);
+    }else{
+      expect(await page.locator('[data-start-learning]').count()).toBe(0);
+      expect(await page.locator('[data-start-exam]').count()).toBe(0);
+      expect(await page.getByText('Готовится').count()).toBeGreaterThan(0);
+    }
+    await page.evaluate(()=>{location.hash='#modules';});
+    await page.waitForTimeout(40);
+  }
 });
