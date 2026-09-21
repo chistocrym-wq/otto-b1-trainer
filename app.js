@@ -328,7 +328,7 @@ function routeView(){
   html+='</div><div class="button-row">'+button('Модули','open-modules','ghost')+button('Evidence / прогресс','open-progress','secondary')+'</div>';return html;
 }
 function modulesView(){
-  let html='<span class="eyebrow">Goethe-Zertifikat B1 · task map</span><h1 class="h2">Четыре модуля</h1><div class="notice">Неподтверждённые старые SAMPLES / TRANSFER / weekly / exam-preview не доступны пользователю. Лучше временно показать, что training content проходит QA, чем выдать A1/A2 материал за B1.</div><div class="modules-grid">';
+  let html='<span class="eyebrow">Goethe-Zertifikat B1 · task map</span><h1 class="h2">Четыре модуля</h1><div class="notice">Неподтверждённые старые SAMPLES / TRANSFER / weekly / exam-preview не доступны пользователю. Новый task откроется только после полного content bundle: задание + перевод + подробный разбор + словарь + стратегия + проверенный answer key/rubric + аудио там, где оно требуется + scene image для Hören. Browser speechSynthesis считается только технической заглушкой, не готовым Hören.</div><div class="modules-grid">';
   MODULES.forEach(m=>html+='<button class="module-pick" data-module="'+m+'"><div class="module-name">'+m+'</div><div class="module-count">'+B1_MAP[m].length+' частей</div></button>');
   return html+'</div>';
 }
