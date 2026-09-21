@@ -76,3 +76,9 @@ A strong Lesen profile cannot hide weak or unevaluated Schreiben/Sprechen.
 - Hören in preview uses browser German speech synthesis rather than the final versioned audio bank.
 - Writing and speaking productive evidence is captured but not automatically assigned a reliable band.
 - Training content outside the diagnostic is intentionally closed until independent content QA.
+
+## Content readiness / Hören media
+
+Diagnostic placement content и будущий learning bank — разные слои. Browser speech synthesis, используемый в текущем диагностическом Preview, остаётся явно технической заглушкой и не может быть повышен до final Hören source.
+
+Полный owner standard для learning tasks находится в `docs/content-readiness-standard.md`. CI запрещает считать task `CONTENT_READY`, если отсутствуют обязательные translation/explanation/glossary/strategy/verified answer key-or-rubric, а для Hören — versioned final audio + speaker/voice metadata + playback rules + context-only image.
