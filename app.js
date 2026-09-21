@@ -589,7 +589,7 @@ function learnView(){
   const task=learningTask(),l=S.learning,i=l.index,q=task.questions[i];
   if(l.completed)return learningSummaryView();
   const exam=l.mode==='exam';
-  let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(exam?'Exam-like':'Training · русская поддержка')+'</span><h1 class="h2">'+(exam?'Lesen · Teil 1':'Lesen Teil 1 — верно или неверно')+'</h1></div><div class="learning-progress">'+(exam?'Aufgabe ':'Задание ')+(i+1)+' / 6</div></div><div class="progress-line"><i style="width:'+(((i+1)/6)*100)+'%"></i></div>';
+  let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(exam?'Exam-like':'Training · русская поддержка')+'</span><h1 class="h2">'+(exam?'Lesen · Teil 1':'Lesen Teil 1 — верно или неверно')+'</h1></div><div class="learning-progress">'+(exam?('Aufgabe '+(i+1)+' / 6'):('Задание '+(i+1)+' из 6'))+'</div></div><div class="progress-line"><i style="width:'+(((i+1)/6)*100)+'%"></i></div>';
   if(exam)html+='<div class="exam-lock"><b>Prüfungsmodus.</b> Keine Übersetzung, kein Wörterbuch und keine Tipps während der Bearbeitung.</div>';
   else html+=supportLevels();
   html+='<div class="card soft"><div class="small">Немецкая инструкция</div><b>'+esc(task.german_instruction)+'</b></div>';
