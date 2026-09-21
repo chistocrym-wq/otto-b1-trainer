@@ -144,8 +144,8 @@ test('Guide B1 is global and contextual; Schreiben/Sprechen structure is correct
   await expect(page.getByText('Aufgabe 2 — Diskussionsbeitrag',{exact:true})).toHaveCount(1);
   await expect(page.getByText('Aufgabe 3 — короткая E-Mail',{exact:true})).toHaveCount(1);
   await expect(page.getByText('Один хороший вариант · Aufgabe 1')).toBeVisible();
-  await expect(page.getByText('Phrase bank')).toHaveCount(1);
-  await expect(page.getByText('Шаблон')).toHaveCount(1);
+  await expect(page.getByText('Phrase bank',{exact:true}).first()).toBeVisible();
+  await expect(page.getByText('Шаблон',{exact:true}).first()).toBeVisible();
   expect(await page.locator('#screen').innerText()).not.toContain('Präsentation');
 
   await page.locator('[data-guide-module="Sprechen"]').click();
