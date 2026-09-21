@@ -9,6 +9,7 @@
     "build:check": "node tests/build-smoke.cjs",
     "test:content": "node tests/content-readiness.test.cjs",
     "test:guide": "node tests/guide-learning.test.cjs",
-    "test:release": "node tests/release-audit.test.cjs"
+    "test:release": "node tests/release-audit.test.cjs",
+    "test:public": "playwright test tests/public-beta.spec.cjs --browser=chromium --reporter=line"
   }
 }
