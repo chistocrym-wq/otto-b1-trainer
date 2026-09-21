@@ -215,7 +215,7 @@ test('Exam-like hides assistance until review',async({page})=>{
   await page.locator('[data-module="Lesen"]').click();
   await page.locator('[data-start-exam="1"]').click();
 
-  await expect(page.getByText('Без помощи во время задания')).toBeVisible();
+  await expect(page.getByText('Prüfungsmodus.')).toBeVisible();
   await expect(page.getByRole('button',{name:/Перевод|Стратегия|Словарь|Помощь/})).toHaveCount(0);
 
   const answers=[1,0,1,1,0,1];
