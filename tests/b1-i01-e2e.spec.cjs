@@ -22,9 +22,7 @@ function serveFile(req, res) {
   let pathname = decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname);
   if (pathname === '/') pathname = '/index.html';
   const target = path.normalize(path.join(root, pathname));
-  if (!target.startsWith(root)) {
-    res.writeHead(403); return res.end('forbidden');
-  }
+  if (!target.startsWith(root)) { res.writeHead(403); return res.end('forbidden'); }
   fs.stat(target, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, {'Content-Type': MIME[path.extname(target)] || 'application/octet-stream'});
@@ -42,210 +40,211 @@ test.afterAll(async () => {
   await new Promise(resolve => server.close(resolve));
 });
 
-test('owner preview scenario works end-to-end and produces honest state', async ({ browser }, testInfo) => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  const pageErrors = [];
-  const consoleErrors = [];
-  page.on('pageerror', e => pageErrors.push(String(e)));
-  page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+async function startFresh(page) {
+  await page.goto(baseURL, { waitUntil:'networkidle' });
+  await page.evaluate(() => localStorage.removeItem('ottoB1'));
+  await page.reload({waitUntil:'networkidle'});
+}
 
-  await page.goto(baseURL, { waitUntil: 'networkidle' });
+async function completeDiagnostic(page, opts={}) {
+  await page.getByRole('button', {name:'Продолжить мою подготовку'}).click();
+  await expect(page.getByText('Не курс «для всех», а маршрут по твоим результатам')).toBeVisible();
+  await page.getByRole('button', {name:'Начать', exact:true}).click();
 
-  await expect(page.getByRole('button', { name: 'Начать мою подготовку' }).first()).toBeVisible();
-  const mascot = page.locator('.otto img');
-  await expect(mascot).toBeVisible();
-  const mascotCheck = await mascot.evaluate(img => {
-    if (!img.complete || img.naturalWidth < 10 || img.naturalHeight < 10) return {loaded:false, varied:false};
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.min(80, img.naturalWidth);
-    canvas.height = Math.min(80, img.naturalHeight);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
-    const colors = new Set();
-    for (let i=0;i<data.length;i+=16) colors.add(data[i]+','+data[i+1]+','+data[i+2]+','+data[i+3]);
-    return {loaded:true, varied:colors.size > 8, colors:colors.size};
-  });
-  expect(mascotCheck.loaded).toBe(true);
-  console.log('OTTO mascot asset loaded; sampled color count:', mascotCheck.colors || 0);
-  await page.screenshot({path:testInfo.outputPath('01-home-desktop.png'), fullPage:true});
+  await page.locator('#name').fill(opts.name || 'Anna');
+  await page.getByRole('button', {name:'Продолжить', exact:true}).click();
+  await page.getByRole('button', {name:'К диагностике'}).click();
+  await page.getByRole('button', {name:'Начать диагностику'}).click();
 
-  await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
-  await expect(page.getByText('План на 25 минут')).toBeVisible();
-  await expect(page.getByText('Почему сейчас').first()).toBeVisible();
-  await page.screenshot({path:testInfo.outputPath('02-plan-desktop.png'), fullPage:true});
+  await page.getByRole('button', {name:'Встречу перенесли'}).click();
+  await page.getByRole('button', {name:'Продолжить', exact:true}).click();
 
-  await page.getByRole('button', { name: 'Начать мою подготовку' }).click();
-  await expect(page.getByText('Lesen · Teil 1')).toBeVisible();
-  const firstStatement = (await page.locator('.i01-statement').textContent()).trim();
-  await page.screenshot({path:testInfo.outputPath('03-task-desktop.png'), fullPage:true});
+  await page.getByRole('button', {name:'Ich bleibe zu Hause, weil ich krank bin.'}).click();
+  await page.getByRole('button', {name:'Продолжить', exact:true}).click();
 
-  // First task is deliberately answered incorrectly to force the genuine repair path.
-  await page.getByRole('button', { name: 'Falsch', exact: true }).click();
-  await page.getByRole('button', { name: 'Ответить' }).click();
+  // Deliberate Lesen error so adaptive confirmation + repair priority are real.
+  await page.getByRole('button', {name:'Falsch', exact:true}).click();
+  await page.getByRole('button', {name:'Продолжить', exact:true}).click();
 
-  await expect(page.getByText('Сначала попробуй исправить сам')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Исправить самому' })).toBeVisible();
-  await page.screenshot({path:testInfo.outputPath('04-repair-desktop.png'), fullPage:true});
+  await page.getByRole('button', {name:'Sich bis 16:00 in eine Liste eintragen'}).click();
+  await page.getByRole('button', {name:'Продолжить', exact:true}).click();
 
-  // Self-repair succeeds without content-level help.
-  await page.getByRole('button', { name: 'Richtig', exact: true }).click();
-  await page.getByRole('button', { name: 'Исправить самому' }).click();
+  const writing = 'Hallo Lara, entschuldige bitte, dass ich gestern nicht kommen konnte, weil ich länger arbeiten musste. Können wir uns vielleicht am Samstag um 15 Uhr im Café treffen? Ich hoffe, der neue Termin passt dir gut. Liebe Grüße, Anna';
+  await page.locator('#p1writing').fill(writing);
+  await page.getByRole('button', {name:'Сохранить образец'}).click();
 
-  await expect(page.getByText('Новый контекст · перенос навыка')).toBeVisible();
-  const transferStatement = (await page.locator('.i01-statement').textContent()).trim();
-  expect(transferStatement).not.toBe(firstStatement);
-  await page.screenshot({path:testInfo.outputPath('05-transfer-desktop.png'), fullPage:true});
+  await page.getByRole('button', {name:'Записать диагностический ответ'}).click();
+  await expect(page.getByText(/автоматической оценки речи/i)).toBeVisible();
+  await page.getByRole('button', {name:'Сохранить попытку'}).click();
 
-  await page.getByRole('button', { name: 'Richtig', exact: true }).click();
-  await page.getByRole('button', { name: 'Ответить' }).click();
+  await expect(page.getByText('Уточняем Lesen после ошибки')).toBeVisible();
+  await page.getByRole('button', {name:'Richtig', exact:true}).click();
+  await page.getByRole('button', {name:'Ответить'}).click();
 
-  // Inspect actual persisted runtime after transfer.
-  const persisted = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}'));
-  expect(persisted.i01.evidenceEvents.length).toBeGreaterThanOrEqual(3);
-  expect(persisted.i01.errors.length).toBeGreaterThanOrEqual(1);
-  expect(persisted.i01.reviews.length).toBeGreaterThanOrEqual(1);
-  expect(persisted.i01.reviews[0].review_reason).toContain('POST_REPAIR_CONFIRMATION');
-  expect(persisted.i01.planRevisions.length).toBeGreaterThanOrEqual(3);
-  expect(persisted.i01.repairAttempts.length).toBe(1);
-  expect(persisted.i01.repairAttempts[0].repair_result).toBe('success');
-  expect(persisted.i01.repairAttempts[0].independence_class).toBe('independent');
-  expect(persisted.i01.skillStateSnapshots.length).toBeGreaterThanOrEqual(2);
-  expect(persisted.i01.plannerInputSnapshots.length).toBeGreaterThanOrEqual(3);
-  expect(persisted.i01.plans.length).toBeGreaterThanOrEqual(3);
-  expect(persisted.i01.errors[0].review_required).toBe(true);
-  expect(persisted.i01.errors[0].transfer_status).toBe('confirmed');
+  await expect(page.getByText('Что уже видно — и чего пока не видно')).toBeVisible();
+}
 
-  const source = persisted.i01.evidenceEvents.find(e => e.outcome_status === 'failure');
-  const transfer = persisted.i01.evidenceEvents.find(e => e.evidence_class === 'P4');
-  expect(source).toBeTruthy();
-  expect(transfer).toBeTruthy();
-  expect(transfer.task_instance_id).not.toBe(source.task_instance_id);
-  expect(transfer.content_fingerprint).not.toBe(source.content_fingerprint);
-  expect(transfer.variant_group_id).not.toBe(source.variant_group_id);
+test('Preview 1 diagnostic drives route, repair, transfer and delayed review', async ({ browser }, testInfo) => {
+  const page = await browser.newPage({viewport:{width:1440,height:1000}});
+  const pageErrors=[]; const consoleErrors=[];
+  page.on('pageerror', e=>pageErrors.push(String(e)));
+  page.on('console', m=>{ if(m.type()==='error') consoleErrors.push(m.text()); });
 
-  // Audit/reason path is user-visible.
-  if (await page.locator('.i01-reason .i01-link').count()) {
-    await page.locator('.i01-reason .i01-link').first().click();
-    await expect(page.getByText('Почему OTTO так считает?')).toBeVisible();
-    await expect(page.getByText('Что дальше')).toBeVisible();
-    const auditText = await page.locator('#screen').innerText();
-    expect(auditText).not.toMatch(/Planner V1|EvidenceEvent|Mastery|TRANSFER_CHECK|EVIDENCE_GAP_PROBE/);
-    await page.getByRole('button', { name: 'Назад' }).click();
-  }
+  await startFresh(page);
+  await expect(page.getByRole('button', {name:'Продолжить мою подготовку'})).toBeVisible();
+  await expect(page.locator('.otto img')).toBeVisible();
+  await page.screenshot({path:testInfo.outputPath('01-splash-desktop.png'),fullPage:true});
 
-  // Finish session intentionally; unstarted work is not treated as failure.
-  await page.evaluate(() => window.i01FinishSession());
-  await expect(page.getByText('Что реально произошло')).toBeVisible();
-  await expect(page.getByText('Исправлено — проверим позже')).toBeVisible();
-  expect(await page.locator('#screen').innerText()).not.toMatch(/\btransfer\b|vertical slice|Preview|EvidenceEvent|Mastery/i);
-  await page.screenshot({path:testInfo.outputPath('06-summary-desktop.png'), fullPage:true});
+  await completeDiagnostic(page);
 
-  await page.getByRole('button', { name: 'Открыть готовность по модулям' }).click();
-  await expect(page.getByText('Четыре модуля — четыре отдельные картины')).toBeVisible();
-  for (const module of ['Lesen','Hören','Schreiben','Sprechen']) {
-    await expect(page.getByRole('heading', { name: module })).toBeVisible();
-  }
-  await expect(page.getByText('Недостаточно данных').first()).toBeVisible();
-  await expect(page.getByText('Проверено: 1 из 5 Teil')).toBeVisible();
-  expect((await page.locator('body').innerText())).not.toMatch(/\d+%|60\/100|B1 ready/i);
-  expect(await page.locator('#screen').innerText()).not.toMatch(/vertical slice|Preview|EvidenceEvent|Mastery|\bR[0-4]\b|\bT[0-4]\b|\bC[0-3]\b/);
-  const readyState = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}').i01);
-  expect(readyState.readinessSnapshots.length).toBeGreaterThanOrEqual(4);
-  expect(readyState.readinessInputSnapshots.length).toBeGreaterThanOrEqual(4);
-  const lesenSnapshot = readyState.readinessSnapshots.filter(x => x.module === 'Lesen').at(-1);
-  expect(lesenSnapshot.readiness_state).toBe('R0');
-  expect(lesenSnapshot.official_teil_coverage[0].coverage_tier).toBe('T2');
-  expect(lesenSnapshot.sufficiency_status).toBe('INSUFFICIENT_FOR_READINESS_CLASSIFICATION');
-  await page.screenshot({path:testInfo.outputPath('07-readiness-desktop.png'), fullPage:true});
+  const reportText=await page.locator('#screen').innerText();
+  expect(reportText).toContain('Недостаточно данных');
+  expect(reportText).not.toMatch(/вероятность сдачи|B1 ready|60\/100/i);
+  await page.screenshot({path:testInfo.outputPath('02-diagnostic-report.png'),fullPage:true});
 
-  // Mobile visual smoke on the same rendered app.
-  await page.setViewportSize({width:390,height:844});
-  await page.evaluate(() => window.go('home'));
-  await expect(page.getByRole('button', {name:/мою подготовку/i}).first()).toBeVisible();
-  expect(await page.locator('#screen').innerText()).not.toMatch(/slice|Preview|EvidenceEvent|Mastery/i);
-  await page.screenshot({path:testInfo.outputPath('08-home-mobile.png'), fullPage:true});
-  await page.evaluate(() => window.go('readiness'));
-  await page.screenshot({path:testInfo.outputPath('09-readiness-mobile.png'), fullPage:true});
+  await page.getByRole('button', {name:'Открыть мой маршрут'}).click();
+  await expect(page.getByText('Что тренируем сейчас и почему')).toBeVisible();
+  await expect(page.getByText('Перефразирование').first()).toBeVisible();
+
+  await page.getByRole('button', {name:'Начать сегодняшнюю тренировку'}).click();
+  await expect(page.getByText('Перефразирование').first()).toBeVisible();
+  await expect(page.getByText(/технической Störung|technischen Störung/i)).toBeVisible();
+
+  // Translation eye toggle really opens and closes in training mode.
+  await page.getByRole('button', {name:/Перевод/}).click();
+  await expect(page.getByText(/технической неисправности/i)).toBeVisible();
+  await page.getByRole('button', {name:/Скрыть перевод/}).click();
+
+  // Contextual strategy is collapsible.
+  await page.getByRole('button', {name:/Стратегия Отто/}).click();
+  await expect(page.getByText(/Как действовать/)).toBeVisible();
+
+  // Deliberate error -> self-correction -> skill-matched transfer.
+  await page.getByRole('button', {name:'Falsch', exact:true}).click();
+  await page.getByRole('button', {name:'Ответить'}).click();
+  await expect(page.getByText('Сначала исправь сам')).toBeVisible();
+
+  await page.getByRole('button', {name:'Richtig', exact:true}).click();
+  await page.getByRole('button', {name:'Исправить самому'}).click();
+  await expect(page.getByText('Теперь без подсказок')).toBeVisible();
+  await expect(page.getByText(/Der Eintritt kostet nichts/)).toBeVisible();
+  expect(await page.locator('#screen').innerText()).not.toContain('Der Eingang an der Hauptstraße');
+
+  await page.getByRole('button', {name:'Richtig', exact:true}).click();
+  await page.getByRole('button', {name:'Ответить'}).click();
+  await expect(page.getByText('Получилось на новом материале')).toBeVisible();
+
+  const p1=await page.evaluate(()=>JSON.parse(localStorage.ottoB1).preview1);
+  expect(p1.errors.length).toBeGreaterThan(0);
+  expect(p1.errors.some(e=>e.skill==='L.T1.CORR.M04' && e.status==='resolved')).toBe(true);
+  expect(p1.reviews.some(r=>r.skill==='L.T1.CORR.M04' && r.status==='scheduled')).toBe(true);
+  expect(p1.route.priorities.length).toBeGreaterThan(0);
 
   expect(pageErrors).toEqual([]);
   expect(consoleErrors).toEqual([]);
   await page.close();
 });
 
-test('assistance is recorded and does not masquerade as independent', async ({ page }) => {
-  await page.goto(baseURL, { waitUntil:'networkidle' });
-  await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
-  await page.getByRole('button', { name: 'Начать мою подготовку' }).click();
+test('Representative Hören, Schreiben, Sprechen partner and exam-like flows work without fake AI', async ({ page }) => {
+  await startFresh(page);
+  await completeDiagnostic(page);
 
-  await page.getByRole('button', { name: 'Совет Отто · будет отмечен как помощь', exact: true }).click();
-  await page.getByRole('button', { name: 'Richtig', exact:true }).click();
-  await page.getByRole('button', { name: 'Ответить' }).click();
+  // Hören representative flow uses preloaded audio and closed-task scoring.
+  await page.evaluate(()=>go('hoeren'));
+  await expect(page.getByText('Слушаем изменение договорённости')).toBeVisible();
+  await page.getByRole('button', {name:/Воспроизвести/}).click();
+  await page.getByRole('button', {name:'Неверно'}).click();
+  await page.getByRole('button', {name:'Ответить'}).click();
+  await expect(page.getByText('Что тренируем сейчас и почему')).toBeVisible();
 
-  const state = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}').i01);
-  const success = state.evidenceEvents.find(e => e.outcome_status === 'success');
-  expect(success.evidence_class).toBe('P2');
-  expect(success.independence).toBe('minimally_supported');
-  expect(success.max_assistance_consumed).toBe('strategy');
-  expect(state.assistanceEvents.some(a => a.event_id === success.event_id)).toBe(true);
+  // Schreiben: semantic/German gate, no fake Goethe percentage.
+  await page.evaluate(()=>go('schreiben'));
+  await page.locator('#p1modulew').fill('Hallo Max, entschuldige bitte, dass ich gestern nicht kommen konnte, weil mein Zug sehr spät war. Können wir uns am Freitag um 18 Uhr im Café treffen? Viele Grüße, Anna');
+  await page.getByRole('button', {name:'Проверить входные условия'}).click();
+  await expect(page.getByText('Без фиктивного Goethe-балла')).toBeVisible();
+  expect(await page.locator('#screen').innerText()).not.toMatch(/\d+%|60\/100/);
+
+  // Scripted Goethe-aligned Sprechen Aufgabe 1 partner simulation.
+  await page.evaluate(()=>go('p1-speaking'));
+  await expect(page.getByText('Otto — твой партнёр по совместному планированию')).toBeVisible();
+  await page.getByRole('button', {name:'Не согласиться и объяснить'}).click();
+  await expect(page.getByText(/компромисс/i)).toBeVisible();
+  await page.getByRole('button', {name:'Предложить альтернативу'}).click();
+  await page.getByRole('button', {name:'Распределить задачи'}).click();
+  await expect(page.getByText('Парная тренировка завершена')).toBeVisible();
+  await expect(page.getByText(/Что НЕ оценено/)).toBeVisible();
+
+  // Exam-like mode: no help/translation and feedback delayed until end.
+  await page.evaluate(()=>p1StartExam());
+  await expect(page.getByText('Без подсказок и перевода')).toBeVisible();
+  await expect(page.getByRole('button', {name:/Перевод/})).toHaveCount(0);
+  await expect(page.getByRole('button', {name:/Стратегия Отто/})).toHaveCount(0);
+
+  await page.getByRole('button', {name:'Richtig', exact:true}).click();
+  await page.getByRole('button', {name:'Следующее'}).click();
+  await expect(page.getByText(/Exam-like proof · 2\/2/)).toBeVisible();
+  await page.getByRole('button', {name:'Falsch', exact:true}).click();
+  await page.getByRole('button', {name:'Завершить'}).click();
+  await expect(page.getByText('Результат после завершения')).toBeVisible();
+  expect(await page.locator('#screen').innerText()).toContain('не официальный Goethe score');
 });
 
+test('route persists on reload, weekly checkpoint can change evidence, mobile layouts stay usable', async ({ page }, testInfo) => {
+  await startFresh(page);
+  await completeDiagnostic(page);
+  await page.getByRole('button', {name:'Открыть мой маршрут'}).click();
 
-test('25-minute plan survives reload without changing the chosen actions', async ({ page }) => {
-  await page.goto(baseURL, { waitUntil:'networkidle' });
-  await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
-  const before = await page.evaluate(() => {
-    const state = JSON.parse(localStorage.ottoB1 || '{}').i01;
-    return state.session.remainingActions.map(a => [a.candidate_action_id,a.task_id,a.primary_reason_code]);
+  const before=await page.evaluate(()=>JSON.parse(localStorage.ottoB1).preview1.route.priorities.map(x=>[x.skill,x.score]));
+  await page.reload({waitUntil:'networkidle'});
+  const after=await page.evaluate(()=>JSON.parse(localStorage.ottoB1).preview1.route.priorities.map(x=>[x.skill,x.score]));
+  expect(after).toEqual(before);
+
+  await page.getByRole('button', {name:/Weekly checkpoint/}).click();
+  await page.getByRole('button', {name:'Richtig', exact:true}).click();
+  await page.getByRole('button', {name:'Дальше'}).click();
+  await page.getByRole('button', {name:'Richtig', exact:true}).click();
+  await page.getByRole('button', {name:'Завершить checkpoint'}).click();
+  await expect(page.getByText('Что тренируем сейчас и почему')).toBeVisible();
+
+  const checkpoint=await page.evaluate(()=>JSON.parse(localStorage.ottoB1).preview1.checkpoint);
+  expect(checkpoint.runs).toBe(1);
+  expect(checkpoint.answers.length).toBe(2);
+
+  for (const width of [360,390,430]) {
+    await page.setViewportSize({width,height:844});
+    await page.evaluate(()=>go('home'));
+    await expect(page.getByRole('button', {name:/тренировку|диагностику/i}).first()).toBeVisible();
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+    expect(overflow).toBe(false);
+    await page.screenshot({path:testInfo.outputPath('mobile-'+width+'.png'),fullPage:true});
+  }
+});
+
+test('daily exam-like item keeps translation and strategy disabled after answer selection rerender', async ({ page }) => {
+  await startFresh(page);
+  // Seed a completed diagnostic state to enter a daily session quickly.
+  await page.evaluate(() => {
+    const s=JSON.parse(localStorage.ottoB1 || '{}');
+    s.preview1={
+      version:'PREVIEW1-V1',startedAt:new Date().toISOString(),
+      diagnostic:{cursor:6,completed:true,adaptiveDone:true,evidence:[],writing:null,speaking:null},
+      skills:{},errors:[],reviews:[],route:{priorities:[{skill:'L.T1.CORR.M04',module:'Lesen',label:'Перефразирование',score:45,why:'Нужно собрать больше независимых данных.'}],updatedAt:new Date().toISOString()},
+      daily:{duration:10,queue:[],cursor:0,active:false,completed:false},
+      ui:{translation:{},strategy:{},exam:false},exam:{active:false,startedAt:null,endsAt:null,answers:[],completedAt:null},
+      checkpoint:{runs:0,lastAt:null},personalOtto:{lastPrompt:''}
+    };
+    localStorage.ottoB1=JSON.stringify(s);
   });
   await page.reload({waitUntil:'networkidle'});
-  const after = await page.evaluate(() => {
-    const state = JSON.parse(localStorage.ottoB1 || '{}').i01;
-    return state.session.remainingActions.map(a => [a.candidate_action_id,a.task_id,a.primary_reason_code]);
-  });
-  expect(after).toEqual(before);
-});
-
-
-test('help used before an error does not contaminate independent self-repair', async ({ page }) => {
-  await page.goto(baseURL, { waitUntil:'networkidle' });
-  await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
-  await page.getByRole('button', { name: 'Начать мою подготовку' }).click();
-
-  await page.getByRole('button', { name: 'Совет Отто · будет отмечен как помощь', exact: true }).click();
-  await page.getByRole('button', { name: 'Falsch', exact:true }).click();
-  await page.getByRole('button', { name: 'Ответить' }).click();
-
-  await expect(page.getByText('Сначала попробуй исправить сам')).toBeVisible();
-  await page.getByRole('button', { name: 'Richtig', exact:true }).click();
-  await page.getByRole('button', { name: 'Исправить самому' }).click();
-
-  const state = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}').i01);
-  const source = state.evidenceEvents.find(e => e.outcome_status === 'failure');
-  expect(source.evidence_class).toBe('N1');
-  expect(state.errors[0].assistance_before_error.length).toBeGreaterThan(0);
-  expect(state.repairAttempts[0].max_assistance_consumed).toBe('none');
-  expect(state.repairAttempts[0].independence_class).toBe('independent');
-});
-
-test('full model exposure on repair cannot downgrade the following independent transfer', async ({ page }) => {
-  await page.goto(baseURL, { waitUntil:'networkidle' });
-  await page.getByRole('button', { name: 'Начать мою подготовку' }).first().click();
-  await page.getByRole('button', { name: 'Начать мою подготовку' }).click();
-
-  await page.getByRole('button', { name: 'Falsch', exact:true }).click();
-  await page.getByRole('button', { name: 'Ответить' }).click();
-  await page.getByRole('button', { name: 'Показать ответ и объяснение' }).click();
-
-  await expect(page.getByText('Новый контекст · перенос навыка')).toBeVisible();
-  await page.getByRole('button', { name: 'Richtig', exact:true }).click();
-  await page.getByRole('button', { name: 'Ответить' }).click();
-
-  const state = await page.evaluate(() => JSON.parse(localStorage.ottoB1 || '{}').i01);
-  expect(state.assistanceEvents.some(a => a.level === 'full_model')).toBe(true);
-  const transfer = state.evidenceEvents.find(e => e.evidence_class === 'P4');
-  expect(transfer).toBeTruthy();
-  expect(transfer.max_assistance_consumed).toBe('none');
-  expect(transfer.independence).toBe('independent');
-  expect(state.reviews.some(r => r.review_reason.includes('POST_REPAIR_CONFIRMATION'))).toBe(true);
+  await page.evaluate(()=>p1StartDaily());
+  // Move to exam-like action if priority is first.
+  if ((await page.getByText(/Самостоятельная exam-like проверка/).count())===0) {
+    await page.evaluate(()=>p1DailyNext());
+  }
+  await expect(page.getByText(/Самостоятельная exam-like проверка/)).toBeVisible();
+  await expect(page.getByRole('button', {name:/Перевод/})).toHaveCount(0);
+  await expect(page.getByRole('button', {name:/Стратегия Отто/})).toHaveCount(0);
+  await page.getByRole('button', {name:'Richtig', exact:true}).click();
+  await expect(page.getByRole('button', {name:/Перевод/})).toHaveCount(0);
+  await expect(page.getByRole('button', {name:/Стратегия Отто/})).toHaveCount(0);
 });
