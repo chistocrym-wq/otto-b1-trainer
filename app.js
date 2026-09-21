@@ -2,383 +2,333 @@
 
 const BANK=window.OTTO_DIAGNOSTIC_BANK;
 const ENGINE=window.OTTO_DIAGNOSTIC_ENGINE;
-const STORAGE='ottoB1.clean.preview.v2';
+const STORAGE='ottoB1.diagnostic.v2';
 const MODULES=['Lesen','Hören','Schreiben','Sprechen'];
-const EXAM_MAP={
-  Lesen:{time:'65 минут',parts:[
-    ['Teil 1','Личный/повседневный текст · Richtig/Falsch'],
-    ['Teil 2','Информационные/публицистические тексты · a/b/c'],
-    ['Teil 3','Ситуации ↔ объявления'],
-    ['Teil 4','Позиции людей · Ja/Nein'],
-    ['Teil 5','Правила/инструкции · a/b/c']
-  ]},
-  Hören:{time:'около 40 минут',parts:[
-    ['Teil 1','5 коротких аудио · Richtig/Falsch + a/b/c'],
-    ['Teil 2','Более длинный текст · a/b/c'],
-    ['Teil 3','Разговор · Richtig/Falsch'],
-    ['Teil 4','Дискуссия · соотнести высказывания с говорящими']
-  ]},
-  Schreiben:{time:'60 минут',parts:[
-    ['Aufgabe 1','Личная E-Mail · около 80 слов'],
-    ['Aufgabe 2','Мнение/дискуссионный текст · около 80 слов'],
-    ['Aufgabe 3','Короткое сообщение/E-Mail · около 40 слов']
-  ]},
-  Sprechen:{time:'около 15 минут + подготовка',parts:[
-    ['Aufgabe 1','Gemeinsam etwas planen'],
-    ['Aufgabe 2','Präsentation'],
-    ['Aufgabe 3','Reaktion + Fragen/Antworten']
-  ]}
+const B1_MAP={
+  Lesen:[
+    ['Teil 1','Личный / повествовательный текст','Richtig / Falsch'],
+    ['Teil 2','Два текста из прессы','a / b / c'],
+    ['Teil 3','Ситуации ↔ объявления','matching / 0'],
+    ['Teil 4','Позиции людей','Ja / Nein'],
+    ['Teil 5','Правила / инструкции','a / b / c']
+  ],
+  Hören:[
+    ['Teil 1','5 коротких аудио','R/F + a/b/c; 2 раза'],
+    ['Teil 2','Один более длинный текст','a/b/c; 1 раз'],
+    ['Teil 3','Разговор','R/F; 1 раз'],
+    ['Teil 4','Дискуссия / speaker tracking','распределение по говорящим; 2 раза']
+  ],
+  Schreiben:[
+    ['Aufgabe 1','Личная E-Mail','около 80 слов'],
+    ['Aufgabe 2','Мнение / Diskussionsbeitrag','около 80 слов'],
+    ['Aufgabe 3','Короткая E-Mail','около 40 слов']
+  ],
+  Sprechen:[
+    ['Aufgabe 1','Gemeinsam etwas planen','парное взаимодействие'],
+    ['Aufgabe 2','Präsentation','структурированное высказывание'],
+    ['Aufgabe 3','Reaktion + Fragen','реакция / вопрос / ответ']
+  ]
 };
 
-const $=s=>document.querySelector(s);
-const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-const now=()=>new Date().toISOString();
-let memoryFallback=null;
-let mediaRecorder=null;
-let mediaChunks=[];
-let audioBlobMeta=null;
-let itemStartedAt=Date.now();
-let activeProductivePrompt=null;
-let speakingPromptIndex=0;
+const SCREENING_INITIAL=['A12-LS-01','A12-R-01','A21-LS-01','A21-H-01','A22-LS-01','A22-R-01'];
+const SCREENING_EXTENDED=['A22-H-01','A22-LS-02','B11-LS-01','B11-R-01','B11-H-01','B12-LS-01'];
 
-function freshState(){
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const now=()=>new Date().toISOString();
+const uid=p=>p+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+const itemById=id=>BANK.items.find(x=>x.item_id===id);
+let memoryFallback=null;
+let recorder=null, chunks=[];
+
+function fresh(){
   return {
-    appVersion:3,
-    name:'',gender:'',examDate:'',dailyMinutes:25,
+    version:2,
     auth:{method:'email',contact:'',verified:false},
-    diagnostic:ENGINE.createSession(),
-    lastDiagnosticResult:null,
-    selectedModule:'Lesen',
-    ui:{selected:null,ottoOpen:false},
-    updatedAt:now()
+    name:'',gender:'',examDate:'',dailyMinutes:25,
+    diagnostic:{
+      diagnostic_version:BANK.version,
+      stage:'not_started',
+      queue:[],cursor:0,evidence:[],audioPlays:{},
+      writingSample:null,speakingSample:null,
+      productiveBand:null,productiveStep:0,
+      completed:false,result:null,startedAt:null,lastSavedAt:null
+    },
+    route:[],
+    selectedModule:'Lesen'
   };
 }
 function load(){
   try{
     const raw=localStorage.getItem(STORAGE);
-    if(!raw)return freshState();
-    const old=JSON.parse(raw),s=freshState();
-    s.name=old.name||'';s.gender=old.gender||'';s.examDate=old.examDate||'';s.dailyMinutes=[10,25,45].includes(old.dailyMinutes)?old.dailyMinutes:25;
-    s.auth=Object.assign(s.auth,old.auth||{});
-    s.selectedModule=old.selectedModule||'Lesen';
-    if(old.diagnostic&&old.diagnostic.diagnostic_version===BANK.version){
-      s.diagnostic=old.diagnostic;
-      s.lastDiagnosticResult=old.lastDiagnosticResult||null;
-    }else{
-      // Old 6-step demo diagnostic is intentionally invalidated; registration survives.
-      s.diagnostic=ENGINE.createSession();
-      s.lastDiagnosticResult=null;
-    }
-    return s;
-  }catch(e){return memoryFallback||freshState();}
+    if(!raw)return fresh();
+    const p=JSON.parse(raw);
+    const base=fresh();
+    return Object.assign(base,p,{auth:Object.assign(base.auth,p.auth||{}),diagnostic:Object.assign(base.diagnostic,p.diagnostic||{})});
+  }catch(e){return memoryFallback||fresh();}
 }
 let S=load();
-function save(){
-  S.updatedAt=now();
-  try{localStorage.setItem(STORAGE,JSON.stringify(S));}
-  catch(e){memoryFallback=JSON.parse(JSON.stringify(S));}
-}
-function go(next){
-  S.ui.selected=null;save();
-  const h='#'+next;
-  if(location.hash!==h)history.pushState(null,'',h);
-  render();
-}
-function reset(){
-  if(!confirm('Сбросить Preview полностью, включая регистрацию и диагностику?'))return;
-  try{localStorage.removeItem(STORAGE);}catch(e){}
-  memoryFallback=null;S=freshState();history.replaceState(null,'','#register');render();
-}
-function captureRegistrationDraft(){
-  const n=$('#regName'),g=$('#regGender'),d=$('#regExamDate'),c=$('#regContact');
-  if(n)S.name=n.value;if(g)S.gender=g.value;if(d)S.examDate=d.value;if(c&&S.auth.method==='email')S.auth.contact=c.value;
-}
+function save(){S.diagnostic.lastSavedAt=now();try{localStorage.setItem(STORAGE,JSON.stringify(S));}catch(e){memoryFallback=JSON.parse(JSON.stringify(S));}}
+function reset(){try{localStorage.removeItem(STORAGE);}catch(e){}memoryFallback=null;S=fresh();history.replaceState(null,'','#register');render();}
+function go(r){save();const h='#'+r;if(location.hash!==h)history.pushState(null,'',h);render();}
 function route(){return (location.hash||'#register').slice(1);}
 function button(label,action,kind='primary',extra=''){return '<button class="btn '+kind+'" data-action="'+action+'" '+extra+'>'+label+'</button>';}
-function pill(label,kind=''){return '<span class="pill '+kind+'">'+esc(label)+'</span>';}
-function card(title,body,kind=''){return '<div class="card '+kind+'"><div class="card-title">'+title+'</div><div class="muted">'+body+'</div></div>';}
-function progressBar(value){return '<div class="progress-line"><i style="width:'+Math.max(0,Math.min(100,value))+'%"></i></div>';}
-function confidenceRu(v){return v==='high'?'высокая':v==='medium'?'средняя':v==='low'?'низкая':'недостаточно данных';}
+function pill(t,k=''){return '<span class="pill '+k+'">'+esc(t)+'</span>';}
+function card(title,body,kind=''){return '<div class="card '+kind+'"><div class="card-title">'+esc(title)+'</div><div class="muted">'+body+'</div></div>';}
 
+function captureRegistrationDraft(){
+  const n=$('#regName'),g=$('#regGender'),d=$('#regExamDate'),c=$('#regContact');
+  if(n)S.name=n.value;if(g)S.gender=g.value;if(d)S.examDate=d.value;
+  if(c&&S.auth.method==='email')S.auth.contact=c.value;
+}
 function registerView(){
   const contact=S.auth.method==='email'
     ? '<label><b>Email</b><input id="regContact" class="field" type="email" value="'+esc(S.auth.contact)+'" placeholder="name@example.com"></label>'
-    : '<div class="friendly-note"><b>Telegram</b><br>В production здесь будет подтверждение через Telegram Mini App. В Preview проверяем только UX этого шага.</div>';
-  return '<section class="registration-stage"><div class="auth-wrap"><div class="auth-hero">'+
-    '<div class="auth-otto natural"><img src="'+window.OTTO_SRC+'" alt="Otto"></div>'+
-    '<span class="kicker">Тренажёр Otto · Goethe-Zertifikat B1</span><h1 class="h1">Готовимся к сертификату B1</h1>'+
-    '<p class="lead" style="margin:0 auto">Спокойно: Otto сначала точно определит стартовую точку, а потом не будет тратить ваше время на слишком лёгкие или слишком сложные задания.</p></div>'+
-    '<div class="auth-card"><h2 style="margin-top:0">Регистрация</h2><div class="form-grid">'+
-    '<label><b>Имя</b><input id="regName" class="field" value="'+esc(S.name)+'" placeholder="Как к вам обращаться"></label>'+
-    '<label><b>Как к вам обращаться?</b><select id="regGender" class="field"><option value="">Не указывать</option><option value="female" '+(S.gender==='female'?'selected':'')+'>Женский род</option><option value="male" '+(S.gender==='male'?'selected':'')+'>Мужской род</option></select></label>'+
-    '<div><b>Способ входа</b><div class="auth-tabs"><button data-action="auth-email" class="'+(S.auth.method==='email'?'active':'')+'">Email</button><button data-action="auth-telegram" class="'+(S.auth.method==='telegram'?'active':'')+'">Telegram</button></div></div>'+
-    contact+
-    '<label><b>Дата экзамена, если известна</b><input id="regExamDate" class="field" type="date" value="'+esc(S.examDate)+'"></label>'+
-    '<div><b>Сколько времени обычно удобно заниматься?</b><div class="button-row">'+[10,25,45].map(n=>'<button class="btn '+(S.dailyMinutes===n?'primary':'ghost')+'" data-minutes="'+n+'">'+n+' минут</button>').join('')+'</div></div>'+
-    '</div><div class="button-row">'+button(S.auth.method==='email'?'Получить код':'Продолжить в Telegram','submit-registration')+'</div>'+
-    '<p class="registration-note">Изменение 10/25/45 минут меняет только эту настройку — уже введённые имя, Email и дата не сбрасываются.</p></div></div></section>';
+    : '<div class="friendly-note"><b>Telegram</b><br>В рабочей версии здесь будет безопасное подтверждение через Telegram Mini App. В Preview проверяется только сценарий.</div>';
+  return '<section class="first-onboarding"><div class="first-copy"><span class="kicker">Тренажёр Otto · Goethe-Zertifikat B1</span><h1 class="h1">Готовимся к сертификату B1</h1><p class="lead">Чем точнее мы определим старт, тем меньше времени вы потратите на слишком лёгкие или слишком сложные задания.</p><div class="auth-card"><h2>Регистрация</h2><div class="form-grid"><label><b>Имя</b><input id="regName" class="field" value="'+esc(S.name)+'"></label><label><b>Как к вам обращаться?</b><select id="regGender" class="field"><option value="">Не указывать</option><option value="female" '+(S.gender==='female'?'selected':'')+'>Женский род</option><option value="male" '+(S.gender==='male'?'selected':'')+'>Мужской род</option></select></label><div><b>Способ входа</b><div class="auth-tabs"><button data-action="auth-email" class="'+(S.auth.method==='email'?'active':'')+'">Email</button><button data-action="auth-telegram" class="'+(S.auth.method==='telegram'?'active':'')+'">Telegram</button></div></div>'+contact+'<label><b>Дата экзамена, если известна</b><input id="regExamDate" class="field" type="date" value="'+esc(S.examDate)+'"></label><div><b>Сколько времени удобно заниматься в обычный день?</b><div class="button-row">'+[10,25,45].map(n=>'<button class="btn '+(S.dailyMinutes===n?'primary':'ghost')+'" data-minutes="'+n+'">'+n+' минут</button>').join('')+'</div><p class="small">Это настройка ежедневного маршрута. Она не ограничивает первоначальную диагностику.</p></div></div><div class="button-row">'+button(S.auth.method==='email'?'Получить код':'Продолжить в Telegram','register-submit')+'</div></div></div><div class="first-otto"><img src="'+window.OTTO_SRC+'" alt="Otto"></div></section>';
 }
 function verifyView(){
-  const body=S.auth.method==='email'
-    ? '<p class="muted">Для Preview используйте код <b>111111</b>.</p><input id="verifyCode" class="field verify-code" maxlength="6" inputmode="numeric" placeholder="000000">'
-    : '<div class="friendly-note">В production здесь будет Telegram Mini App. Для Preview нажмите «Подтвердить».</div>';
-  return '<div class="auth-wrap"><div class="auth-card"><span class="eyebrow">Подтверждение</span><h1 class="h2">'+(S.auth.method==='email'?'Введите код из письма':'Telegram')+'</h1>'+body+
-    '<div class="button-row">'+button('Подтвердить','verify')+button('Назад','back-register','ghost')+'</div></div></div>';
+  return '<div class="auth-wrap"><div class="auth-card"><span class="eyebrow">Подтверждение</span><h1 class="h2">'+(S.auth.method==='email'?'Введите код из письма':'Telegram-подтверждение')+'</h1>'+(S.auth.method==='email'?'<p class="muted">Для Preview используйте код <b>111111</b>.</p><input id="verifyCode" class="field verify-code" maxlength="6" inputmode="numeric">':'<div class="friendly-note">Для Preview нажмите «Подтвердить». Реальный Telegram backend не подключён.</div>')+'<div class="button-row">'+button('Подтвердить','verify')+button('Назад','back-register','ghost')+'</div></div></div>';
+}
+function submitRegistration(){
+  captureRegistrationDraft();
+  if(!S.name.trim())return alert('Введите имя.');
+  if(S.auth.method==='email'&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(S.auth.contact))return alert('Введите корректный email.');
+  if(S.auth.method==='telegram')S.auth.contact='Telegram';
+  save();go('verify');
+}
+function finishVerification(){
+  if(S.auth.method==='email'&&($('#verifyCode')?.value.trim()!=='111111'))return alert('Для Preview используйте 111111.');
+  S.auth.verified=true;save();go('diagnostic-gate');
 }
 function diagnosticGate(){
-  return '<div class="gate-card"><div class="auth-otto natural"><img src="'+window.OTTO_SRC+'" alt="Otto"></div>'+
-    '<span class="eyebrow">Обязательная калибровка</span><h1 class="h1">Сначала — нормальная диагностика</h1>'+
-    '<p class="lead">Она может занять дольше старого демо-теста, зато маршрут будет основан на нескольких независимых доказательствах, а не на одном удачном клике.</p>'+
-    '<div class="friendly-note" style="text-align:left;margin:20px 0"><b>4 этапа:</b><br>1) широкий screening A1→B1;<br>2) адаптивная проверка около вашей границы;<br>3) реальный письменный sample;<br>4) речевой sample, а около B1 — ещё и interactive probe.<br><br><b>Чем точнее старт, тем меньше времени уйдёт на лишние упражнения.</b></div>'+
-    (S.diagnostic.answers.length?card('Можно продолжить','Сохранено ответов: '+S.diagnostic.answers.length+'. Диагностика продолжится с того же места.','good'):'')+
-    '<div class="button-row">'+button(S.diagnostic.answers.length?'Продолжить диагностику':'Начать диагностику','start-diagnostic')+'</div></div>';
+  const resume=S.diagnostic.stage!=='not_started'&&!S.diagnostic.completed;
+  return '<div class="gate-card"><div class="plain-otto"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><span class="eyebrow">Первичная калибровка</span><h1 class="h1">'+(resume?'Продолжим диагностику':'Сначала — диагностика')+'</h1><p class="lead">Это не короткий тест на один grammar question. Otto сначала сужает диапазон, затем проверяет границу дополнительными независимыми заданиями и отдельно собирает Schreiben/Sprechen evidence.</p><div class="friendly-note" style="text-align:left"><b>Важно:</b> A1.1 / A1.2 / A2.1 / A2.2 / B1.1 / B1.2 — внутренние учебные placement bands, а не официальный сертификат CEFR.</div><div class="button-row">'+button(resume?'Продолжить с сохранённого места':'Начать диагностику',resume?'diag-resume':'diag-start')+'</div></div>';
 }
-function diagnosticStageInfo(){
-  const p=S.diagnostic.phase;
-  if(p==='screening_core'||p==='screening_path')return {n:1,title:'Широкий screening',time:'примерно 4–7 минут'};
-  if(p==='boundary'||p==='boundary_extra')return {n:2,title:'Проверяем границу',time:p==='boundary_extra'?'ещё примерно 2–3 минуты':'примерно 3–5 минут'};
-  if(p==='closed_complete'||p==='writing')return {n:3,title:'Письменный sample',time:'примерно 6–12 минут'};
-  return {n:4,title:'Речевой sample',time:'примерно 2–5 минут'};
+function startDiagnostic(){
+  S.diagnostic=Object.assign(fresh().diagnostic,{stage:'screening',queue:SCREENING_INITIAL.slice(),cursor:0,startedAt:now()});
+  save();go('diagnostic');
+}
+
+function currentDiagnosticItem(){
+  if(S.diagnostic.stage==='screening'||S.diagnostic.stage==='boundary')return itemById(S.diagnostic.queue[S.diagnostic.cursor]);
+  return null;
+}
+function remainingMinutes(){
+  let secs=0;
+  if(['screening','boundary'].includes(S.diagnostic.stage)){
+    S.diagnostic.queue.slice(S.diagnostic.cursor).forEach(id=>secs+=(itemById(id)?.expected_duration_sec||45));
+    secs+=420;
+  }else if(S.diagnostic.stage==='productive')secs=S.diagnostic.productiveStep===0?420:180;
+  return Math.max(1,Math.round(secs/60));
+}
+function stageTitle(){
+  return {screening:'Этап A · Wide screening',boundary:'Этап B · Boundary check',productive:'Этап C · Productive evidence',report:'Этап D · Результат'}[S.diagnostic.stage]||'Диагностика';
+}
+function diagnosticProgress(){
+  if(S.diagnostic.stage==='screening')return 20+Math.round((S.diagnostic.cursor/Math.max(1,S.diagnostic.queue.length))*25);
+  if(S.diagnostic.stage==='boundary')return 50+Math.round((S.diagnostic.cursor/Math.max(1,S.diagnostic.queue.length))*20);
+  if(S.diagnostic.stage==='productive')return 78+S.diagnostic.productiveStep*9;
+  return 100;
+}
+function renderClosed(item){
+  let body='';
+  if(item.modality==='lesen')body+='<div class="task-text">'+esc(item.text).replace(/\n/g,'<br>')+'</div>';
+  if(item.modality==='hoeren'){
+    const used=S.diagnostic.audioPlays[item.item_id]||0,limit=item.audio_plays||2;
+    body+='<div class="audio-card"><b>Hören</b><span class="small">Прослушано '+used+' из '+limit+'</span>'+button('▶ Воспроизвести','diag-audio','secondary',used>=limit?'disabled':'')+'</div>';
+  }
+  body+='<p class="lead" style="font-size:17px"><b>'+esc(item.prompt)+'</b></p><div class="choice-grid">';
+  item.options.forEach((o,i)=>body+='<button class="choice" data-diag-choice="'+i+'">'+esc(o)+'</button>');
+  body+='</div>';
+  return body;
 }
 function diagnosticView(){
-  ENGINE.getClosedDecision(S.diagnostic);
-  if(S.diagnostic.phase==='closed_complete'||S.diagnostic.phase==='writing')return writingDiagnosticView();
-  if(S.diagnostic.phase==='speaking')return speakingDiagnosticView();
-  if(S.diagnostic.phase==='complete'||S.diagnostic.completed)return reportView();
-
-  const item=ENGINE.nextItem(S.diagnostic);
-  if(!item){return '<h1 class="h2">Подготавливаем следующий этап…</h1>';}
-  activeProductivePrompt=null;
-  const st=diagnosticStageInfo();
-  const answered=S.diagnostic.answers.length;
-  const pct=st.n===1?Math.min(24,8+answered*2):st.n===2?35+Math.min(28,(S.diagnostic.boundaryRounds||1)*10+S.diagnostic.cursor*3):50;
-  let media='';
-  if(item.modality==='audio'){
-    const key=item.item_id;
-    const prev=(S.diagnostic.audioPlays&&S.diagnostic.audioPlays[key])||0;
-    media='<div class="audio-card"><b>🎧 Hören</b><p class="small">Оригинальный diagnostic script, озвучка — системный de-DE голос браузера. Для placement проверяем понимание содержания; это не оценка качества реальной записи.</p>'+
-      '<button class="btn secondary" data-action="diag-play-audio" '+(prev>=2?'disabled':'')+'>▶ Воспроизвести '+(prev?('ещё раз ('+prev+'/2)'):'')+'</button></div>';
-  }
-  const text=item.text?'<div class="task-text">'+esc(item.text)+'</div>':'';
-  return '<span class="eyebrow">Этап '+st.n+' из 4 · '+st.title+'</span>'+progressBar(pct)+
-    '<div class="diagnostic-meta"><span>Осталось: '+st.time+'</span><span>Autosave включён</span></div>'+
-    '<h1 class="h2">Задание на зоне '+esc(item.target_band)+'</h1>'+
-    '<p class="small">Внутренняя учебная зона OTTO, не официальный CEFR-сертификат.</p>'+media+text+
-    '<p class="lead" style="font-size:17px"><b>'+esc(item.prompt)+'</b></p>'+
-    '<div class="choice-grid">'+item.options.map((o,i)=>'<button class="choice '+(S.ui.selected===i?'selected':'')+'" data-choice="'+i+'">'+esc(o)+'</button>').join('')+'</div>'+
-    '<div class="button-row">'+button('Продолжить','diag-submit')+'</div>';
+  if(S.diagnostic.stage==='report'||S.diagnostic.completed)return reportView();
+  if(S.diagnostic.stage==='productive')return productiveView();
+  const item=currentDiagnosticItem();
+  if(!item)return '<div class="notice">Диагностическая очередь пуста. Продолжаем расчёт…</div>';
+  return '<span class="eyebrow">'+stageTitle()+'</span><div class="diag-top"><div><h1 class="h2">'+(S.diagnostic.stage==='screening'?'Сужаем диапазон':'Проверяем предполагаемую границу')+'</h1><p class="muted">'+(S.diagnostic.stage==='screening'?'Задания идут от более простых к более сложным, но сильный или явно слабый профиль не обязан проходить всё.':'Пограничный результат получает больше новых independent evidence points.')+'</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:'+diagnosticProgress()+'%"></i></div><div class="meta-row">'+pill(item.target_band,'')+pill(item.modality,'')+pill(item.skill,'')+'</div>'+renderClosed(item)+'<div class="button-row">'+button('Ответить','diag-answer')+'</div><p class="small">Ответ автоматически сохранится. Если закрыть страницу, диагностика продолжится с этого места.</p>';
 }
 function playDiagnosticAudio(){
-  const item=ENGINE.nextItem(S.diagnostic);if(!item||!item.audio_script)return;
-  S.diagnostic.audioPlays=S.diagnostic.audioPlays||{};
-  const n=S.diagnostic.audioPlays[item.item_id]||0;if(n>=2)return;
-  S.diagnostic.audioPlays[item.item_id]=n+1;save();
-  if(!('speechSynthesis' in window)){alert('В этом браузере недоступна системная озвучка. Evidence Hören здесь нельзя собрать надёжно.');return;}
-  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(item.audio_script);u.lang='de-DE';u.rate=item.target_band.startsWith('B1')?0.98:item.target_band.startsWith('A2')?0.9:0.82;speechSynthesis.speak(u);render();
+  const item=currentDiagnosticItem();if(!item||item.modality!=='hoeren')return;
+  const used=S.diagnostic.audioPlays[item.item_id]||0,limit=item.audio_plays||2;if(used>=limit)return;
+  S.diagnostic.audioPlays[item.item_id]=used+1;save();
+  if(!('speechSynthesis'in window))return alert('Системная озвучка недоступна в этом браузере.');
+  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(item.audio_script);u.lang='de-DE';u.rate=item.target_band.startsWith('B1')?.96:item.target_band.startsWith('A2')?.9:.82;speechSynthesis.speak(u);render();
 }
-function submitDiagnosticClosed(){
-  const item=ENGINE.nextItem(S.diagnostic);if(!item)return;
-  if(S.ui.selected==null){alert('Выберите ответ.');return;}
-  const duration=Date.now()-itemStartedAt;
-  ENGINE.submitClosed(S.diagnostic,item.item_id,S.ui.selected,{duration_ms:duration,audio_plays:(S.diagnostic.audioPlays||{})[item.item_id]||0});
-  S.ui.selected=null;itemStartedAt=Date.now();save();render();
+function answerDiagnostic(index){
+  const item=currentDiagnosticItem();if(!item)return;
+  const correct=Number(index)===item.correct;
+  S.diagnostic.evidence.push({
+    evidence_id:uid('ev'),item_id:item.item_id,modality:item.modality,skill:item.skill,target_band:item.target_band,
+    correct,answered_at:now(),duration_ms:null,contributes_to_placement:item.contributes_to_placement,
+    contributes_to_b1_exam_gap:item.contributes_to_b1_exam_gap,diagnostic_version:BANK.version
+  });
+  S.diagnostic.cursor++;save();
+  advanceDiagnostic();
 }
-function writingDiagnosticView(){
-  S.diagnostic.phase='writing';
-  const prompt=ENGINE.selectWritingPrompt(S.diagnostic);activeProductivePrompt=prompt;
-  return '<span class="eyebrow">Этап 3 из 4 · Schreiben</span>'+progressBar(68)+
-    '<h1 class="h2">Нужен настоящий письменный sample</h1>'+
-    '<p class="lead">Prompt выбран по предварительно найденному диапазону. Текст сохраняется как productive evidence, но Preview <b>не придумывает уровень</b> без надёжной оценки.</p>'+
-    '<div class="task-text"><b>'+esc(prompt.target_band)+' · '+esc(prompt.task_family)+'</b><br><br>'+esc(prompt.prompt)+'</div>'+
-    '<textarea id="diagWriting" class="field" rows="11" placeholder="Schreiben Sie auf Deutsch…">'+esc(S.diagnostic.writing?.text||'')+'</textarea>'+
-    '<div class="notice">После сохранения статус Schreiben будет «требуется оценка», пока не подключён versioned evaluator/rubric.</div>'+
-    '<div class="button-row">'+button('Сохранить и перейти к Sprechen','save-writing')+'</div>';
+function advanceDiagnostic(){
+  if(S.diagnostic.cursor<S.diagnostic.queue.length){render();return;}
+  if(S.diagnostic.stage==='screening'){
+    if(S.diagnostic.queue.length===SCREENING_INITIAL.length){
+      const first=S.diagnostic.evidence.filter(e=>SCREENING_INITIAL.includes(e.item_id));
+      const correct=first.filter(e=>e.correct).length;
+      if(correct<=2){planBoundary();return;}
+      S.diagnostic.queue=SCREENING_INITIAL.concat(SCREENING_EXTENDED);save();render();return;
+    }
+    planBoundary();return;
+  }
+  if(S.diagnostic.stage==='boundary'){startProductive();return;}
 }
-function validateWriting(text,prompt){
-  const words=(text.match(/[A-Za-zÄÖÜäöüß]+/g)||[]).length;
+function planBoundary(){
+  const items=ENGINE.requiredBoundaryItems(S.diagnostic.evidence,BANK.items);
+  S.diagnostic.stage='boundary';S.diagnostic.queue=items.map(x=>x.item_id);S.diagnostic.cursor=0;save();
+  if(!items.length)startProductive();else render();
+}
+function startProductive(){
+  const placement=ENGINE.boundaryDecision(S.diagnostic.evidence);
+  S.diagnostic.productiveBand=ENGINE.chooseProductiveBand(placement);
+  S.diagnostic.stage='productive';S.diagnostic.productiveStep=0;save();render();
+}
+function productiveItem(modality){
+  const target=S.diagnostic.productiveBand;
+  return BANK.productive.find(x=>x.modality===modality&&x.target_band===target)
+    || BANK.productive.find(x=>x.modality===modality&&x.target_band==='A2.2');
+}
+function productiveView(){
+  if(S.diagnostic.productiveStep===0){
+    const w=productiveItem('schreiben');
+    return '<span class="eyebrow">'+stageTitle()+'</span><div class="diag-top"><div><h1 class="h2">Schreiben · реальный productive sample</h1><p class="muted">Prompt выбран по предварительно найденному диапазону: '+esc(S.diagnostic.productiveBand)+'.</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:'+diagnosticProgress()+'%"></i></div><div class="task-text">'+esc(w.prompt)+'</div><textarea id="writingSample" class="field" rows="11" placeholder="Schreiben Sie auf Deutsch…">'+esc(S.diagnostic.writingSample?.text||'')+'</textarea><div class="notice">Мы не будем автоматически объявлять уровень по длине текста. Sample сохранится со статусом «нужна оценка».</div><div class="button-row">'+button('Сохранить и перейти к Sprechen','save-writing')+'</div>';
+  }
+  const sp=productiveItem('sprechen');
+  return '<span class="eyebrow">'+stageTitle()+'</span><h1 class="h2">Sprechen · productive evidence</h1><p class="lead">'+esc(sp.prompt)+'</p>'+(sp.target_band==='B1.1'?'<div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'"></div><div><b>Otto — партнёр</b><div class="muted">Vorschlag: Wir könnten den Lerntag am Samstag ab 10 Uhr in der Bibliothek machen. Ich würde aber nur eine kurze Mittagspause planen. Was meinst du?</div></div></div><div class="button-row">'+button('🔊 Otto говорит','speak-otto','secondary')+'</div>':'')+'<div id="recordBox" class="record-box '+(recorder&&recorder.state==='recording'?'recording':'')+'"><span class="record-dot"></span><b> Реальная запись микрофона</b><div class="button-row" style="justify-content:center">'+button(recorder&&recorder.state==='recording'?'■ Остановить':'🎙 Начать запись','record-speaking','secondary')+'</div></div><div class="notice">Speech Recognition transcript не считается оценкой Sprechen. Pronunciation, fluency и качество аудио здесь не выдумываются.</div><div class="button-row">'+button('Сохранить evidence и завершить','finish-speaking')+button('Нет доступа к микрофону','skip-speaking','ghost')+'</div>';
+}
+function basicWritingGate(text){
+  const german=(text.match(/[A-Za-zÄÖÜäöüß]+/g)||[]).length;
   const cyr=(text.match(/[А-Яа-яЁё]+/g)||[]).length;
-  if(words<20||cyr>words)return {ok:false,reason:'Нужен осмысленный текст преимущественно по-немецки. Русский текст или случайный набор символов не создаёт placement evidence.'};
-  const min=prompt.item_id==='W-A1'?25:prompt.item_id==='W-A2'?45:60;
-  if(words<min)return {ok:false,reason:'Для этого диапазона sample пока слишком короткий, чтобы быть полезным для проверки.'};
-  return {ok:true,wordCount:words};
+  return {words:german,valid:german>=18&&german>cyr*2};
 }
 function saveWriting(){
-  const prompt=activeProductivePrompt||ENGINE.selectWritingPrompt(S.diagnostic);
-  const text=$('#diagWriting').value.trim();const check=validateWriting(text,prompt);
-  if(!check.ok){alert(check.reason);return;}
-  ENGINE.saveWritingSample(S.diagnostic,prompt.item_id,text,{wordCount:check.wordCount});
-  speakingPromptIndex=0;audioBlobMeta=null;save();render();
-}
-function speakingDiagnosticView(){
-  const prompts=ENGINE.selectSpeakingPrompts(S.diagnostic);
-  if(speakingPromptIndex>=prompts.length){
-    ENGINE.markComplete(S.diagnostic);S.lastDiagnosticResult=ENGINE.result(S.diagnostic);save();return reportView();
-  }
-  const p=prompts[speakingPromptIndex];activeProductivePrompt=p;
-  const isInteractive=p.item_id==='S-B1';
-  const recorded=S.diagnostic.speaking.find(x=>x.promptId===p.item_id);
-  return '<span class="eyebrow">Этап 4 из 4 · Sprechen</span>'+progressBar(84+speakingPromptIndex*7)+
-    '<h1 class="h2">'+(isInteractive?'Interactive B1-oriented probe':'Речевой sample')+'</h1>'+
-    '<p class="lead">'+(isInteractive?'Если screening дошёл до B1, одного монолога недостаточно. Здесь нужен ответ на партнёра и реакция на изменение плана.':'Запишите ответ голосом. Транскрипт сам по себе не считается оценкой Sprechen.')+'</p>'+
-    '<div class="task-text">'+esc(p.prompt)+'</div>'+
-    (isInteractive?'<div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><div><b>Otto:</b><div class="muted">Wir wollen am Samstag etwas mit unserer Lerngruppe machen. Ich schlage 16 Uhr im Park vor. Was meinst du? Nenne bitte auch einen Grund.</div></div></div><div class="button-row">'+button('🔊 Otto говорит','speak-probe','secondary')+'</div>':'')+
-    '<div id="recordBox" class="record-box '+(mediaRecorder&&mediaRecorder.state==='recording'?'recording':'')+'"><span class="record-dot"></span><b> '+(mediaRecorder&&mediaRecorder.state==='recording'?'Идёт запись…':'Запись микрофона')+'</b><div class="button-row" style="justify-content:center">'+button(mediaRecorder&&mediaRecorder.state==='recording'?'■ Остановить':'🎙 Записать ответ','record-speaking','secondary')+'</div></div>'+
-    (recorded?card('Sample сохранён','Аудио получено. Статус: NEEDS_REVIEW — уровень по одному transcript не придумывается.','good'):'')+
-    '<div class="button-row">'+button(recorded?'Продолжить':'Нет микрофона / продолжить без оценки','speaking-next',recorded?'primary':'ghost')+'</div>';
-}
-function speakProbe(){
-  if(!('speechSynthesis' in window))return alert('Озвучка недоступна.');
-  const u=new SpeechSynthesisUtterance('Wir wollen am Samstag etwas mit unserer Lerngruppe machen. Ich schlage sechzehn Uhr im Park vor. Was meinst du? Nenne bitte auch einen Grund.');u.lang='de-DE';u.rate=.95;speechSynthesis.cancel();speechSynthesis.speak(u);
+  const w=productiveItem('schreiben'),text=$('#writingSample').value.trim(),gate=basicWritingGate(text);
+  if(!gate.valid)return alert('Нужен осмысленный преимущественно немецкий текст. Русский или случайный набор символов не создаёт productive evidence.');
+  S.diagnostic.writingSample={item_id:w.item_id,target_band:w.target_band,text,wordCount:gate.words,evaluation_status:'PENDING_REVIEW',saved_at:now()};
+  S.diagnostic.evidence.push({evidence_id:uid('ev'),item_id:w.item_id,modality:'schreiben',skill:'productive_writing',target_band:w.target_band,correct:null,evaluation_status:'PENDING_REVIEW',contributes_to_placement:false,contributes_to_b1_exam_gap:true,answered_at:now()});
+  S.diagnostic.productiveStep=1;save();render();
 }
 async function toggleSpeakingRecord(){
-  if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();mediaRecorder.stream.getTracks().forEach(t=>t.stop());return;}
+  if(recorder&&recorder.state==='recording'){recorder.stop();recorder.stream.getTracks().forEach(t=>t.stop());return;}
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});mediaChunks=[];
-    mediaRecorder=new MediaRecorder(stream);mediaRecorder.stream=stream;
-    mediaRecorder.ondataavailable=e=>{if(e.data.size)mediaChunks.push(e.data);};
-    mediaRecorder.onstop=()=>{
-      const bytes=mediaChunks.reduce((n,b)=>n+b.size,0);audioBlobMeta={bytes,audio:bytes>0};
-      const p=activeProductivePrompt||ENGINE.selectSpeakingPrompts(S.diagnostic)[speakingPromptIndex];
-      ENGINE.saveSpeakingSample(S.diagnostic,p.item_id,{audio:bytes>0,bytes,interaction:p.item_id==='S-B1'});
-      mediaRecorder=null;save();render();
-    };
-    mediaRecorder.start();render();
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];recorder=new MediaRecorder(stream);recorder.stream=stream;
+    recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+    recorder.onstop=()=>{const bytes=chunks.reduce((n,b)=>n+b.size,0);S.diagnostic.speakingSample={recorded:bytes>0,bytes,evaluation_status:'PENDING_REVIEW',saved_at:now()};save();recorder=null;render();};
+    recorder.start();render();
   }catch(e){alert('Нет доступа к микрофону: '+e.message);}
 }
-function speakingNext(){
-  const prompts=ENGINE.selectSpeakingPrompts(S.diagnostic),p=prompts[speakingPromptIndex];
-  const recorded=S.diagnostic.speaking.find(x=>x.promptId===p.item_id);
-  if(!recorded)ENGINE.saveSpeakingSample(S.diagnostic,p.item_id,{audio:false,interaction:p.item_id==='S-B1',limitation:'microphone_unavailable_or_skipped'});
-  speakingPromptIndex++;
-  if(speakingPromptIndex>=prompts.length){
-    ENGINE.markComplete(S.diagnostic);S.lastDiagnosticResult=ENGINE.result(S.diagnostic);save();go('report');
-  }else{save();render();}
+function finishSpeaking(skipped=false){
+  const sp=productiveItem('sprechen');
+  if(!skipped&&!S.diagnostic.speakingSample?.recorded)return alert('Сначала запишите голосовой образец или выберите «Нет доступа к микрофону».');
+  S.diagnostic.evidence.push({evidence_id:uid('ev'),item_id:sp.item_id,modality:'sprechen',skill:sp.skill,target_band:sp.target_band,correct:null,evaluation_status:skipped?'NEED_CONFIRMATION':'PENDING_REVIEW',contributes_to_placement:false,contributes_to_b1_exam_gap:true,answered_at:now(),audio:!skipped});
+  finalizeDiagnostic();
 }
-
+function finalizeDiagnostic(){
+  const placement=ENGINE.boundaryDecision(S.diagnostic.evidence);
+  const profiles=ENGINE.profileByDomain(S.diagnostic.evidence);
+  const routeBlocks=ENGINE.routeFor(placement,profiles);
+  const b1Gaps=S.diagnostic.evidence.filter(e=>e.contributes_to_b1_exam_gap&&e.correct===false).map(e=>({modality:e.modality,skill:e.skill,item_id:e.item_id}));
+  S.diagnostic.result={placement,profiles,b1Gaps,completed_at:now(),diagnostic_version:BANK.version};
+  S.route=routeBlocks;S.diagnostic.stage='report';S.diagnostic.completed=true;save();go('report');
+}
+function confidenceRu(c){return c==='high'?'высокая':c==='medium'?'средняя':'низкая';}
+function domainLabel(d){return {language_system:'Language system',lesen:'Lesen',hoeren:'Hören',schreiben:'Schreiben',sprechen:'Sprechen'}[d]||d;}
 function reportView(){
-  if(!S.diagnostic.completed){return diagnosticView();}
-  const r=ENGINE.result(S.diagnostic);S.lastDiagnosticResult=r;save();
-  const profileOrder=[['language_system','Language system'],['Lesen','Lesen'],['Hören','Hören'],['Schreiben','Schreiben'],['Sprechen','Sprechen']];
-  const profiles='<div class="diagnostic-profile">'+profileOrder.map(([k,label])=>{
-    const p=r.profiles[k];const value=p.band||'требуется подтверждение';const kind=p.status==='SUPPORTED'||p.status==='REVIEWED'?'good':p.status==='REVIEWED_WEAK'?'bad':'warn';
-    return '<div class="card"><b>'+label+'</b><div class="profile-band">'+esc(value)+'</div>'+pill('уверенность: '+confidenceRu(p.confidence),kind)+'<div class="small" style="margin-top:8px">evidence: '+p.evidenceCount+'</div></div>';
-  }).join('')+'</div>';
-  const gaps=r.gaps.length?'<div class="stack">'+r.gaps.slice(0,6).map(g=>card(esc(g.module)+' · '+esc(g.kind),esc(g.reason),'warn')).join('')+'</div>':card('B1 gaps пока не подтверждены','Нужно больше независимых доказательств.','soft');
-  return '<span class="eyebrow">Диагностика завершена</span><h1 class="h2">'+esc(r.placementDisplay)+'</h1>'+
-    '<p class="lead">Это <b>примерная учебная зона OTTO</b>, а не официальный сертификат CEFR. Внутренние A1.1/A1.2/A2.1/A2.2/B1.1/B1.2 нужны только для выбора следующего обучения.</p>'+
-    profiles+'<div style="height:16px"></div>'+
-    card('Почему такой результат',r.explanation.map(esc).join('<br>'),'soft')+
-    '<h3>До Goethe B1 сейчас важнее всего</h3>'+gaps+
-    '<div class="button-row">'+button('Показать мой первый маршрут','open-route')+button('Главная','report-home','ghost')+'</div>';
-}
-function routeView(){
-  if(!S.diagnostic.completed)return diagnosticGate();
-  const r=ENGINE.result(S.diagnostic),rt=r.route;
-  return '<span class="eyebrow">Персональный маршрут после диагностики</span><h1 class="h2">'+esc(rt.summary)+'</h1>'+
-    '<p class="lead">Это не один и тот же курс с другим названием уровня. Вес и тип блоков меняются от результата диагностики.</p>'+
-    '<div class="stack">'+rt.blocks.map(b=>'<div class="route-card"><div class="route-weight">'+b.weight+'%</div><div><b>'+esc(b.label)+'</b><p>'+esc(b.why)+'</p></div></div>').join('')+'</div>'+
-    '<div class="notice"><b>Контентная защита:</b> старые короткие SAMPLES выведены из пользовательского обучения. Пока новый учебный банк не пройдёт отдельный content QA, OTTO не будет маскировать demo/A2 материал под B1.</div>'+
-    '<div class="button-row">'+button('На главную','report-home','primary')+button('Посмотреть модули','open-modules','ghost')+'</div>';
+  if(!S.diagnostic.result)finalizeDiagnostic();
+  const r=S.diagnostic.result,p=r.placement;
+  let domains='<div class="stack">';
+  Object.entries(r.profiles).forEach(([d,v])=>{
+    const text=v.status==='NEED_CONFIRMATION'?'требуется подтверждение':(v.band+' · уверенность '+confidenceRu(v.confidence));
+    domains+=card(domainLabel(d),text,v.status==='NEED_CONFIRMATION'?'warn':'');
+  });domains+='</div>';
+  let gaps=r.b1Gaps.length?r.b1Gaps.slice(0,5).map(g=>'<li>'+esc(domainLabel(g.modality))+' · '+esc(g.skill)+'</li>').join(''):'<li>По текущему closed evidence явный B1 exam-gap ещё не подтверждён.</li>';
+  return '<span class="eyebrow">Результат диагностики · '+esc(BANK.version)+'</span><h1 class="h2">Текущая учебная зона: ближе к '+esc(p.band)+'</h1><p class="lead">Это внутренняя учебная placement band, а не официальный сертификат CEFR.</p>'+card('Confidence',confidenceRu(p.confidence)+' · '+esc(p.status),p.status==='NEED_CONFIRMATION'?'warn':'good')+'<h3>Профиль по доменам</h3>'+domains+'<h3>До Goethe B1 сейчас важнее всего</h3><div class="card"><ul>'+gaps+'</ul></div>'+card('Почему такой результат',p.why.length?p.why.map(esc).join('<br>'):'Пока недостаточно независимых evidence points для более сильного утверждения.','soft')+'<div class="button-row">'+button('Открыть мой маршрут','open-route')+button('На главную','open-home','ghost')+'</div>';
 }
 function homeView(){
-  const r=ENGINE.result(S.diagnostic);
-  return '<span class="eyebrow">Здравствуйте, '+esc(S.name)+'</span><h1 class="h2">Стартовая точка определена</h1>'+
-    '<div class="mode-grid"><div class="mode-card primary-mode"><div class="mode-icon">◎</div><h3>Otto ведёт меня</h3><p class="muted">'+esc(r.route.summary)+'</p>'+button('Мой маршрут','open-route')+'</div>'+
-    '<div class="mode-card"><div class="mode-icon">▦</div><h3>Выбрать самому</h3><p class="muted">Можно посмотреть структуру каждого модуля Goethe B1. Непроверенные demo-задания больше не доступны как учебный контент.</p>'+button('Четыре модуля','open-modules','secondary')+'</div></div>'+
-    '<div class="grid2">'+card('Учебная зона',esc(r.placementDisplay),'soft')+card('Evidence',r.evidenceCount+' закрытых независимых ответов + productive samples','soft')+'</div>';
+  const r=S.diagnostic.result;if(!r)return diagnosticGate();
+  return '<span class="eyebrow">Моя подготовка</span><h1 class="h2">Здравствуйте, '+esc(S.name)+'</h1><p class="lead">Стартовая гипотеза: ближе к '+esc(r.placement.band)+'. После новых evidence профиль может меняться.</p><div class="mode-grid"><div class="mode-card primary-mode"><h3>Otto ведёт меня</h3><p class="muted">Маршрут уже отличается в зависимости от placement band и слабых доменов.</p>'+button('Посмотреть маршрут','open-route')+'</div><div class="mode-card"><h3>Выбрать модуль</h3><p class="muted">Пока пользовательские B1-тренировки временно закрыты: старый demo content изолирован. Видна только подтверждённая task map.</p>'+button('Открыть модули','open-modules','secondary')+'</div></div>';
+}
+function routeView(){
+  let html='<span class="eyebrow">Первый персональный маршрут</span><h1 class="h2">Маршрут из результата диагностики</h1><p class="lead">Настройка '+S.dailyMinutes+' минут влияет на объём будущих занятий, но не меняет placement.</p><div class="stack">';
+  S.route.forEach((b,i)=>html+=card((i+1)+'. '+b.title,b.why+' '+(b.weight?'Ориентировочный вес: '+b.weight+'%.':''),b.type.startsWith('confirm_')?'warn':''));
+  html+='</div><div class="button-row">'+button('Модули','open-modules','ghost')+button('Прогресс / evidence','open-progress','secondary')+'</div>';return html;
 }
 function modulesView(){
-  return '<span class="eyebrow">Goethe-Zertifikat B1</span><h1 class="h2">Четыре модуля</h1><p class="lead">Структура видна. Учебные задания откроются только после отдельного content QA нового B1-банка.</p>'+
-    '<div class="modules-grid">'+MODULES.map(m=>'<button class="module-pick" data-module="'+m+'"><div class="module-name">'+m+'</div><div class="module-count">'+EXAM_MAP[m].parts.length+' частей · '+EXAM_MAP[m].time+'</div></button>').join('')+'</div>';
+  let html='<span class="eyebrow">Goethe B1 task map</span><h1 class="h2">Четыре модуля</h1><div class="notice">Старые SAMPLES больше не доступны как B1-обучение. Полноценные training items будут добавляться только после content QA.</div><div class="modules-grid">';
+  MODULES.forEach(m=>html+='<button class="module-pick" data-module="'+m+'"><div class="module-name">'+m+'</div><div class="module-count">'+B1_MAP[m].length+' частей</div></button>');
+  return html+'</div>';
 }
 function moduleView(){
-  const m=S.selectedModule,x=EXAM_MAP[m];
-  return '<span class="eyebrow">Модуль</span><h1 class="h2">'+m+'</h1><p class="lead">'+x.time+'</p><div class="exam-map">'+
-    x.parts.map(p=>'<div class="teil-row"><div class="teil-num">'+esc(p[0])+'</div><div><b>'+esc(p[1])+'</b><p>Новый original_aligned training item bank ещё проходит отдельную подготовку и не подменяется старым demo.</p></div><span class="pill warn">контент в QA</span></div>').join('')+
-    '</div><div class="button-row">'+button('← Все модули','open-modules','ghost')+'</div>';
+  const m=S.selectedModule;let html='<span class="eyebrow">Task map · '+m+'</span><h1 class="h2">'+m+'</h1><div class="exam-map">';
+  B1_MAP[m].forEach(row=>html+='<div class="teil-row"><div class="teil-num">'+esc(row[0])+'</div><div><b>'+esc(row[1])+'</b><p>'+esc(row[2])+'</p></div><span class="pill warn">content QA pending</span></div>');
+  return html+'</div><div class="button-row">'+button('← Все модули','open-modules','ghost')+'</div>';
 }
 function errorsView(){
-  const r=ENGINE.result(S.diagnostic);
-  return '<span class="eyebrow">Диагностические пробелы</span><h1 class="h2">Что уже подтверждено evidence</h1>'+
-    (r.gaps.length?'<div class="stack">'+r.gaps.map(g=>card(esc(g.module),esc(g.reason),'warn')).join('')+'</div>':card('Нет подтверждённых пробелов','Это не означает готовность: данных может быть недостаточно.','soft'));
+  const wrong=S.diagnostic.evidence.filter(e=>e.correct===false);
+  let html='<span class="eyebrow">Диагностические пробелы</span><h1 class="h2">Что уже подтверждено ошибками</h1><div class="stack">';
+  wrong.forEach(e=>html+=card(domainLabel(e.modality)+' · '+e.target_band,esc(e.skill)+' · '+esc(e.item_id),'bad'));
+  return html+(wrong.length?'':card('Пока нет','Closed-task ошибки не зафиксированы.','soft'))+'</div>';
 }
 function progressView(){
-  const r=ENGINE.result(S.diagnostic);
-  return '<span class="eyebrow">Evidence profile</span><h1 class="h2">Без псевдоточного процента</h1>'+
-    '<div class="grid2">'+card('Closed-task evidence',String(r.evidenceCount),'soft')+
-    card('Schreiben',r.profiles.Schreiben.status==='NEED_CONFIRMATION'?'требуется оценка':'есть review','warn')+
-    card('Sprechen',r.profiles.Sprechen.status==='NEED_CONFIRMATION'?'требуется оценка':'есть review','warn')+
-    card('Placement confidence',confidenceRu(r.placement.confidence),r.placement.confidence==='high'?'good':'warn')+'</div>';
+  const ev=S.diagnostic.evidence;let html='<span class="eyebrow">Evidence</span><h1 class="h2">На чём основан профиль</h1><div class="grid4">';
+  ['language_system','lesen','hoeren','schreiben','sprechen'].forEach(d=>{
+    const x=ev.filter(e=>e.modality===d),sc=x.filter(e=>e.correct!==null&&e.correct!==undefined),ok=sc.filter(e=>e.correct).length;
+    html+='<div class="card"><b>'+domainLabel(d)+'</b><p class="muted">Evidence: '+x.length+'<br>Closed scored: '+sc.length+(sc.length?'<br>Correct: '+ok+'/'+sc.length:'')+'</p></div>';
+  });
+  return html+'</div>'+card('Productive skills','Schreiben и Sprechen могут оставаться NEED_CONFIRMATION, пока sample не прошёл полноценную rubric/audio evaluation.','warn');
 }
-function examHubView(){
-  return '<span class="eyebrow">Exam mode</span><h1 class="h2">Пробный экзамен пока не подменяем demo-вопросами</h1>'+
-    '<p class="lead">Старые exam-preview items из SAMPLES изолированы. Полный mock вернётся сюда только после создания и content QA полноценного original_aligned B1-банка.</p>'+
-    '<div class="grid2">'+MODULES.map(m=>card(m,EXAM_MAP[m].time+' · '+EXAM_MAP[m].parts.length+' частей.','soft')).join('')+'</div>';
+function speakOtto(){
+  if(!('speechSynthesis'in window))return;
+  const u=new SpeechSynthesisUtterance('Wir könnten den Lerntag am Samstag ab zehn Uhr in der Bibliothek machen. Ich würde aber nur eine kurze Mittagspause planen. Was meinst du?');u.lang='de-DE';u.rate=.92;speechSynthesis.speak(u);
 }
-function ottoModal(){
-  return '<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><span class="eyebrow">Otto Personal</span><h2 style="margin:0">Что дальше?</h2></div><button class="close" data-action="close-otto">×</button></div>'+
-    '<p class="muted">В этой итерации главное — точная диагностика. Otto Personal пока не используется для автоматического создания непроверенных учебных заданий.</p></div></div>';
-}
-function renderModal(){$('#modalRoot').innerHTML=S.ui.ottoOpen?ottoModal():'';}
 
-const VIEWS={
-  register:registerView,verify:verifyView,'diagnostic-gate':diagnosticGate,diagnostic:diagnosticView,report:reportView,
-  home:homeView,route:routeView,modules:modulesView,module:moduleView,errors:errorsView,progress:progressView,'exam-hub':examHubView
-};
 function render(){
   let r=route();
   if(!S.auth.verified&&!['register','verify'].includes(r)){r='register';history.replaceState(null,'','#register');}
   if(S.auth.verified&&!S.diagnostic.completed&&!['diagnostic-gate','diagnostic'].includes(r)){r='diagnostic-gate';history.replaceState(null,'','#diagnostic-gate');}
-  $('#screen').innerHTML=(VIEWS[r]||VIEWS.register)();
+  const view={register:registerView,verify:verifyView,'diagnostic-gate':diagnosticGate,diagnostic:diagnosticView,report:reportView,home:homeView,route:routeView,modules:modulesView,module:moduleView,errors:errorsView,progress:progressView}[r]||registerView;
+  $('#screen').innerHTML=view();
   const locked=['register','verify','diagnostic-gate','diagnostic'].includes(r);
   $('#bottomNav').classList.toggle('hidden',locked);
-  $('#ottoFab').classList.toggle('hidden',locked);
+  $('#ottoFab').classList.add('hidden');
   document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===r));
-  renderModal();
 }
-function setAuthMethod(method){captureRegistrationDraft();S.auth.method=method;save();render();}
-function submitRegistration(){
-  captureRegistrationDraft();
-  if(!S.name.trim())return alert('Введите имя.');
-  if(S.auth.method==='email'&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(S.auth.contact||''))return alert('Введите корректный Email.');
-  if(S.auth.method==='telegram')S.auth.contact='Telegram';
-  save();go('verify');
-}
-function verify(){
-  if(S.auth.method==='email'&&($('#verifyCode')?.value.trim()!=='111111'))return alert('Для Preview используйте код 111111.');
-  S.auth.verified=true;save();go(S.diagnostic.completed?'home':'diagnostic-gate');
-}
-function handleClick(e){
+function click(e){
   const nav=e.target.closest('[data-nav]');if(nav){go(nav.dataset.nav);return;}
-  const min=e.target.closest('[data-minutes]');if(min){captureRegistrationDraft();S.dailyMinutes=Number(min.dataset.minutes);save();render();return;}
-  const choice=e.target.closest('[data-choice]');if(choice){S.ui.selected=Number(choice.dataset.choice);save();render();return;}
   const mod=e.target.closest('[data-module]');if(mod){S.selectedModule=mod.dataset.module;save();go('module');return;}
+  const mins=e.target.closest('[data-minutes]');if(mins){captureRegistrationDraft();S.dailyMinutes=Number(mins.dataset.minutes);save();render();return;}
+  const ch=e.target.closest('[data-diag-choice]');if(ch){answerDiagnostic(Number(ch.dataset.diagChoice));return;}
   const a=e.target.closest('[data-action]');if(!a)return;
   const x=a.dataset.action;
-  if(x==='auth-email')setAuthMethod('email');
-  else if(x==='auth-telegram')setAuthMethod('telegram');
-  else if(x==='submit-registration')submitRegistration();
+  if(x==='auth-email'){captureRegistrationDraft();S.auth.method='email';save();render();}
+  else if(x==='auth-telegram'){captureRegistrationDraft();S.auth.method='telegram';save();render();}
+  else if(x==='register-submit')submitRegistration();
+  else if(x==='verify')finishVerification();
   else if(x==='back-register')go('register');
-  else if(x==='verify')verify();
-  else if(x==='start-diagnostic'){itemStartedAt=Date.now();go('diagnostic');}
-  else if(x==='diag-play-audio')playDiagnosticAudio();
-  else if(x==='diag-submit')submitDiagnosticClosed();
+  else if(x==='diag-start')startDiagnostic();
+  else if(x==='diag-resume')go('diagnostic');
+  else if(x==='diag-audio')playDiagnosticAudio();
   else if(x==='save-writing')saveWriting();
   else if(x==='record-speaking')toggleSpeakingRecord();
-  else if(x==='speaking-next')speakingNext();
-  else if(x==='speak-probe')speakProbe();
+  else if(x==='finish-speaking')finishSpeaking(false);
+  else if(x==='skip-speaking')finishSpeaking(true);
+  else if(x==='speak-otto')speakOtto();
   else if(x==='open-route')go('route');
-  else if(x==='report-home')go('home');
+  else if(x==='open-home')go('home');
   else if(x==='open-modules')go('modules');
-  else if(x==='close-otto'){S.ui.ottoOpen=false;save();renderModal();}
+  else if(x==='open-progress')go('progress');
 }
-
-document.addEventListener('click',handleClick);
-$('#resetButton').addEventListener('click',reset);
-$('#ottoFab').addEventListener('click',()=>{S.ui.ottoOpen=true;save();renderModal();});
-window.addEventListener('hashchange',render);
+document.addEventListener('click',click);
+$('#resetButton').addEventListener('click',()=>{if(confirm('Сбросить Preview и диагностику?'))reset();});
 window.addEventListener('popstate',render);
-$('#ottoFabImg').src=window.OTTO_SRC||'';
-
+window.addEventListener('hashchange',render);
 if(!location.hash)history.replaceState(null,'','#register');
 render();
