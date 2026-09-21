@@ -392,7 +392,7 @@ function modulesView(){
 }
 function moduleView(){
   const m=S.selectedModule,g=GUIDE.modules[m],published=LEARNING.published[m]||{};
-  let html='<div class="module-head"><div><span class="eyebrow">Модуль Goethe B1</span><h1 class="h2">'+esc(m)+'</h1><p class="lead">'+esc(g.summary)+'</p></div><div class="module-meta"><span class="meta-chip">'+esc(g.exam.duration)+'</span><span class="meta-chip">'+esc(g.exam.parts)+'</span></div></div>'+
+  let html='<div class="module-head"><div><span class="eyebrow">Модуль Goethe B1</span><h1 class="h2">'+esc(m)+'</h1><p class="lead">'+esc(g.summary)+'</p></div><div class="module-meta">'+(m==='Lesen'?'':'<span class="meta-chip">'+esc(g.exam.duration)+'</span>')+'<span class="meta-chip">'+esc(g.exam.parts)+'</span></div></div>'+
     '<div class="button-row">'+button('Помощь по '+m,'open-help','secondary')+button('Открыть '+m+' в Гиде B1','open-guide-module','ghost')+'</div>';
   if(m==='Lesen')html+='<div class="fact-grid" style="margin-top:18px"><div class="fact"><span class="small">Время</span><strong>65 минут</strong></div><div class="fact"><span class="small">Части</span><strong>5</strong></div><div class="fact"><span class="small">Задания</span><strong>30</strong></div></div>';
   html+='<div class="exam-map">';
