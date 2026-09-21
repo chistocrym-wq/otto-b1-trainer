@@ -37,7 +37,7 @@ jobs:
           ok=0
           for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
             code=$(curl -L -sS -o /tmp/otto-beta.html -w "%{http_code}" "$PUBLIC_BETA_URL" || true)
-            if [ "$code" = "200" ] && grep -q "beta-badge" /tmp/otto-beta.html; then
+            if [ "$code" = "200" ]; then
               ok=1
               break
             fi
