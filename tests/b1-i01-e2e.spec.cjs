@@ -116,7 +116,7 @@ test('Preview 1 diagnostic drives route, repair, transfer and delayed review', a
   await page.getByRole('button', {name:/Скрыть перевод/}).click();
 
   // Contextual strategy is collapsible.
-  await page.getByRole('button', {name:/Стратегия Отто/}).click();
+  await page.locator('#screen .p1-chip').filter({hasText:'Стратегия Отто'}).click();
   await expect(page.getByText(/Как действовать/)).toBeVisible();
 
   // Deliberate error -> self-correction -> skill-matched transfer.
@@ -151,9 +151,9 @@ test('Representative Hören, Schreiben, Sprechen partner and exam-like flows wor
 
   // Hören representative flow uses preloaded audio and closed-task scoring.
   await page.evaluate(()=>go('hoeren'));
-  await expect(page.getByText('Слушаем изменение договорённости')).toBeVisible();
+  await expect(page.getByText('Hören · Teil 1')).toBeVisible();
   await page.getByRole('button', {name:/Воспроизвести/}).click();
-  await page.getByRole('button', {name:'Неверно'}).click();
+  await page.getByRole('button', {name:'Falsch', exact:true}).click();
   await page.getByRole('button', {name:'Ответить'}).click();
   await expect(page.getByText('Что тренируем сейчас и почему')).toBeVisible();
 
@@ -177,8 +177,8 @@ test('Representative Hören, Schreiben, Sprechen partner and exam-like flows wor
   // Exam-like mode: no help/translation and feedback delayed until end.
   await page.evaluate(()=>p1StartExam());
   await expect(page.getByText('Без подсказок и перевода')).toBeVisible();
-  await expect(page.getByRole('button', {name:/Перевод/})).toHaveCount(0);
-  await expect(page.getByRole('button', {name:/Стратегия Отто/})).toHaveCount(0);
+  await expect(page.locator('#screen .p1-chip').filter({hasText:'Перевод'})).toHaveCount(0);
+  await expect(page.locator('#screen .p1-chip').filter({hasText:'Стратегия Отто'})).toHaveCount(0);
 
   await page.getByRole('button', {name:'Richtig', exact:true}).click();
   await page.getByRole('button', {name:'Следующее'}).click();
@@ -199,7 +199,7 @@ test('route persists on reload, weekly checkpoint can change evidence, mobile la
   const after=await page.evaluate(()=>JSON.parse(localStorage.ottoB1).preview1.route.priorities.map(x=>[x.skill,x.score]));
   expect(after).toEqual(before);
 
-  await page.getByRole('button', {name:/Weekly checkpoint/}).click();
+  await page.getByRole('button', {name:'Weekly checkpoint · пересчитать маршрут', exact:true}).click();
   await page.getByRole('button', {name:'Richtig', exact:true}).click();
   await page.getByRole('button', {name:'Дальше'}).click();
   await page.getByRole('button', {name:'Richtig', exact:true}).click();
@@ -242,9 +242,9 @@ test('daily exam-like item keeps translation and strategy disabled after answer 
     await page.evaluate(()=>p1DailyNext());
   }
   await expect(page.getByText(/Самостоятельная exam-like проверка/)).toBeVisible();
-  await expect(page.getByRole('button', {name:/Перевод/})).toHaveCount(0);
-  await expect(page.getByRole('button', {name:/Стратегия Отто/})).toHaveCount(0);
+  await expect(page.locator('#screen .p1-chip').filter({hasText:'Перевод'})).toHaveCount(0);
+  await expect(page.locator('#screen .p1-chip').filter({hasText:'Стратегия Отто'})).toHaveCount(0);
   await page.getByRole('button', {name:'Richtig', exact:true}).click();
-  await expect(page.getByRole('button', {name:/Перевод/})).toHaveCount(0);
-  await expect(page.getByRole('button', {name:/Стратегия Отто/})).toHaveCount(0);
+  await expect(page.locator('#screen .p1-chip').filter({hasText:'Перевод'})).toHaveCount(0);
+  await expect(page.locator('#screen .p1-chip').filter({hasText:'Стратегия Отто'})).toHaveCount(0);
 });
