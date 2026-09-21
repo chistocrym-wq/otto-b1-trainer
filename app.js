@@ -537,8 +537,8 @@ function assistanceFlags(){
     sample_used:false,
     template_used:false,
     phrase_bank_used:false,
-    translation_used:!!l.translation||l.supportLevel===1,
-    strategy_used:!!l.strategy||l.supportLevel===1,
+    translation_used:!!l.translation,
+    strategy_used:!!l.strategy,
     dictionary_used:!!l.dictionary,
     help_used:S.assistanceEvidence.some(function(x){return x.context==='Lesen Teil 1';}),
     support_level:l.supportLevel,
@@ -576,7 +576,7 @@ function learnView(){
   if(l.completed)return learningSummaryView();
   const exam=l.mode==='exam';
   let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(exam?'Exam-like · без помощи':'Training · русская поддержка')+'</span><h1 class="h2">Lesen Teil 1 — верно или неверно</h1></div><div class="learning-progress">Задание '+(i+1)+' из 6</div></div><div class="progress-line"><i style="width:'+(((i+1)/6)*100)+'%"></i></div>';
-  if(exam)html+='<div class="exam-lock"><b>Как на экзамене:</b> перевод, словарь, стратегия, образцы и помощь скрыты до завершения Teil.</div>';
+  if(exam)html+='<div class="exam-lock"><b>Без помощи во время задания.</b> Как на экзамене: перевод, словарь, стратегия, образцы и помощь скрыты до завершения Teil.</div>';
   else html+=supportLevels();
   html+='<div class="card soft"><div class="small">Немецкая инструкция</div><b>'+esc(task.german_instruction)+'</b></div>';
   if(!exam)html+=trainingTools(task);
