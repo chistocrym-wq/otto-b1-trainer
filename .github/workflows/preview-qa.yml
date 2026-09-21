@@ -30,6 +30,21 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Browser desktop/mobile regression
         run: npm run test:e2e
+      - name: Public Beta anonymous smoke
+        env:
+          PUBLIC_BETA_URL: https://cdn.jsdelivr.net/gh/chistocrym-wq/otto-b1-trainer@${{ github.sha }}/index.html
+        run: |
+          ok=0
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            code=$(curl -L -sS -o /tmp/otto-beta.html -w "%{http_code}" "$PUBLIC_BETA_URL" || true)
+            if [ "$code" = "200" ] && grep -q "beta-badge" /tmp/otto-beta.html; then
+              ok=1
+              break
+            fi
+            sleep 10
+          done
+          test "$ok" = "1"
+          npm run test:public
       - uses: actions/upload-artifact@v4
         if: always()
         with:
