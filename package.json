@@ -1,0 +1,9 @@
+{
+  "name": "otto-b1-preview",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "check": "node --check app.js",
+    "test:e2e": "playwright test tests/preview.spec.cjs --browser=chromium --reporter=line"
+  }
+}
