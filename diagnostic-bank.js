@@ -35,14 +35,14 @@
     "GOETHE_B1": {
       "id": "GOETHE_B1",
       "family": "Goethe-Zertifikat B1 Modellsatz/Übungssatz Erwachsene",
-      "url": "https://www.goethe.de/ins/be/de/spr/prf/gzb1/ueb.html",
-      "note": "Primary Goethe B1 task-map and difficulty reference; no item copied."
+      "url": "https://www.goethe.de/ins/de/de/prf/prf/gzb1/ueb.html",
+      "note": "Primary Goethe B1 task-map and difficulty reference for adults; no item copied."
     },
     "GOETHE_B1_RULES": {
       "id": "GOETHE_B1_RULES",
       "family": "Goethe-Zertifikat B1 Durchführungsbestimmungen",
       "url": "https://www.goethe.de/pro/relaunch/prf/id/Durchfuehrungsbestimmungen_B1.pdf",
-      "note": "Current exam administration/rules reference (Stand 1 September 2025)."
+      "note": "Current exam administration/rules reference; verified against the rules in force from 1 September 2025."
     }
   },
   "items": [
@@ -227,7 +227,7 @@
         "shopping",
         "prices"
       ],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can understand and use very frequent transactional expressions concerning prices and everyday shopping.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A1"
@@ -268,7 +268,7 @@
         "verb_agreement"
       ],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can use basic present-tense sentence patterns with familiar verbs and simple subject–verb agreement.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A1"
@@ -464,7 +464,7 @@
       "correct_answer": 1,
       "grammar_tags": [],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can understand the main communicative purpose of a short, simple personal message about an immediate arrangement.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A1"
@@ -505,7 +505,7 @@
         "infinitiv"
       ],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can use a common modal construction with an infinitive to express intention in a familiar context.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A1"
@@ -705,7 +705,7 @@
         "nebensatz"
       ],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can connect simple clauses with a frequent reason connector and maintain basic subordinate-clause word order.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A2"
@@ -743,7 +743,7 @@
       "correct_answer": 0,
       "grammar_tags": [],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can locate explicit practical information in a short everyday informational text.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A2"
@@ -942,7 +942,7 @@
         "obwohl"
       ],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can combine a familiar past-tense construction with a frequent concessive connector in a controlled sentence.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A2"
@@ -980,7 +980,7 @@
       "correct_answer": 1,
       "grammar_tags": [],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can understand specific information and straightforward paraphrase in a short practical text.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A2"
@@ -1218,7 +1218,7 @@
         "nominativ"
       ],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can use a common relative-clause pattern to connect information in straightforward connected language.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_B1"
@@ -1493,7 +1493,7 @@
       "correct_answer": 0,
       "grammar_tags": [],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can identify one explicit change in a very short familiar public notice.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A1"
@@ -1531,7 +1531,7 @@
       "correct_answer": 1,
       "grammar_tags": [],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can extract a concrete required item from a short, clearly articulated everyday message.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A1"
@@ -1569,7 +1569,7 @@
       "correct_answer": 1,
       "grammar_tags": [],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can follow a simple change of place while retaining an unchanged time in a short announcement.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A2"
@@ -1607,7 +1607,7 @@
       "correct_answer": 1,
       "grammar_tags": [],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can combine two explicit practical conditions in order to select the correct action.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_A2"
@@ -1645,7 +1645,7 @@
       "correct_answer": 1,
       "grammar_tags": [],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can understand the main proposal in a clear conversation on a familiar practical problem.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_B1"
@@ -1683,7 +1683,7 @@
       "correct_answer": 1,
       "grammar_tags": [],
       "vocabulary_function_tags": [],
-      "cefr_alignment_note": "",
+      "cefr_alignment_note": "Can identify a shared stance across two speakers when both express qualified support under different conditions.",
       "source_basis": [
         "CEFR_2020",
         "GOETHE_B1"
