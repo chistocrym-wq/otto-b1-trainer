@@ -497,7 +497,7 @@ function guideView(){
   }
   if(m==='Sprechen'){
     const p=g.presentation;
-    html+='<details class="guide-section" open><summary>6. Aufgabe 2 — Präsentation: образец и структура</summary><div class="guide-body">'+
+    html+='<details class="guide-section" open><summary>6. Образец презентации и её структура</summary><div class="guide-body">'+
       listHtml(p.structure)+'<div class="sample-card"><b>'+esc(p.task)+'</b><div class="sample-text">'+esc(p.sample)+'</div><div class="button-row">'+button('Прослушать образец','guide-speak-sample','secondary')+'</div><details class="guide-section"><summary>Русский перевод</summary><div class="guide-body">'+esc(p.translation)+'</div></details><p class="muted">'+esc(p.note)+'</p></div></div></details>'+
       '<details class="guide-section"><summary>7. Полезные фразы</summary><div class="guide-body"><div class="phrase-grid">'+g.phrases.map(function(x){return '<div class="phrase-row"><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div>';}).join('')+'</div></div></details>'+
       '<details class="guide-section"><summary>8. От образца к самостоятельной речи</summary><div class="guide-body">'+renderScaffolding(g)+'</div></details>';
