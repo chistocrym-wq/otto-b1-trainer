@@ -124,11 +124,11 @@ function captureRegistrationDraft(){
 function registerView(){
   const contact=S.auth.method==='email'
     ? '<label><b>Email</b><input id="regContact" class="field" type="email" value="'+esc(S.auth.contact)+'" placeholder="name@example.com"></label>'
-    : '<div class="friendly-note"><b>Telegram</b><br>В рабочей версии здесь будет безопасное подтверждение через Telegram Mini App. В Preview проверяется только сценарий.</div>';
+    : '<div class="friendly-note"><b>Telegram</b><br>В Beta вход через Telegram ещё не подключён. Сейчас профиль сохраняется только в этом браузере на этом устройстве.</div>';
   return '<section class="first-onboarding"><div class="first-copy"><span class="kicker">Тренажёр Otto · Goethe-Zertifikat B1</span><h1 class="h1">Готовимся к сертификату B1</h1><p class="lead">Чем точнее мы определим старт, тем меньше времени вы потратите на слишком лёгкие или слишком сложные задания.</p><div class="auth-card"><h2>Регистрация</h2><div class="form-grid"><label><b>Имя</b><input id="regName" class="field" value="'+esc(S.name)+'"></label><label><b>Как к вам обращаться?</b><select id="regGender" class="field"><option value="">Не указывать</option><option value="female" '+(S.gender==='female'?'selected':'')+'>Женский род</option><option value="male" '+(S.gender==='male'?'selected':'')+'>Мужской род</option></select></label><div><b>Способ входа</b><div class="auth-tabs"><button data-action="auth-email" class="'+(S.auth.method==='email'?'active':'')+'">Email</button><button data-action="auth-telegram" class="'+(S.auth.method==='telegram'?'active':'')+'">Telegram</button></div></div>'+contact+'<label><b>Дата экзамена, если известна</b><input id="regExamDate" class="field" type="date" value="'+esc(S.examDate)+'"></label><div><b>Сколько времени удобно заниматься в обычный день?</b><div class="button-row">'+[10,25,45].map(n=>'<button class="btn '+(S.dailyMinutes===n?'primary':'ghost')+'" data-minutes="'+n+'">'+n+' минут</button>').join('')+'</div><p class="small">Это настройка ежедневного маршрута. Она не ограничивает первоначальную диагностику.</p></div></div><div class="button-row">'+button(S.auth.method==='email'?'Получить код':'Продолжить в Telegram','register-submit')+'</div></div></div><div class="first-otto"><img src="'+window.OTTO_SRC+'" alt="Otto"></div></section>';
 }
 function verifyView(){
-  return '<div class="auth-wrap"><div class="auth-card"><span class="eyebrow">Подтверждение</span><h1 class="h2">'+(S.auth.method==='email'?'Введите код из письма':'Telegram-подтверждение')+'</h1>'+(S.auth.method==='email'?'<p class="muted">Для Preview используйте код <b>111111</b>.</p><input id="verifyCode" class="field verify-code" maxlength="6" inputmode="numeric">':'<div class="friendly-note">Для Preview нажмите «Подтвердить». Реальный Telegram backend не подключён.</div>')+'<div class="button-row">'+button('Подтвердить','verify')+button('Назад','back-register','ghost')+'</div></div></div>';
+  return '<div class="auth-wrap"><div class="auth-card"><span class="eyebrow">Beta</span><h1 class="h2">Профиль для тестовой версии</h1><div class="friendly-note"><b>Важно:</b> в этой Beta реальная отправка кода на Email и вход через Telegram ещё не подключены. Данные профиля сохраняются локально в вашем браузере. Нажмите «Продолжить в Beta», чтобы перейти к диагностике.</div><div class="button-row">'+button('Продолжить в Beta','verify')+button('Назад','back-register','ghost')+'</div></div></div>';
 }
 function submitRegistration(){
   captureRegistrationDraft();
@@ -138,8 +138,9 @@ function submitRegistration(){
   save();go('verify');
 }
 function finishVerification(){
-  if(S.auth.method==='email'&&($('#verifyCode')?.value.trim()!=='111111'))return alert('Для Preview используйте 111111.');
-  S.auth.verified=true;save();go('diagnostic-gate');
+  S.auth.verified=true;
+  save();
+  go('diagnostic-gate');
 }
 
 function diagnosticStarted(){
@@ -382,7 +383,7 @@ function routeView(){
 }
 function modulesView(){
   let html='<span class="eyebrow">Goethe-Zertifikat B1</span><h1 class="h2">Четыре модуля</h1><p class="lead">Сначала смысл, потом терминология: откройте модуль, посмотрите, как он устроен на экзамене, и переходите к доступной проверенной тренировке.</p>'+
-    '<div class="notice">Старые демонстрационные задания остаются в карантине. Новый task открывается только после полного content bundle и content QA.</div>'+
+    '<div class="notice">В Beta открываются только задания, которые уже полностью проверены. Остальные части можно изучить в Гиде B1, а тренировка появится после проверки материалов.</div>'+
     '<div class="button-row">'+button('Открыть Гид B1','open-guide','secondary')+'</div><div class="modules-grid">';
   MODULES.forEach(function(m){
     const g=GUIDE.modules[m];
@@ -400,11 +401,11 @@ function moduleView(){
     const task=published[String(part.id)];
     html+='<div class="teil-row"><div class="teil-num">'+esc(part.label.split(' — ')[0])+'</div><div><b>'+esc(part.label.split(' — ').slice(1).join(' — '))+'</b><p>'+esc(part.what)+'</p><div class="small">'+esc(part.count)+' · '+esc(part.format)+' · '+esc(part.time)+'</div></div>';
     if(task){
-      html+='<div><span class="pill part-ready">проверенный Preview</span><div class="button-row" style="margin-top:8px">'+
+      html+='<div><span class="pill part-ready">Доступно в Beta</span><div class="button-row" style="margin-top:8px">'+
         '<button class="btn secondary" data-start-learning="'+part.id+'">Тренировать</button>'+
         '<button class="btn ghost" data-start-exam="'+part.id+'">Exam-like</button></div></div>';
     }else{
-      html+='<span class="pill part-pending">content QA pending</span>';
+      html+='<span class="pill part-pending">Готовится</span>';
     }
     html+='</div>';
   });
@@ -522,7 +523,7 @@ function helpModal(){
   return '<div class="modal-backdrop"><div class="help-drawer"><div class="help-panel"><div class="modal-head"><div><span class="eyebrow">Помощь · '+esc(m)+'</span><h2 style="margin:0">Что делать и на что смотреть</h2></div><button class="close" data-action="close-modal">×</button></div><h4>Как выполнять</h4>'+listHtml(g.strategy.slice(0,4))+phrase+'<div class="help-actions">'+button('Открыть полный Гид B1','help-open-guide','secondary')+button('Закрыть','close-modal','ghost')+'</div></div></div></div>';
 }
 function ottoModal(){
-  return '<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><span class="eyebrow">Otto Personal · Preview</span><h2 style="margin:0">Спросить Otto</h2></div><button class="close" data-action="close-modal">×</button></div><div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><div class="muted">Эта поверхность уже встроена в навигацию. Полноценный AI backend пока не подключён — поэтому Otto не изображает несуществующий анализ.</div></div><textarea class="field" rows="4" placeholder="Например: объясни, как делать Lesen Teil 3…"></textarea></div></div>';
+  return '<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><span class="eyebrow">Beta</span><h2 style="margin:0">Otto Personal скоро будет доступен</h2></div><button class="close" data-action="close-modal">×</button></div><div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><div><b>Пока без AI-ответов</b><div class="muted">В этой Beta персональный AI-диалог ещё не подключён. Я не буду изображать работу функции, которой пока нет.</div></div></div><div class="button-row">'+button('Открыть Гид B1','otto-open-guide','secondary')+button('Закрыть','close-modal','ghost')+'</div></div></div>';
 }
 function renderModal(){
   const root=$('#modalRoot');if(!root)return;
@@ -652,7 +653,7 @@ function speakText(text){
   speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=.92;speechSynthesis.speak(u);
 }
 async function shareApp(){
-  const data={title:'Тренажёр Otto',text:'Подготовка к Goethe-Zertifikat B1 с Otto',url:location.origin+location.pathname};
+  const data={url:location.origin+location.pathname};
   try{
     if(navigator.share){await navigator.share(data);return;}
     if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(data.url);alert('Ссылка скопирована.');return;}
@@ -719,6 +720,7 @@ function click(e){
   else if(x==='guide-to-module'){S.selectedModule=S.selectedGuide;save();go('module');}
   else if(x==='open-help')openHelp();
   else if(x==='help-open-guide'){S.ui.helpOpen=false;S.selectedGuide=S.selectedModule;save();go('guide');}
+  else if(x==='otto-open-guide'){S.ui.ottoOpen=false;S.selectedGuide=S.selectedModule||'Lesen';save();go('guide');}
   else if(x==='ask-otto'){S.ui.ottoOpen=true;S.ui.helpOpen=false;save();renderModal();}
   else if(x==='close-modal'){S.ui.helpOpen=false;S.ui.ottoOpen=false;save();renderModal();}
   else if(x==='share-app')shareApp();
@@ -737,7 +739,7 @@ function click(e){
   else if(x==='learn-guide'){S.selectedGuide='Lesen';save();go('guide');}
 }
 document.addEventListener('click',click);
-$('#resetButton').addEventListener('click',()=>{if(confirm('Сбросить Preview и диагностику?'))reset();});
+$('#resetButton').addEventListener('click',()=>{if(confirm('Сбросить данные Beta и диагностику?'))reset();});
 window.addEventListener('popstate',render);
 window.addEventListener('hashchange',render);
 
