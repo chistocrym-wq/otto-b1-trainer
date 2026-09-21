@@ -126,7 +126,7 @@ test('legacy demo training is quarantined; module task map stays visible',async(
   });
   await page.evaluate(()=>{location.hash='#modules';});
   await page.reload({waitUntil:'networkidle'});
-  await expect(page.getByText(/Старые SAMPLES/)).toBeVisible();
+  await expect(page.getByText(/старые SAMPLES/i)).toBeVisible();
   await page.locator('[data-module="Lesen"]').first().click();
   expect(await page.locator('.teil-row').count()).toBe(5);
   await expect(page.getByText(/training content QA pending/).first()).toBeVisible();
