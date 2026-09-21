@@ -24,6 +24,8 @@ jobs:
         run: npm run test:content
       - name: Guide/learning regression
         run: npm run test:guide
+      - name: Release/no-secrets regression
+        run: npm run test:release
       - run: npm install --no-save @playwright/test@1.63.0
       - run: npx playwright install --with-deps chromium
       - name: Browser desktop/mobile regression
