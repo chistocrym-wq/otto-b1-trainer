@@ -8,10 +8,11 @@ async function assertPublicShell(page){
   const response=await page.goto(url,{waitUntil:'networkidle',timeout:30000});
   expect(response).not.toBeNull();
   expect(response.status()).toBe(200);
-  await expect(page.locator('.beta-badge')).toHaveText('Beta');
+  await expect(page.locator('.beta-badge')).toHaveCount(0);
   await expect(page.getByText('Готовимся к сертификату B1')).toBeVisible();
   const body=await page.locator('body').innerText();
   expect(body).not.toMatch(/Log in to Netlify|Sign in to Netlify|GitHub login|Team SSO/i);
+  expect(body).not.toMatch(/\\bBeta\\b|тестовой версии/);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1)).toBe(false);
 }
 
@@ -24,20 +25,20 @@ test('public Beta anonymous desktop is interactive and reaches diagnostic gate',
 
   await assertPublicShell(page);
 
-  await page.locator('#regName').fill('Beta User');
+  await page.locator('#regName').fill('Preview User');
   await page.locator('#regContact').fill('beta@example.com');
   await page.locator('#regExamDate').fill('2026-12-15');
 
   for(const mins of ['10','25','45']){
     await page.locator('[data-minutes="'+mins+'"]').click();
-    await expect(page.locator('#regName')).toHaveValue('Beta User');
+    await expect(page.locator('#regName')).toHaveValue('Preview User');
     await expect(page.locator('#regContact')).toHaveValue('beta@example.com');
     await expect(page.locator('#regExamDate')).toHaveValue('2026-12-15');
   }
 
   await page.getByRole('button',{name:'Получить код'}).click();
-  await expect(page.getByText('Профиль для тестовой версии')).toBeVisible();
-  await page.getByRole('button',{name:'Продолжить в Beta'}).click();
+  await expect(page.getByText('Профиль сохранён')).toBeVisible();
+  await page.getByRole('button',{name:'Перейти к диагностике'}).click();
   await expect(page.getByText('Сначала — диагностика')).toBeVisible();
   expect(errors).toEqual([]);
 
@@ -54,7 +55,7 @@ test('public Beta anonymous 390x844 renders without overflow or login',async({br
 
   await assertPublicShell(page);
   await page.locator('[data-minutes="10"]').click();
-  await expect(page.locator('.beta-badge')).toBeVisible();
+  await expect(page.locator('.beta-badge')).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1)).toBe(false);
   expect(errors).toEqual([]);
 
