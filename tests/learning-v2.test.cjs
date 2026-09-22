@@ -11,6 +11,8 @@ assert.equal(R.allTasks().filter(x=>x.module==='Hören').length,40);
 const state={dailyMinutes:25,task_history:{},dailySession:{completed:[]}};
 const result={profiles:{Lesen:{status:'SUPPORTED'},Hören:{status:'NEED_CONFIRMATION'},Schreiben:{status:'SUPPORTED'},Sprechen:{status:'SUPPORTED'}},gaps:[{module:'Hören'}]};
 const p=R.buildPlan(state,result);assert.ok(p.plan.length>=2);assert.equal(p.plan.some(x=>x.module==='Hören'),true);
+const short={dailyMinutes:10,task_history:{},dailySession:{completed:[]}};const p10=R.buildPlan(short,result);assert.equal(p10.plan.length,1);assert.equal(p10.plan[0].module,'Hören','weak skill must win short session');
 const first=R.currentSessionTask(state);assert.ok(first&&first.task_id);
 R.recordCompletion(state,first,{score:.8,assistance_used:false});assert.equal(state.task_history[first.task_id].attempt_count,1);assert.ok(state.task_history[first.task_id].next_review);
+const tomorrow={...state,dailyMinutes:25,dailySession:{completed:[]}};const old=tomorrow.task_history[first.task_id];old.last_seen=new Date(Date.now()-86400000).toISOString().slice(0,10);old.next_review=new Date(Date.now()+4*86400000).toISOString().slice(0,10);const next=R.buildPlan(tomorrow,result);assert.notEqual(next.plan[0].task_id,first.task_id,'task before next_review should not immediately repeat');
 console.log('learning-v2 planner regression: PASS');
