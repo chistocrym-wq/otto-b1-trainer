@@ -31,6 +31,7 @@ jobs:
       - name: Browser desktop/mobile regression
         run: npm run test:e2e
       - name: Public Beta anonymous smoke
+        # Public Beta RC target: dedicated Netlify site, anonymous access required.
         env:
           PUBLIC_BETA_URL: https://otto-b1-beta.netlify.app
         run: |
