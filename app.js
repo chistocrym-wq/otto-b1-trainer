@@ -718,7 +718,7 @@ async function shareApp(){
 
 /* ---------- Full learning preview v1 ---------- */
 function defaultLesson(){
-  return {task_id:null,mode:'training',index:0,answers:{},checked:{},audioPlays:{},translation:false,strategy:false,dictionary:false,sample:false,userText:'',submitted:false,feedback:null,transcript:'',assistance_used:false,micStatus:'',recordingReady:false,fromSession:false,score:null};
+  return {task_id:null,mode:'training',index:0,answers:{},checked:{},audioPlays:{},translation:false,strategy:false,dictionary:false,sample:false,userText:'',submitted:false,feedback:null,transcript:'',assistance_used:false,micStatus:'',recordingReady:false,fromSession:false,score:null,review:false,examFinished:false};
 }
 function resetLesson(task,mode,fromSession){
   S.lesson=Object.assign(defaultLesson(),{task_id:task.task_id,mode:mode||'training',fromSession:!!fromSession});
@@ -804,18 +804,31 @@ function audioPanel(item){
   return '<div class="audio-card">'+(item.image?'<img class="hearing-image" src="'+esc(item.image.src)+'" alt="'+esc(item.image.alt)+'">':'')+'<div><b>Аудио задания</b><div class="small">Прослушано: '+used+' / '+limit+(S.lesson.mode==='exam'?'':' · дополнительное прослушивание учитывается как помощь')+'</div></div><button class="btn secondary" data-action="lesson-audio" '+disabled+'>▶ Слушать</button></div>';
 }
 function closedLessonView(task){
-  const items=closedItems(task),i=Math.min(S.lesson.index,Math.max(0,items.length-1)),q=items[i],answer=S.lesson.answers[q.id],checked=!!S.lesson.checked[q.id];
-  let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(S.lesson.mode==='exam'?'Как на экзамене':'Учебный режим')+' · '+esc(task.module)+'</span><h1 class="h2">'+esc(task.module)+' · '+(task.module==='Lesen'?'Teil ':'Teil ')+task.teil+'</h1></div><div class="learning-progress">Задание '+(i+1)+' из '+items.length+'</div></div><div class="progress-line"><i style="width:'+((i+1)/items.length*100)+'%"></i></div>';
+  const items=closedItems(task);
+  if(S.lesson.examFinished){
+    const correct=items.filter(q=>S.lesson.answers[q.id]===q.correct).length;
+    let html='<div class="learning-shell"><span class="eyebrow">Как на экзамене · завершено</span><h1 class="h2">'+correct+' / '+items.length+'</h1><p class="lead">Во время попытки подсказки и объяснения были скрыты. Теперь можно открыть разбор.</p>';
+    if(!S.lesson.review)return html+'<div class="button-row"><button class="btn secondary" data-action="lesson-review">Разобрать ответы</button><button class="btn primary" data-action="lesson-complete">Завершить задание</button></div></div>';
+    html+='<div class="review-list">';
+    items.forEach(function(q){
+      const answer=S.lesson.answers[q.id],ok=answer===q.correct;
+      html+='<div class="feedback-card '+(ok?'correct':'wrong')+'"><h3>'+esc(q.prompt)+'</h3><p><b>Ваш ответ:</b> '+esc(answer||'—')+'</p><p><b>Правильный ответ:</b> '+esc(q.correct)+'</p><p><b>Почему:</b> '+esc(q.why||'')+'</p><blockquote>'+esc(q.evidence||'')+'</blockquote><p><b>Ловушка:</b> '+esc(q.trap||'')+'</p></div>';
+    });
+    return html+'</div>'+lessonTools(task)+'<div class="button-row"><button class="btn primary" data-action="lesson-complete">Завершить задание</button></div></div>';
+  }
+  const i=Math.min(S.lesson.index,Math.max(0,items.length-1)),q=items[i],answer=S.lesson.answers[q.id],checked=!!S.lesson.checked[q.id],exam=S.lesson.mode==='exam';
+  let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(exam?'Как на экзамене':'Учебный режим')+' · '+esc(task.module)+'</span><h1 class="h2">'+esc(task.module)+' · Teil '+task.teil+'</h1></div><div class="learning-progress">'+(exam?'Aufgabe ':'Задание ')+(i+1)+' / '+items.length+'</div></div><div class="progress-line"><i style="width:'+((i+1)/items.length*100)+'%"></i></div>';
   html+='<div class="card soft"><div class="small">Инструкция</div><b>'+esc(task.german_instruction)+'</b><p>'+esc(task.instruction_ru)+'</p></div>'+lessonTools(task)+lessonMaterial(task,q)+audioPanel(q);
   if(S.lesson.translation&&q.translation)html+='<div class="translation-box">'+esc(q.translation)+'</div>';
   html+='<div class="card"><h3>'+esc(q.prompt)+'</h3><div class="choice-grid">'+q.choices.map(c=>'<button class="choice '+(answer===c?'selected':'')+'" data-full-choice="'+esc(c)+'" '+(checked?'disabled':'')+'>'+esc(c)+'</button>').join('')+'</div></div>';
-  if(checked){
+  if(checked&&!exam){
     const ok=answer===q.correct;
     html+='<div class="feedback-card '+(ok?'correct':'wrong')+'"><h3>'+(ok?'✓ Правильно':'✕ Нужно разобрать')+'</h3><p><b>Правильный ответ:</b> '+esc(q.correct)+'</p><p><b>Почему:</b> '+esc(q.why||'Сверьтесь с материалом.')+'</p><blockquote>'+esc(q.evidence||'')+'</blockquote><p><b>Ловушка:</b> '+esc(q.trap||'Не выбирайте ответ только по одному знакомому слову.')+'</p></div>';
   }
   html+='<div class="button-row">';
   if(i>0)html+='<button class="btn ghost" data-action="full-back">← Назад</button>';
-  if(!checked)html+='<button class="btn primary" data-action="full-check">Проверить</button>';
+  if(exam)html+='<button class="btn primary" data-action="full-exam-next">'+(i===items.length-1?'Завершить попытку':'Далее →')+'</button>';
+  else if(!checked)html+='<button class="btn primary" data-action="full-check">Проверить</button>';
   else html+='<button class="btn primary" data-action="full-next">'+(i===items.length-1?'Завершить задание':'Далее →')+'</button>';
   return html+'</div></div>';
 }
@@ -866,6 +879,14 @@ function checkFullAnswer(){
   save();render();
 }
 function fullBack(){if(S.lesson.index>0){S.lesson.index--;save();render();}}
+function fullExamNext(){
+  const task=currentFullTask(),items=closedItems(task),q=items[S.lesson.index];if(!q)return;
+  const answer=S.lesson.answers[q.id];if(answer==null)return alert('Сначала выберите ответ.');
+  S.lesson.checked[q.id]=true;
+  if(answer!==q.correct&&!S.learningErrors.some(x=>x.task_id===task.task_id&&x.question_id===q.id))S.learningErrors.push({task_id:task.task_id,question_id:q.id,module:task.module,skill:task.module,micro_skill:task.micro_skill,created_at:now()});
+  if(S.lesson.index<items.length-1){S.lesson.index++;save();render();return;}
+  const correct=items.filter(x=>S.lesson.answers[x.id]===x.correct).length;S.lesson.score=items.length?correct/items.length:0;S.lesson.submitted=true;S.lesson.examFinished=true;save();render();
+}
 function fullNext(){
   const task=currentFullTask(),items=closedItems(task);
   if(S.lesson.index<items.length-1){S.lesson.index++;S.lesson.translation=false;S.lesson.strategy=false;S.lesson.dictionary=false;save();render();return;}
@@ -1069,6 +1090,8 @@ function click(e){
   else if(x==='full-check')checkFullAnswer();
   else if(x==='full-back')fullBack();
   else if(x==='full-next')fullNext();
+  else if(x==='full-exam-next')fullExamNext();
+  else if(x==='lesson-review'){S.lesson.review=true;save();render();}
   else if(x==='writing-submit')submitWritingLesson();
   else if(x==='mic-preflight')microphonePreflight();
   else if(x==='lesson-record')toggleLessonRecording();
