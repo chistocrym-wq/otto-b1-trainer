@@ -4,6 +4,7 @@ const BANK=window.OTTO_DIAGNOSTIC_BANK;
 const ENGINE=window.OTTO_DIAGNOSTIC_ENGINE;
 const GUIDE=window.OTTO_GUIDE_B1;
 const LEARNING=window.OTTO_LEARNING_BANK;
+const FULL=window.OTTO_FULL_LEARNING;
 const STORAGE='ottoB1.diagnostic.v3';
 const MODULES=['Lesen','Hören','Schreiben','Sprechen'];
 
@@ -39,6 +40,7 @@ const now=()=>new Date().toISOString();
 let memoryFallback=null;
 let recorder=null;
 let chunks=[];
+let lessonRecorder=null,lessonChunks=[],lessonAudioBlob=null,lessonAudioUrl=null,micTestBlob=null,micTestUrl=null;
 
 function fresh(){
   return {
@@ -63,7 +65,11 @@ function fresh(){
       helpOpen:false,review:false,completed:false
     },
     ui:{ottoOpen:false,helpOpen:false,micHelp:false},
-    dailySession:{started:false,completed:[]}
+    task_history:{},
+    learningErrors:[],
+    lesson:{task_id:null,mode:'training',index:0,answers:{},checked:{},audioPlays:{},translation:false,strategy:false,dictionary:false,sample:false,userText:'',submitted:false,feedback:null,transcript:'',assistance_used:false,micStatus:'',recordingReady:false},
+    ottoChat:{messages:[],sending:false,error:null},
+    dailySession:{started:false,date:null,plan:[],index:0,completed:[],finished:false}
   };
 }
 
@@ -85,7 +91,12 @@ function normalizeRuntimeState(){
   else S.learning=Object.assign(fresh().learning,S.learning);
   if(!S.ui)S.ui={ottoOpen:false,helpOpen:false,micHelp:false};
   else S.ui=Object.assign({ottoOpen:false,helpOpen:false,micHelp:false},S.ui);
-  if(!S.dailySession)S.dailySession={started:false,completed:[]};
+  if(!S.dailySession)S.dailySession={started:false,date:null,plan:[],index:0,completed:[],finished:false};
+  if(!S.task_history)S.task_history={};
+  if(!S.learningErrors)S.learningErrors=[];
+  if(!S.lesson)S.lesson=fresh().lesson; else S.lesson=Object.assign(fresh().lesson,S.lesson);
+  if(!S.ottoChat)S.ottoChat={messages:[],sending:false,error:null};
+  if(FULL)FULL.ensureState(S);
   if(!S.selectedGuide)S.selectedGuide=S.selectedModule||'Lesen';
 }
 normalizeRuntimeState();
@@ -394,15 +405,16 @@ function reportView(){
     card('Насколько уверенно можно использовать результат',confidenceRu(r.placement.confidence),r.placement.confidence==='low'?'warn':'good')+
     '<h3>Что видно по отдельным навыкам</h3>'+domains+
     '<h3>До Goethe B1 сейчас важнее всего</h3><div class="card"><ul>'+gaps+'</ul></div>'+
-    '<div class="button-row">'+button('Открыть мой маршрут','open-route')+button('Гид B1: понять экзамен','open-guide','secondary')+button('На главную','open-home','ghost')+'</div>';
+    '<div class="button-row">'+button('Начать первое занятие','start-first')+button('Посмотреть мой маршрут','open-route','secondary')+button('Гид B1: понять экзамен','open-guide','ghost')+'</div>';
 }
 
 function homeView(){
   const r=ensureResult();if(!r)return diagnosticGate();
-  const p=r.placement.status==='NEED_CONFIRMATION'?'результат ещё уточняется':(r.placement.band||r.placement.closerTo||'результат уточняется');
-  return '<span class="eyebrow">Моя подготовка</span><h1 class="h2">Здравствуйте, '+esc(S.name)+'</h1><p class="lead">Текущий ориентир: '+esc(p)+'. Otto будет менять маршрут по мере появления новых независимых доказательств.</p>'+
-    '<div class="mode-grid"><div class="mode-card primary-mode"><span class="subtle-label">Основной режим</span><h3>Otto ведёт меня</h3><p class="muted">'+esc(humanRouteCopy(r.route.summary))+'</p>'+button('Посмотреть мой маршрут','open-route')+'</div>'+
-    '<div class="mode-card"><span class="subtle-label">Свободная практика</span><h3>Выбрать модуль</h3><p class="muted">Можно отдельно открыть Lesen, Hören, Schreiben или Sprechen. Непроверенные задания по-прежнему не выдаются за готовый контент.</p>'+button('Открыть модули','open-modules','secondary')+'</div></div>'+
+  const p=r.placement.band||r.placement.closerTo||'старт определён';
+  const resume=FULL&&FULL.shouldResume(S);
+  return '<span class="eyebrow">Моя подготовка</span><h1 class="h2">Здравствуйте, '+esc(S.name)+'</h1><p class="lead">Текущий ориентир: '+esc(p)+'. Otto будет менять маршрут по мере новых попыток.</p>'+
+    '<div class="mode-grid"><div class="mode-card primary-mode"><span class="subtle-label">Основной режим</span><h3>Otto ведёт меня</h3><p class="muted">'+esc(humanRouteCopy(r.route.summary))+'</p>'+button(resume?'Продолжить занятие':'Начать занятие на сегодня',resume?'resume-session':'start-first')+'</div>'+
+    '<div class="mode-card"><span class="subtle-label">Свободная практика</span><h3>Выбрать модуль</h3><p class="muted">Можно отдельно открыть Lesen, Hören, Schreiben или Sprechen и выбрать часть экзамена.</p>'+button('Открыть модули','open-modules','secondary')+'</div></div>'+
     '<div class="grid2"><div class="card soft"><span class="eyebrow">Учебный справочник</span><h3>Гид B1</h3><p class="muted">Как проходит экзамен, стратегии, образцы, шаблоны и подсказки — простым русским языком.</p>'+button('Открыть Гид B1','open-guide','secondary')+'</div>'+
     '<div class="card soft"><span class="eyebrow">От учёбы к экзамену</span><h3>Помощи становится меньше</h3><p class="muted">Сначала можно учиться с объяснениями. Затем перевод, шаблоны и подсказки постепенно убираются. В режиме «Как на экзамене» во время попытки помощи нет.</p></div></div>';
 }
@@ -416,15 +428,17 @@ function routeView(){
   return html+'</div><div class="button-row">'+button('Выбрать модуль вручную','open-modules','ghost')+button('Гид B1','open-guide','secondary')+'</div>';
 }
 function sessionPlan(){
-  if(S.dailyMinutes>=45)return [['Schreiben',15,'Разобрать хороший образец и написать свой план ответа'],['Lesen',15,'Полный Teil 1 с доказательствами в тексте'],['Hören',10,'Стратегия понимания речи и типичные ловушки'],['Sprechen',5,'Короткая речевая разминка по структуре B1']];
-  if(S.dailyMinutes>=25)return [['Schreiben',10,'Образец + каркас собственного ответа'],['Lesen',8,'Тренировка поиска доказательства'],['Hören',5,'Стратегия прослушивания'],['Sprechen',2,'Короткая речевая разминка']];
-  return [['Schreiben',4,'Один каркас ответа'],['Lesen',3,'Одна стратегия чтения'],['Hören',2,'Один приём для аудирования'],['Sprechen',1,'Одна фраза вслух']];
+  const r=ensureResult();if(!r||!FULL)return [];
+  if(!FULL.shouldResume(S))FULL.buildPlan(S,r);
+  return S.dailySession.plan||[];
 }
 function sessionView(){
   const plan=sessionPlan();
-  let html='<span class="eyebrow">Сегодня · '+S.dailyMinutes+' минут</span><h1 class="h2">Otto уже собрал занятие</h1><p class="lead">Начинаем со Schreiben, затем переключаем нагрузку. Идите по порядку.</p><div class="stack">';
-  plan.forEach(function(x,i){html+='<div class="card '+(i===0?'good':'')+'"><span class="subtle-label">'+(i+1)+' · '+x[1]+' мин.</span><h3>'+x[0]+'</h3><p class="muted">'+esc(x[2])+'</p><div class="button-row"><button class="btn '+(i===0?'primary':'secondary')+'" data-session-module="'+x[0]+'">'+(i===0?'Начать':'Открыть')+'</button></div></div>';});
-  return html+'</div><div class="notice">Где полноценный тренажёр ещё не опубликован, Otto открывает проверенные образцы, стратегию и структуру, а не фиктивное задание.</div>';
+  if(!plan.length)return '<span class="eyebrow">Сегодня</span><h1 class="h2">Занятие пока не собрано</h1><div class="button-row">'+button('Собрать занятие','start-first')+'</div>';
+  const current=S.dailySession.index||0;
+  let html='<span class="eyebrow">Сегодня · '+S.dailyMinutes+' минут</span><h1 class="h2">План занятия</h1><p class="lead">Otto уже выбрал задания по диагностике, ошибкам и истории повторений.</p><div class="stack">';
+  plan.forEach(function(x,i){html+=card((i+1)+'. '+x.module+(i===current?' · сейчас':''),'Часть '+x.part+' · примерно '+x.minutes+' мин.',i<current?'good':i===current?'soft':'');});
+  return html+'</div><div class="button-row">'+button('Перейти к текущему заданию','resume-session')+'</div>';
 }
 function modulesView(){
   let html='<span class="eyebrow">Goethe-Zertifikat B1</span><h1 class="h2">Четыре модуля</h1><p class="lead">Сначала смысл, потом терминология: откройте модуль, посмотрите, как он устроен на экзамене, и переходите к доступной проверенной тренировке.</p>'+
@@ -437,44 +451,18 @@ function modulesView(){
   return html+'</div>';
 }
 function moduleView(){
-  const m=S.selectedModule,g=GUIDE.modules[m],published=LEARNING.published[m]||{};
-  let html='<div class="module-head"><div><span class="eyebrow">Модуль Goethe B1</span><h1 class="h2">'+esc(m)+'</h1><p class="lead">'+esc(g.summary)+'</p></div><div class="module-meta">'+(m==='Lesen'?'':'<span class="meta-chip">'+esc(g.exam.duration)+'</span>')+'<span class="meta-chip">'+esc(g.exam.parts)+'</span></div></div>'+
-    '<div class="button-row">'+button('Помощь по '+m,'open-help','secondary')+button('Открыть '+m+' в Гиде B1','open-guide-module','ghost')+'</div>';
-  if(m==='Lesen')html+='<div class="fact-grid" style="margin-top:18px"><div class="fact"><span class="small">Время</span><strong>65 минут</strong></div><div class="fact"><span class="small">Части</span><strong>5</strong></div><div class="fact"><span class="small">Задания</span><strong>30</strong></div></div>';
-  html+='<div class="exam-map">';
+  const m=S.selectedModule,g=GUIDE.modules[m],published=(window.OTTO_CONTENT_CATALOG&&window.OTTO_CONTENT_CATALOG[m])||{};
+  let html='<div class="module-head"><div><span class="eyebrow">Модуль Goethe B1</span><h1 class="h2">'+esc(m)+'</h1><p class="lead">'+esc(g.summary)+'</p></div><div class="module-meta"><span class="meta-chip">'+esc(g.exam.parts)+'</span></div></div>'+
+    '<div class="button-row">'+button('Помощь по '+m,'open-help','secondary')+button('Открыть '+m+' в Гиде B1','open-guide-module','ghost')+'</div><div class="exam-map">';
   g.parts.forEach(function(part){
-    const task=published[String(part.id)];
+    const sets=published[String(part.id)]||published[part.id]||[];
     html+='<div class="teil-row"><div class="teil-num">'+esc(part.label.split(' — ')[0])+'</div><div><b>'+esc(part.label.split(' — ').slice(1).join(' — '))+'</b><p>'+esc(part.what)+'</p><div class="small">'+esc(part.count)+' · '+esc(part.format)+' · '+esc(part.time)+'</div></div>';
-    if(task){
-      html+='<div><span class="pill part-ready">Доступно</span><div class="button-row" style="margin-top:8px">'+
-        '<button class="btn secondary" data-start-learning="'+part.id+'">Тренировать</button>'+
-        '<button class="btn ghost" data-start-exam="'+part.id+'">Как на экзамене</button></div></div>';
-    }else{
-      html+='<span class="pill part-pending">Готовится</span>';
-    }
+    if(sets.length){
+      html+='<div><span class="pill part-ready">'+sets.length+' вариантов</span><div class="button-row" style="margin-top:8px"><button class="btn secondary" data-start-full="'+part.id+'" data-mode="training">Тренировать</button><button class="btn ghost" data-start-full="'+part.id+'" data-mode="exam">Как на экзамене</button></div></div>';
+    }else html+='<span class="pill part-pending">Готовится</span>';
     html+='</div>';
   });
   return html+'</div><div class="button-row">'+button('← Все модули','open-modules','ghost')+'</div>';
-}
-const ERROR_MODELS={
-  matching_constraints:{title:'Не все условия объявления были учтены',what:'Вы нашли вариант с подходящей темой, но одно или несколько важных условий ситуации не совпали.',why:'В Lesen Teil 3 правильный ответ должен подходить сразу по всем ограничениям.',fix:'Перед выбором отдельно проверьте место, время, цену, возраст и другие условия.',target:'Потренировать это',module:'Lesen'},
-  embedded_question:{title:'Порядок слов в косвенном вопросе',what:'После вводной фразы порядок слов остался как в прямом вопросе.',why:'После фраз вроде Ich weiß nicht, ... или Können Sie mir sagen, ... спрягаемый глагол обычно уходит в конец придаточной части.',fix:'Сначала найдите вводную фразу, затем перенесите глагол в конец придаточной части.',target:'Потренировать',module:'Грамматика'},
-  purpose_paraphrase:{title:'Трудно распознать ту же мысль другими словами',what:'Вопрос и текст выражают один смысл разными словами, и связь не была замечена.',why:'В заданиях B1 часто проверяется смысл, а не совпадение формулировок.',fix:'Сформулируйте вопрос своими словами и ищите в тексте смысловой эквивалент.',target:'Потренировать перефразирование',module:'Lesen'},
-  evidence_and_paraphrase:{title:'Ответ выбран без достаточного доказательства в тексте',what:'Подходящий по теме вариант оказался не подтверждён конкретным фрагментом.',why:'Совпавшее слово ещё не доказывает правильность ответа.',fix:'Перед ответом найдите предложение, которое прямо подтверждает или опровергает утверждение.',target:'Потренировать поиск доказательства',module:'Lesen'},
-  change_detection:{title:'Пропущено изменение плана',what:'В ответ попал первоначальный план, хотя позже в тексте или аудио он изменился.',why:'Слова jedoch, aber, deshalb, doch, am Ende часто разворачивают ситуацию.',fix:'Отмечайте отдельно: что планировали сначала и что произошло в итоге.',target:'Потренировать изменения договорённости',module:'Hören'},
-  speaker_tracking:{title:'Смешались мнения говорящих',what:'Правильная мысль была услышана, но отнесена не к тому человеку.',why:'В дискуссии важно удерживать не только содержание, но и автора каждой позиции.',fix:'Во время прослушивания коротко помечайте позицию каждого говорящего.',target:'Потренировать говорящих',module:'Hören'},
-  word_order:{title:'Нужно укрепить порядок слов',what:'Глагол оказался не на той позиции в предложении.',why:'В немецком порядок слов зависит от типа главной и придаточной части.',fix:'Определите тип предложения, найдите сказуемое и только потом собирайте порядок слов.',target:'Потренировать порядок слов',module:'Грамматика'},
-  paraphrase:{title:'Нужно потренировать перефразирование',what:'Одинаковый смысл в другой формулировке распознаётся пока нестабильно.',why:'Goethe B1 часто проверяет понимание перефразированной информации.',fix:'Сравнивайте не отдельные слова, а кто, что сделал, когда, зачем и при каком условии.',target:'Потренировать перефразирование',module:'Lesen'}
-};
-function errorModel(a){
-  const code=String(a&&a.micro_skill||'');
-  const known=ERROR_MODELS[code];
-  if(known)return known;
-  const module=domainLabel(a&&a.skill||'Языковая база');
-  return {title:'Здесь нужна ещё одна тренировка',what:'В этом типе задания ответ пока получился неверным.',why:'Одной ошибки недостаточно для вывода о навыке, но её полезно разобрать.',fix:'Вернитесь к похожему заданию и сначала найдите доказательство своего ответа.',target:'Потренировать',module:module};
-}
-function errorCard(model,index){
-  return '<div class="card error-learning-card"><span class="subtle-label">'+esc(model.module)+'</span><h3>'+esc(model.title)+'</h3><p>'+esc(model.what)+'</p><div class="friendly-note"><b>Почему это важно:</b> '+esc(model.why)+'</div><p><b>Что делать:</b> '+esc(model.fix)+'</p><div class="button-row"><button class="btn secondary" data-error-train="'+index+'">'+esc(model.target)+'</button></div></div>';
 }
 function errorsView(){
   const ds=S.diagnostic.session;
