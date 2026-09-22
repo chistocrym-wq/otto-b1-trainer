@@ -34,4 +34,10 @@ for(const t of hoeren[3]){common(t);assert.equal(t.questions.length,7);audio(t.a
 for(const t of hoeren[4]){common(t);assert.equal(t.questions.length,8);audio(t.audio,2,3);assert.equal(t.audio.speakers.length,3);image(t.image);}
 for(let a=1;a<=3;a++){const tasks=read('content/schreiben/aufgabe-'+a+'.json').tasks;assert.equal(tasks.length,10);for(const t of tasks){common(t);assert.ok(t.instruction_de&&t.instruction_ru&&t.sample&&t.sample_translation);assert.ok(t.rubric&&t.rubric_status==='VERIFIED');assert.ok(Array.isArray(t.required_points)&&t.required_points.length>=3);}}
 for(let a=1;a<=3;a++){const tasks=read('content/sprechen/aufgabe-'+a+'.json').tasks;assert.equal(tasks.length,10);for(const t of tasks){common(t);assert.ok(t.instruction_de&&t.instruction_ru&&t.sample&&t.sample_translation);assert.ok(t.rubric&&t.rubric_status==='VERIFIED');if(a===2)assert.ok(fs.existsSync(path.join(root,t.sample_audio)),t.sample_audio+' missing');}}
-console.log('full-content regression: PASS; ids='+allIds.size);
+const audioFiles=fs.readdirSync(path.join(root,'assets','audio','hoeren'),{recursive:true}).filter(x=>String(x).endsWith('.mp3'));
+const speakingAudio=fs.readdirSync(path.join(root,'assets','audio','sprechen'),{recursive:true}).filter(x=>String(x).endsWith('.mp3'));
+const imageFiles=fs.readdirSync(path.join(root,'assets','images','hoeren')).filter(x=>x.endsWith('.svg'));
+assert.equal(audioFiles.length,80,'expected 80 Hören MP3 assets');
+assert.equal(speakingAudio.length,10,'expected 10 Sprechen sample MP3 assets');
+assert.equal(imageFiles.length,80,'expected 80 Hören contextual images');
+console.log('full-content regression: PASS; ids='+allIds.size+'; audio='+(audioFiles.length+speakingAudio.length)+'; images='+imageFiles.length);
