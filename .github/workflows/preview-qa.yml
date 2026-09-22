@@ -28,6 +28,8 @@ jobs:
         env:
           ALLOW_AUDIO_PENDING: "1"
         run: npm run test:full-content
+      - name: Content quality reviewer regression
+        run: npm run test:content-quality
       - name: Adaptive planner regression
         run: npm run test:planner
       - name: OpenAI server contract regression
