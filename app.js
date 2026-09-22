@@ -759,24 +759,24 @@ function currentFullTask(){return FULL?FULL.findTask(S.lesson&&S.lesson.task_id)
 function closedItems(task){
   const out=[];
   if(task.module==='Lesen'&&Number(task.teil)===1){
-    task.questions.forEach((q,i)=>out.push({id:q.id,prompt:q.statement,choices:['Richtig','Falsch'],correct:q.correct?'Richtig':'Falsch',why:q.why,evidence:q.evidence,trap:q.trap,translation:q.translation,material:task.text}));
+    task.questions.forEach((q,i)=>out.push({id:q.id,prompt:q.statement,choices:['Richtig','Falsch'],choices_ru:['Верно','Неверно'],correct:q.correct?'Richtig':'Falsch',why:q.why,evidence:q.evidence,trap:q.trap,translation:q.translation,material:task.text}));
   }else if(task.module==='Lesen'&&Number(task.teil)===2){
-    task.questions.forEach((q,i)=>out.push({id:q.id,prompt:q.question,choices:q.options,correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,translation:q.translation||'',material:task.texts[i<3?0:1]}));
+    task.questions.forEach((q,i)=>out.push({id:q.id,prompt:q.question,choices:q.options,choices_ru:q.options_ru||[],correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,translation:q.translation||'',material:task.texts[i<3?0:1]}));
   }else if(task.module==='Lesen'&&Number(task.teil)===3){
     const choices=task.ads.map(x=>x.id).concat('0');
-    task.situations.forEach(q=>out.push({id:task.task_id+'-S'+q.id,prompt:q.text,choices,correct:String(q.correct),why:q.why,evidence:'Проверьте все условия ситуации и объявления.',trap:q.trap,translation:'',material:task.ads}));
+    task.situations.forEach(q=>out.push({id:task.task_id+'-S'+q.id,prompt:q.text,choices,choices_ru:choices,correct:String(q.correct),why:q.why,evidence:'Проверьте все условия ситуации и объявления.',trap:q.trap,translation:'',material:task.ads}));
   }else if(task.module==='Lesen'&&Number(task.teil)===4){
-    task.opinions.forEach(q=>out.push({id:task.task_id+'-O'+q.id,prompt:q.text,choices:['Ja','Nein'],correct:q.correct,why:q.why,evidence:'Определите общую позицию автора.',trap:q.trap,translation:'',material:null}));
+    task.opinions.forEach(q=>out.push({id:task.task_id+'-O'+q.id,prompt:q.text,choices:['Ja','Nein'],choices_ru:['Да','Нет'],correct:q.correct,why:q.why,evidence:'Определите общую позицию автора.',trap:q.trap,translation:'',material:null}));
   }else if(task.module==='Lesen'&&Number(task.teil)===5){
-    task.questions.forEach(q=>out.push({id:q.id,prompt:q.question,choices:q.options,correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,translation:q.translation||'',material:task.text}));
+    task.questions.forEach(q=>out.push({id:q.id,prompt:q.question,choices:q.options,choices_ru:q.options_ru||[],correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,translation:q.translation||'',material:task.text}));
   }else if(task.module==='Hören'&&Number(task.teil)===1){
-    task.scenes.forEach(sc=>sc.questions.forEach(q=>out.push({id:q.id,prompt:q.question,choices:q.options,correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,audio:sc.audio,image:sc.image,translation:task.translation,material:sc.context})));
+    task.scenes.forEach(sc=>sc.questions.forEach(q=>out.push({id:q.id,prompt:q.question,choices:q.options,choices_ru:q.options_ru||[],correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,audio:sc.audio,image:sc.image,translation:task.translation,material:sc.context})));
   }else if(task.module==='Hören'&&Number(task.teil)===2){
-    task.questions.forEach(q=>out.push({id:q.id,prompt:q.question,choices:q.options,correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,audio:task.audio,image:task.image,translation:task.translation,material:task.topic}));
+    task.questions.forEach(q=>out.push({id:q.id,prompt:q.question,choices:q.options,choices_ru:q.options_ru||[],correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,audio:task.audio,image:task.image,translation:task.translation,material:task.topic}));
   }else if(task.module==='Hören'&&Number(task.teil)===3){
-    task.questions.forEach(q=>out.push({id:q.id,prompt:q.statement,choices:['Richtig','Falsch'],correct:q.correct?'Richtig':'Falsch',why:q.why,evidence:q.evidence,trap:q.trap,audio:task.audio,image:task.image,translation:task.translation,material:task.topic}));
+    task.questions.forEach(q=>out.push({id:q.id,prompt:q.statement,choices:['Richtig','Falsch'],choices_ru:['Верно','Неверно'],correct:q.correct?'Richtig':'Falsch',why:q.why,evidence:q.evidence,trap:q.trap,audio:task.audio,image:task.image,translation:task.translation,material:task.topic}));
   }else if(task.module==='Hören'&&Number(task.teil)===4){
-    task.questions.forEach(q=>out.push({id:q.id,prompt:q.statement,choices:['Moderatorin','Person A','Person B'],correct:q.correct_speaker,why:q.why,evidence:'Слушайте, кто именно формулирует эту мысль.',trap:q.trap,audio:task.audio,image:task.image,translation:task.translation,material:task.topic}));
+    task.questions.forEach(q=>out.push({id:q.id,prompt:q.statement,choices:['Moderatorin','Person A','Person B'],choices_ru:['Модератор','Участник A','Участник B'],correct:q.correct_speaker,why:q.why,evidence:'Слушайте, кто именно формулирует эту мысль.',trap:q.trap,audio:task.audio,image:task.image,translation:task.translation,material:task.topic}));
   }
   return out;
 }
@@ -820,7 +820,7 @@ function closedLessonView(task){
   let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(exam?'Как на экзамене':'Учебный режим')+' · '+esc(task.module)+'</span><h1 class="h2">'+esc(task.module)+' · Teil '+task.teil+'</h1></div><div class="learning-progress">'+(exam?'Aufgabe ':'Задание ')+(i+1)+' / '+items.length+'</div></div><div class="progress-line"><i style="width:'+((i+1)/items.length*100)+'%"></i></div>';
   html+='<div class="card soft"><div class="small">Инструкция</div><b>'+esc(task.german_instruction)+'</b><p>'+esc(task.instruction_ru)+'</p></div>'+lessonTools(task)+lessonMaterial(task,q)+audioPanel(q);
   if(S.lesson.translation&&q.translation)html+='<div class="translation-box">'+esc(q.translation)+'</div>';
-  html+='<div class="card"><h3>'+esc(q.prompt)+'</h3><div class="choice-grid">'+q.choices.map(c=>'<button class="choice '+(answer===c?'selected':'')+'" data-full-choice="'+esc(c)+'" '+(checked?'disabled':'')+'>'+esc(c)+'</button>').join('')+'</div></div>';
+  html+='<div class="card"><h3>'+esc(q.prompt)+'</h3><div class="choice-grid">'+q.choices.map((c,ci)=>'<button class="choice '+(answer===c?'selected':'')+'" data-full-choice="'+esc(c)+'" '+(checked?'disabled':'')+'>'+esc(c)+(S.lesson.translation&&q.choices_ru&&q.choices_ru[ci]&&q.choices_ru[ci]!==c?'<span class="choice-translation">'+esc(q.choices_ru[ci])+'</span>':'')+'</button>').join('')+'</div></div>';
   if(checked&&!exam){
     const ok=answer===q.correct;
     html+='<div class="feedback-card '+(ok?'correct':'wrong')+'"><h3>'+(ok?'✓ Правильно':'✕ Нужно разобрать')+'</h3><p><b>Правильный ответ:</b> '+esc(q.correct)+'</p><p><b>Почему:</b> '+esc(q.why||'Сверьтесь с материалом.')+'</p><blockquote>'+esc(q.evidence||'')+'</blockquote><p><b>Ловушка:</b> '+esc(q.trap||'Не выбирайте ответ только по одному знакомому слову.')+'</p></div>';
