@@ -25,8 +25,6 @@ jobs:
       - name: Content bundle readiness regression
         run: npm run test:content
       - name: Full learning bank regression
-        env:
-          ALLOW_AUDIO_PENDING: "1"
         run: npm run test:full-content
       - name: Content quality reviewer regression
         run: npm run test:content-quality
