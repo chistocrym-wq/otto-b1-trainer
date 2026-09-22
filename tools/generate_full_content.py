@@ -68,7 +68,13 @@ Viele Grüße
  rf(f"L1-{i+1}-Q4","Herr Klein nimmt normalerweise oft an Treffen teil.",False,"normalerweise selten","„selten“ widerspricht „oft“.","Dass er diesmal da ist, ändert die Gewohnheit nicht."),
  rf(f"L1-{i+1}-Q5","Das Treffen dauerte länger als geplant.",True,"um neun Uhr ... bis fast zehn","Tatsächliches Ende war später.","Plan und Ergebnis vergleichen."),
  rf(f"L1-{i+1}-Q6","Das nächste Treffen findet sicher draußen statt.",False,"Wenn das Wetter gut ist","Draußen ist nur unter einer Bedingung geplant.","Bedingung nicht ignorieren.")]
- return {**common(f"L-T1-{i+1:02d}","Lesen",1,"richtig_falsch_full_text",topic,"evidence_and_paraphrase"),"german_instruction":"Lesen Sie den Text und die Aufgaben 1 bis 6. Sind die Aussagen Richtig oder Falsch?","instruction_ru":"Прочитайте текст и 6 утверждений. Выберите Richtig или Falsch.","text":text,"translation":"Автор описывает встречу, изменение первоначального плана, помощь, количество участников и планы на следующий раз.","glossary":glossary(),"answer_key_status":"VERIFIED","questions":qs}
+ ru=f"""Всем привет!
+В прошлую субботу у нас была встреча на тему «{TOPICS_RU[topic]}». Сначала мы хотели начать на улице. Однако утром шёл сильный дождь, поэтому в последний момент мы перешли в помещение.
+Я обещал(а) принести напитки, но мне нужно было работать до 16:00. К счастью, Сара взяла часть подготовки на себя. Когда я пришёл(пришла) около половины шестого, там уже было примерно двадцать человек. Господин Кляйн тоже пришёл, хотя обычно он редко участвует в общих мероприятиях.
+Изначально мы хотели закончить в девять. В итоге многие остались почти до десяти. В следующем месяце мы планируем завтрак. Если погода будет хорошей, мы снова хотим использовать двор.
+С наилучшими пожеланиями,
+{name}"""
+ return {**common(f"L-T1-{i+1:02d}","Lesen",1,"richtig_falsch_full_text",topic,"evidence_and_paraphrase"),"german_instruction":"Lesen Sie den Text und die Aufgaben 1 bis 6. Sind die Aussagen Richtig oder Falsch?","instruction_ru":"Прочитайте текст и 6 утверждений. Выберите Richtig или Falsch.","text":text,"translation":ru,"glossary":glossary(),"answer_key_status":"VERIFIED","questions":qs}
 def lesen2(i):
  texts=[];qs=[]
  for j in range(2):
@@ -86,26 +92,42 @@ def lesen2(i):
    "Zum Jahresende ist ein gemeinsames Treffen aller Gruppen geplant."
   ]
   body=f"Ein neues Projekt zum Thema {t} bietet seit diesem Frühjahr feste Termine und Online-Anmeldung. Besonders gefragt sind Termine am frühen Abend, weil viele Menschen tagsüber arbeiten oder lernen. In der ersten Woche ist die Teilnahme kostenlos, später kostet Material fünf Euro. {details[i]} Die Organisatoren möchten außerdem Menschen aus verschiedenen Stadtteilen miteinander ins Gespräch bringen. Termine werden sechs Wochen im Voraus veröffentlicht."
-  texts.append({"id":f"T{j+1}","title":f"Neues Angebot: {t}","text":body,"translation":"Новый городской проект: расписание, регистрация, стоимость и цель."})
+  details_ru=[
+   "Раз в месяц дополнительно проходит вводная встреча для новых участников.",
+   "Группа по очереди встречается в двух разных районах города.",
+   "Те, кто приходит регулярно, позже могут сами брать на себя небольшие задачи в проекте.",
+   "Перед каждой встречей есть короткое открытое время для вопросов.",
+   "Недавно проект начал сотрудничать с местной библиотекой.",
+   "После каждой встречи организаторы собирают письменные отзывы.",
+   "Летом часть встреч планируют проводить на улице.",
+   "Новые участники сначала могут просто прийти и посмотреть без обязательств.",
+   "Для работающих родителей раз в месяц предлагают более позднюю встречу.",
+   "В конце года планируется общая встреча всех групп."
+  ]
+  body_ru=f"Новый проект на тему «{TOPICS_RU[t]}» с этой весны предлагает фиксированное расписание и онлайн-регистрацию. Особенно популярны встречи ранним вечером, потому что многие люди днём работают или учатся. В первую неделю участие бесплатное, позже материалы стоят пять евро. {details_ru[i]} Организаторы также хотят, чтобы жители разных районов больше общались друг с другом. Расписание публикуют за шесть недель."
+  texts.append({"id":f"T{j+1}","title":f"Neues Angebot: {t}","text":body,"translation":body_ru})
   n=j*3
   qs += [mc(f"L2-{i+1}-Q{n+1}","Was ist neu?",["Feste Termine und Online-Anmeldung","Nur Morgentermine","Sofort hohe Kosten"],0,"feste Termine und Online-Anmeldung","Это прямо сказано.","Другие варианты противоречат тексту."),
          mc(f"L2-{i+1}-Q{n+2}","Warum sind Abendtermine beliebt?",["Wegen geschlossener Geschäfte","Viele arbeiten oder lernen tagsüber","Abends ist es teurer"],1,"weil viele Menschen tagsüber arbeiten oder lernen","Названа причина.","Не домысливайте."),
          mc(f"L2-{i+1}-Q{n+3}","Wann werden Termine veröffentlicht?",["Am selben Tag","Sechs Wochen vorher","Erst nach der Veranstaltung"],1,"sechs Wochen im Voraus","Срок указан прямо.","Не путать с первой неделей.")]
- return {**common(f"L-T2-{i+1:02d}","Lesen",2,"two_press_texts_mcq",TOPICS[i],"main_idea_and_detail"),"german_instruction":"Lesen Sie zwei Texte und lösen Sie zu jedem drei Aufgaben. Wählen Sie a, b oder c.","instruction_ru":"Прочитайте два текста и ответьте на 6 вопросов a/b/c.","texts":texts,"translation":"Переводы каждого текста доступны в учебном режиме.","glossary":glossary(),"answer_key_status":"VERIFIED","questions":qs}
+ return {**common(f"L-T2-{i+1:02d}","Lesen",2,"two_press_texts_mcq",TOPICS[i],"main_idea_and_detail"),"german_instruction":"Lesen Sie zwei Texte und lösen Sie zu jedem drei Aufgaben. Wählen Sie a, b oder c.","instruction_ru":"Прочитайте два текста и ответьте на 6 вопросов a/b/c.","texts":texts,"translation":"\n\n".join(x["translation"] for x in texts),"glossary":glossary(),"answer_key_status":"VERIFIED","questions":qs}
 def lesen3(i):
  cats=TOPICS[i:]+TOPICS[:i];ads=[];situ=[]
  days=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag"]
- for k in range(10): ads.append({"id":chr(65+k),"title":cats[k],"text":f"{cats[k]} im Zentrum. {days[k%5]} ab {17+k%3}:00 Uhr. Anmeldung online. Preis {5+k*2} Euro. Für Erwachsene."})
- for k in range(6): situ.append({"id":k+1,"text":f"Sie suchen {cats[k]} am {days[k%5]} nach 17 Uhr.","correct":chr(65+k),"why":"Thema, Tag und Uhrzeit passen.","trap":"Alle Bedingungen prüfen."})
- situ.append({"id":7,"text":"Sie suchen einen kostenlosen Jugendkurs am Sonntagmorgen.","correct":"0","why":"Keine Anzeige erfüllt alle Bedingungen.","trap":"Thematische Ähnlichkeit reicht nicht."})
- return {**common(f"L-T3-{i+1:02d}","Lesen",3,"matching_situations_ads","Anzeigen","matching_constraints"),"german_instruction":"Lesen Sie die Situationen 1 bis 7 und die Anzeigen A bis J. Eine Situation hat keine passende Anzeige: 0.","instruction_ru":"Сопоставьте 7 ситуаций и объявления A–J; один ответ — 0.","situations":situ,"ads":ads,"translation":"Переводы ситуаций и объявлений доступны в учебном режиме.","glossary":glossary(),"answer_key_status":"VERIFIED"}
+ for k in range(10):
+  ads.append({"id":chr(65+k),"title":cats[k],"text":f"{cats[k]} im Zentrum. {days[k%5]} ab {17+k%3}:00 Uhr. Anmeldung online. Preis {5+k*2} Euro. Für Erwachsene.","translation":f"{TOPICS_RU[cats[k]].capitalize()} в центре. {DAYS_RU[days[k%5]].capitalize()} с {17+k%3}:00. Регистрация онлайн. Цена {5+k*2} евро. Для взрослых."})
+ for k in range(6):
+  situ.append({"id":k+1,"text":f"Sie suchen {cats[k]} am {days[k%5]} nach 17 Uhr.","translation":f"Вы ищете занятие на тему «{TOPICS_RU[cats[k]]}» в {DAYS_RU[days[k%5]]} после 17:00.","correct":chr(65+k),"why":"Thema, Tag und Uhrzeit passen.","trap":"Alle Bedingungen prüfen."})
+ situ.append({"id":7,"text":"Sie suchen einen kostenlosen Jugendkurs am Sonntagmorgen.","translation":"Вы ищете бесплатный курс для подростков в воскресенье утром.","correct":"0","why":"Keine Anzeige erfüllt alle Bedingungen.","trap":"Thematische Ähnlichkeit reicht nicht."})
+ return {**common(f"L-T3-{i+1:02d}","Lesen",3,"matching_situations_ads","Anzeigen","matching_constraints"),"german_instruction":"Lesen Sie die Situationen 1 bis 7 und die Anzeigen A bis J. Eine Situation hat keine passende Anzeige: 0.","instruction_ru":"Сопоставьте 7 ситуаций и объявления A–J; один ответ — 0.","situations":situ,"ads":ads,"translation":"Ситуации:\n"+"\n".join(str(x["id"])+". "+x["translation"] for x in situ)+"\n\nОбъявления:\n"+"\n".join(x["id"]+". "+x["translation"] for x in ads),"glossary":glossary(),"answer_key_status":"VERIFIED"}
 def lesen4(i):
  theme=["Homeoffice","Fahrrad statt Auto","Vier-Tage-Woche","Handy in der Schule","Gemeinschaftsgarten","Bargeld","Online-Unterricht","Stadtfeste","Bibliotheken","Ehrenamt"][i]
  patt=[1,0,1,0,0,1,1];people=["Anna","Ben","Clara","Deniz","Eva","Farid","Greta"];ops=[]
  for k,v in enumerate(patt):
   txt=(f"{people[k]}: Ich finde {theme} grundsätzlich sinnvoll, weil es den Alltag flexibler machen kann. Klare Regeln sind trotzdem wichtig." if v else f"{people[k]}: Für mich überzeugt {theme} nicht. Im Alltag sehe ich mehr Nachteile und würde bei der bisherigen Lösung bleiben.")
-  ops.append({"id":k+1,"person":people[k],"text":txt,"correct":"Ja" if v else "Nein","why":"Определите основную позицию автора.","trap":"Оговорка не меняет общую позицию."})
- return {**common(f"L-T4-{i+1:02d}","Lesen",4,"seven_opinions_yes_no",theme,"stance_detection"),"german_instruction":"Lesen Sie sieben Meinungen. Ist die Person dafür? Ja oder Nein.","instruction_ru":"Прочитайте 7 мнений и определите позицию Ja/Nein.","theme":theme,"opinions":ops,"translation":"Перевод каждого мнения доступен.","glossary":glossary(),"answer_key_status":"VERIFIED"}
+  ru=(f"{people[k]}: Я в целом считаю тему «{theme}» разумной, потому что она может сделать повседневную жизнь гибче. Но чёткие правила всё равно важны." if v else f"{people[k]}: Меня тема «{theme}» не убеждает. В повседневной жизни я вижу больше недостатков и предпочёл(предпочла) бы оставить прежнее решение.")
+  ops.append({"id":k+1,"person":people[k],"text":txt,"translation":ru,"correct":"Ja" if v else "Nein","why":"Определите основную позицию автора.","trap":"Оговорка не меняет общую позицию."})
+ return {**common(f"L-T4-{i+1:02d}","Lesen",4,"seven_opinions_yes_no",theme,"stance_detection"),"german_instruction":"Lesen Sie sieben Meinungen. Ist die Person dafür? Ja oder Nein.","instruction_ru":"Прочитайте 7 мнений и определите позицию Ja/Nein.","theme":theme,"opinions":ops,"translation":"\n".join(x["translation"] for x in ops),"glossary":glossary(),"answer_key_status":"VERIFIED"}
 def lesen5(i):
  title=["Hausordnung","Bibliotheksordnung","Fitnessstudio","Kursordnung","Jugendherberge","Coworking","Schwimmbad","Verein","Campingplatz","Werkstatt"][i]
  text=f"Regeln – {title}\n1. Räume werktags 7–22 Uhr.\n2. Gäste vorher anmelden.\n3. Essen nur im Aufenthaltsbereich.\n4. Schäden sofort melden.\n5. Fahrräder nicht im Eingang.\n6. Keine Haftung für persönliche Gegenstände."
@@ -113,7 +135,14 @@ def lesen5(i):
      mc(f"L5-{i+1}-Q2","Was gilt für Gäste?",["Vorher anmelden","Nur sonntags","Immer extra zahlen"],0,"Gäste vorher anmelden","Прямое правило.","Не добавлять несуществующие условия."),
      mc(f"L5-{i+1}-Q3","Wo darf man essen?",["Im Eingang","Überall","Nur im Aufenthaltsbereich"],2,"nur im Aufenthaltsbereich","Слово nur ограничивает.","Не игнорировать ограничение."),
      mc(f"L5-{i+1}-Q4","Was tun bei Schäden?",["Sofort melden","Warten","Freunden schreiben"],0,"Schäden sofort melden","Нужно сразу сообщить.","Другие действия не названы.")]
- return {**common(f"L-T5-{i+1:02d}","Lesen",5,"rules_mcq",title,"rules_detail"),"german_instruction":"Lesen Sie die Regeln und lösen Sie vier Aufgaben. Wählen Sie a, b oder c.","instruction_ru":"Прочитайте правила и ответьте на 4 вопроса.","text":text,"translation":"Правила регулируют время, гостей, еду, повреждения и личные вещи.","glossary":glossary(),"answer_key_status":"VERIFIED","questions":qs}
+ ru=f"""Правила — {title}
+1. Помещениями можно пользоваться по будням с 7:00 до 22:00.
+2. Гостей нужно зарегистрировать заранее.
+3. Есть можно только в зоне отдыха.
+4. О повреждениях нужно сообщать сразу.
+5. Велосипеды нельзя оставлять у входа.
+6. Организация не несёт ответственности за личные вещи."""
+ return {**common(f"L-T5-{i+1:02d}","Lesen",5,"rules_mcq",title,"rules_detail"),"german_instruction":"Lesen Sie die Regeln und lösen Sie vier Aufgaben. Wählen Sie a, b oder c.","instruction_ru":"Прочитайте правила и ответьте на 4 вопроса.","text":text,"translation":ru,"glossary":glossary(),"answer_key_status":"VERIFIED","questions":qs}
 def image(tid,n,scene):
  return {"image_id":f"IMG-{tid}-{n}","task_id":tid,"version":"1.0.0","src":f"assets/images/hoeren/{tid.lower()}-{n}.svg","alt":f"Нейтральная сцена: {scene}","scene_context":scene,"context_only":True,"answer_leak_review":"PASSED","art_direction_version":"otto-blue-context-v1","source_status":"OWNED"}
 def audio(tid,n,transcript,voices,count):
