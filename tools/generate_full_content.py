@@ -7,15 +7,53 @@ SRC=["GOETHE_B1_CURRENT_FORMAT_STRUCTURE","CEFR_B1_ALIGNMENT","ORIGINAL_OTTO_CON
 TOPICS=["Nachbarschaft","Sprachcafé","Fahrrad","Kochen","Bücher","Sport","Repair-Café","Fotografie","Ehrenamt","Reisen"]
 NAMES=["Mara","Jonas","Lea","Tobias","Nina","Emre","Sophie","David","Aylin","Felix"]
 VOICES=["de-DE-KatjaNeural","de-DE-ConradNeural","de-DE-AmalaNeural"]
+TOPICS_RU={"Nachbarschaft":"соседство","Sprachcafé":"языковое кафе","Fahrrad":"велосипеды","Kochen":"кулинария","Bücher":"книги","Sport":"спорт","Repair-Café":"ремонтное кафе","Fotografie":"фотография","Ehrenamt":"волонтёрство","Reisen":"путешествия"}
+DAYS_RU={"Montag":"понедельник","Dienstag":"вторник","Mittwoch":"среду","Donnerstag":"четверг","Freitag":"пятницу","Samstag":"субботу","Sonntag":"воскресенье"}
+RU_OPTIONS={
+ "Feste Termine und Online-Anmeldung":"Фиксированное расписание и онлайн-регистрация","Nur Morgentermine":"Только утренние встречи","Sofort hohe Kosten":"Сразу высокая стоимость",
+ "Wegen geschlossener Geschäfte":"Из-за закрытых магазинов","Viele arbeiten oder lernen tagsüber":"Многие днём работают или учатся","Abends ist es teurer":"Вечером дороже",
+ "Am selben Tag":"В тот же день","Sechs Wochen vorher":"За шесть недель","Erst nach der Veranstaltung":"Только после мероприятия",
+ "6–20":"6–20","7–22":"7–22","immer":"всегда","Vorher anmelden":"Заранее зарегистрировать","Nur sonntags":"Только по воскресеньям","Immer extra zahlen":"Всегда доплачивать",
+ "Im Eingang":"У входа","Überall":"Везде","Nur im Aufenthaltsbereich":"Только в зоне отдыха","Sofort melden":"Сразу сообщить","Warten":"Подождать","Freunden schreiben":"Написать друзьям",
+ "am Abend":"вечером","Zehn Minuten früher kommen":"Прийти на десять минут раньше","Zu Hause bleiben":"Остаться дома","Eine Stunde später kommen":"Прийти на час позже",
+ "17.30":"17:30","18.00":"18:00","18.30":"18:30","Nichts":"Ничего","5 Euro":"5 евро","20 Euro":"20 евро","Ausweis":"Удостоверение личности","Getränke":"Напитки","Sportkleidung":"Спортивная одежда",
+ "Fragen":"Вопросы","Konzert":"Концерт","Prüfung":"Экзамен","Am nächsten Tag":"На следующий день","Vorher":"До этого","Nie":"Никогда"
+}
+RU_QUESTIONS={
+ "Was ist neu?":"Что изменилось в новом проекте?","Warum sind Abendtermine beliebt?":"Почему вечерние встречи популярны?","Wann werden Termine veröffentlicht?":"Когда публикуют расписание?",
+ "Wann sind die Räume werktags nutzbar?":"Когда помещениями можно пользоваться по будням?","Was gilt für Gäste?":"Какое правило действует для гостей?","Wo darf man essen?":"Где разрешено есть?","Was tun bei Schäden?":"Что делать при повреждении?",
+ "Wann beginnt der Termin heute?":"Во сколько сегодня начинается встреча?","Was soll man tun?":"Что нужно сделать?","Wann beginnt die Veranstaltung?":"Во сколько начинается мероприятие?",
+ "Was kostet die erste Woche?":"Сколько стоит первая неделя?","Was mitbringen?":"Что нужно взять с собой?","Was gibt es danach?":"Что будет после основной части?","Wann ist die Zusammenfassung online?":"Когда краткая информация появится онлайн?"
+}
+def ru_option(x):
+ x=str(x)
+ if x in RU_OPTIONS:return RU_OPTIONS[x]
+ if re.fullmatch(r"\d{1,2}:\d{2}",x):return x
+ return x
+def ru_question(x): return RU_QUESTIONS.get(str(x),"Переведите вопрос по смыслу материала.")
+def ru_statement(x):
+ m={
+ "Das Treffen fand wie zuerst geplant draußen statt.":"Встреча прошла на улице, как и планировалось сначала.",
+ "Bei der Ankunft waren ungefähr zwanzig Personen da.":"К моменту прихода там было около двадцати человек.",
+ "Herr Klein nimmt normalerweise oft an Treffen teil.":"Господин Кляйн обычно часто участвует во встречах.",
+ "Das Treffen dauerte länger als geplant.":"Встреча длилась дольше, чем планировалось.",
+ "Das nächste Treffen findet sicher draußen statt.":"Следующая встреча точно пройдёт на улице.",
+ "Maria kommt mit.":"Мария пойдёт вместе с ними.","Lena kauft Tickets online.":"Лена покупает билеты онлайн.","Paul möchte danach essen.":"Пауль хочет после этого поесть.",
+ "Paul hat abends unbegrenzt Zeit.":"Вечером у Пауля сколько угодно времени.","Lena schickt die Adresse.":"Лена пришлёт адрес.","Treffen ist um zehn.":"Встреча в десять."
+ }
+ if x in m:return m[x]
+ if " bereitete alles allein vor." in x:return x.split()[0]+" подготовил(а) всё самостоятельно."
+ if x=="Paul kann früh am Vormittag.":return "Пауль может начать рано утром."
+ return "Проверьте это утверждение по содержанию материала."
 def dump(path,obj): path.write_text(json.dumps(obj,ensure_ascii=False,indent=2),encoding="utf-8")
 def common(tid,module,part,kind,topic,micro):
  return dict(task_id=tid,module=module,teil=part,task_type=kind,skill=module,micro_skill=micro,difficulty="B1",topic=topic,version="1.0.0",qa_status="AUTOMATED_SCHEMA_AND_MECHANICS_PASSED",content_status="PREVIEW_CANDIDATE_HUMAN_LINGUISTIC_QA_PENDING",source_basis=SRC,original_aligned=True,strategy="Сначала определите, что именно проверяется. Затем найдите доказательство по смыслу и только после этого выбирайте ответ.",explanation="Оригинальное задание повторяет механику Goethe-Zertifikat B1 без копирования официального текста.")
 def glossary():
  return [{"de":"ursprünglich","ru":"первоначально","kind":"useful"},{"de":"stattfinden","ru":"состояться","kind":"useful"},{"de":"zuverlässig","ru":"надёжно","kind":"useful"},{"de":"Vorschlag","ru":"предложение","kind":"useful"}]
 def rf(qid,text,correct,evidence,why,trap):
- return dict(id=qid,statement=text,translation="Проверьте утверждение по смыслу.",correct=bool(correct),evidence=evidence,why=why,trap=trap)
+ return dict(id=qid,statement=text,translation=ru_statement(text),correct=bool(correct),evidence=evidence,why=why,trap=trap)
 def mc(qid,text,opts,correct,evidence,why,trap):
- return dict(id=qid,question=text,translation="Выберите вариант по смыслу материала.",options=opts,correct_index=correct,evidence=evidence,why=why,trap=trap)
+ return dict(id=qid,question=text,translation=ru_question(text),options=opts,options_ru=[ru_option(x) for x in opts],correct_index=correct,evidence=evidence,why=why,trap=trap)
 def lesen1(i):
  topic,name=TOPICS[i],NAMES[i];place=["Gemeinschaftsraum","Bibliothek","Schulhof","Vereinsraum","Kulturzentrum"][i%5]
  text=f"""Hallo zusammen,
