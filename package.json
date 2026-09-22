@@ -14,6 +14,7 @@
     "test:openai": "node --test tests/openai-functions.test.mjs",
     "prepare:content": "python3 tools/generate_full_content.py",
     "test:full-content": "node tests/full-content.test.cjs",
-    "test:planner": "node tests/learning-v2.test.cjs"
+    "test:planner": "node tests/learning-v2.test.cjs",
+    "test:content-quality": "node tests/content-quality-review.test.cjs"
   }
 }
