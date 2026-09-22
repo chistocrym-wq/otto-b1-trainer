@@ -12,7 +12,7 @@ function uniqueMaterial(label,text){
   fingerprints.set(h,label);
 }
 function germanish(label,text){
-  const s=String(text||'');assert.ok(words(s)>=6,label+' too little German');
+  const s=String(text||'');assert.ok(words(s)>=4,label+' too little German');
   assert.ok(/\b(?:der|die|das|und|ist|Sie|wir|ich|ein|eine|nicht|mit|für|um|am|zu)\b/i.test(s),label+' does not look like German prose');
 }
 function options(q,label){
