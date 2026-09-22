@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.resolve(__dirname,'..');
+const src=fs.readFileSync(path.join(root,'content','catalog.js'),'utf8');
+const sandbox={window:{}};vm.createContext(sandbox);vm.runInContext(src,sandbox);
+vm.runInContext(fs.readFileSync(path.join(root,'learning-v2.js'),'utf8'),sandbox);
+const R=sandbox.window.OTTO_FULL_LEARNING;
+assert.equal(R.allTasks().filter(x=>x.module==='Lesen').length,50);
+assert.equal(R.allTasks().filter(x=>x.module==='Hören').length,40);
+const state={dailyMinutes:25,task_history:{},dailySession:{completed:[]}};
+const result={profiles:{Lesen:{status:'SUPPORTED'},Hören:{status:'NEED_CONFIRMATION'},Schreiben:{status:'SUPPORTED'},Sprechen:{status:'SUPPORTED'}},gaps:[{module:'Hören'}]};
+const p=R.buildPlan(state,result);assert.ok(p.plan.length>=2);assert.equal(p.plan.some(x=>x.module==='Hören'),true);
+const first=R.currentSessionTask(state);assert.ok(first&&first.task_id);
+R.recordCompletion(state,first,{score:.8,assistance_used:false});assert.equal(state.task_history[first.task_id].attempt_count,1);assert.ok(state.task_history[first.task_id].next_review);
+console.log('learning-v2 planner regression: PASS');
