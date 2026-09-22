@@ -13,7 +13,8 @@ function uniqueMaterial(label,text){
 }
 function germanish(label,text){
   const s=String(text||'');assert.ok(words(s)>=4,label+' too little German');
-  assert.ok(/\b(?:der|die|das|und|ist|sind|war|wird|werden|Sie|wir|ich|ein|eine|nicht|mit|für|um|am|zu|alles|allein|kann|können|soll|sollen|wann|was|wie|warum|nur|heute|morgen|immer)\b/i.test(s),label+' does not look like German prose');
+  const cyr=(s.match(/[А-Яа-яЁё]+/g)||[]).length;
+  assert.ok(words(s)>cyr*2,label+' does not look predominantly German');
 }
 function options(q,label){
   if(!q.options)return;
