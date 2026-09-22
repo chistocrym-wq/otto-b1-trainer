@@ -51,7 +51,12 @@
     const max=minutes<=10?1:minutes<=25?3:5;
     const plan=[],used=new Set();let spent=0;
     const prefer=['Schreiben','Lesen','Hören','Sprechen'];
-    for(const module of prefer){
+    const moduleOrder=prefer.slice().sort((a,b)=>{
+      const as=tasks.filter(x=>x.module===a).reduce((m,x)=>Math.max(m,candidateScore(state,result,x)),-9999)+(a==='Schreiben'?2:0);
+      const bs=tasks.filter(x=>x.module===b).reduce((m,x)=>Math.max(m,candidateScore(state,result,x)),-9999)+(b==='Schreiben'?2:0);
+      return bs-as||prefer.indexOf(a)-prefer.indexOf(b);
+    });
+    for(const module of moduleOrder){
       const t=tasks.find(x=>x.module===module&&!used.has(x.task_id)&&candidateScore(state,result,x)>-100);
       if(!t)continue;const d=duration(module,minutes);
       if(plan.length&&spent+d>minutes+3)continue;
