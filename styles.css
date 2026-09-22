@@ -156,3 +156,5 @@ html,body{
   .hearing-image{width:100%}
   .otto-chat-thread{max-height:45vh}
 }
+
+.choice-translation{display:block;margin-top:5px;font-size:12px;font-weight:600;color:#5d7892;line-height:1.35}
