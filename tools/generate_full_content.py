@@ -9,7 +9,7 @@ NAMES=["Mara","Jonas","Lea","Tobias","Nina","Emre","Sophie","David","Aylin","Fel
 VOICES=["de-DE-KatjaNeural","de-DE-ConradNeural","de-DE-AmalaNeural"]
 def dump(path,obj): path.write_text(json.dumps(obj,ensure_ascii=False,indent=2),encoding="utf-8")
 def common(tid,module,part,kind,topic,micro):
- return dict(task_id=tid,module=module,teil=part,task_type=kind,skill=module,micro_skill=micro,difficulty="B1",topic=topic,version="1.0.0",qa_status="VALIDATOR_PASSED_V1",content_status="CONTENT_READY",source_basis=SRC,original_aligned=True,strategy="Сначала определите, что именно проверяется. Затем найдите доказательство по смыслу и только после этого выбирайте ответ.",explanation="Оригинальное задание повторяет механику Goethe-Zertifikat B1 без копирования официального текста.")
+ return dict(task_id=tid,module=module,teil=part,task_type=kind,skill=module,micro_skill=micro,difficulty="B1",topic=topic,version="1.0.0",qa_status="AUTOMATED_SCHEMA_AND_MECHANICS_PASSED",content_status="PREVIEW_CANDIDATE_HUMAN_LINGUISTIC_QA_PENDING",source_basis=SRC,original_aligned=True,strategy="Сначала определите, что именно проверяется. Затем найдите доказательство по смыслу и только после этого выбирайте ответ.",explanation="Оригинальное задание повторяет механику Goethe-Zertifikat B1 без копирования официального текста.")
 def glossary():
  return [{"de":"ursprünglich","ru":"первоначально","kind":"useful"},{"de":"stattfinden","ru":"состояться","kind":"useful"},{"de":"zuverlässig","ru":"надёжно","kind":"useful"},{"de":"Vorschlag","ru":"предложение","kind":"useful"}]
 def rf(qid,text,correct,evidence,why,trap):
@@ -79,7 +79,7 @@ def lesen5(i):
 def image(tid,n,scene):
  return {"image_id":f"IMG-{tid}-{n}","task_id":tid,"version":"1.0.0","src":f"assets/images/hoeren/{tid.lower()}-{n}.svg","alt":f"Нейтральная сцена: {scene}","scene_context":scene,"context_only":True,"answer_leak_review":"PASSED","art_direction_version":"otto-blue-context-v1","source_status":"OWNED"}
 def audio(tid,n,transcript,voices,count):
- return {"audio_id":f"AUD-{tid}-{n}","task_id":tid,"version":"1.0.0","asset_src":f"assets/audio/hoeren/{tid.lower()}-{n}.mp3","duration_seconds":max(8,len(transcript)//14),"transcript":transcript,"playback_rules":{"exam_play_count":count,"training_play_count":count+1,"extra_training_plays_are_assisted":True},"source_status":"OWNED","production_status":"FINAL","source_type":"versioned_static_asset","speakers":[{"speaker_id":f"speaker-{k+1}","voice_id":v} for k,v in enumerate(voices)]}
+ return {"audio_id":f"AUD-{tid}-{n}","task_id":tid,"version":"1.0.0","asset_src":f"assets/audio/hoeren/{tid.lower()}-{n}.mp3","duration_seconds":max(8,len(transcript)//14),"transcript":transcript,"playback_rules":{"exam_play_count":count,"training_play_count":count+1,"extra_training_plays_are_assisted":True},"source_status":"GENERATED_TTS_EDGE","production_status":"STATIC_PREVIEW_ASSET_HUMAN_PRONUNCIATION_QA_PENDING","qa_status":"AUTOMATED_ASSET_CHECK_PASSED","source_type":"versioned_static_asset","speakers":[{"speaker_id":f"speaker-{k+1}","voice_id":v} for k,v in enumerate(voices)]}
 def hoeren1(i):
  tid=f"H-T1-{i+1:02d}";scenes=[]
  for k in range(5):
