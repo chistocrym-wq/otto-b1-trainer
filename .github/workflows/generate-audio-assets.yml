@@ -41,5 +41,7 @@ jobs:
             echo "Audio assets are already current."
           else
             git commit -m "audio: add versioned German learning assets"
+            git fetch origin preview/clean-v1
+            git rebase origin/preview/clean-v1
             git push origin HEAD:preview/clean-v1
           fi
