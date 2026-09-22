@@ -35,7 +35,19 @@ def lesen2(i):
  texts=[];qs=[]
  for j in range(2):
   t=TOPICS[(i*2+j)%10]
-  body=f"Ein neues Projekt zum Thema {t} bietet seit diesem Frühjahr feste Termine und Online-Anmeldung. Besonders gefragt sind Termine am frühen Abend, weil viele Menschen tagsüber arbeiten oder lernen. In der ersten Woche ist die Teilnahme kostenlos, später kostet Material fünf Euro. Die Organisatoren möchten außerdem Menschen aus verschiedenen Stadtteilen miteinander ins Gespräch bringen. Termine werden sechs Wochen im Voraus veröffentlicht."
+  details=[
+   "Einmal im Monat gibt es zusätzlich einen Einführungstermin für neue Teilnehmende.",
+   "Die Gruppe trifft sich abwechselnd in zwei verschiedenen Stadtteilen.",
+   "Wer regelmäßig kommt, kann später selbst kleine Aufgaben im Projekt übernehmen.",
+   "Für Fragen gibt es vor jedem Termin eine kurze offene Sprechstunde.",
+   "Seit kurzem arbeitet das Projekt auch mit der örtlichen Bibliothek zusammen.",
+   "Die Organisatoren sammeln nach jedem Termin schriftliche Rückmeldungen.",
+   "Im Sommer sollen einzelne Termine auch im Freien stattfinden.",
+   "Neue Teilnehmende können sich zunächst unverbindlich einen Termin ansehen.",
+   "Für berufstätige Eltern wird einmal pro Monat ein späterer Termin angeboten.",
+   "Zum Jahresende ist ein gemeinsames Treffen aller Gruppen geplant."
+  ]
+  body=f"Ein neues Projekt zum Thema {t} bietet seit diesem Frühjahr feste Termine und Online-Anmeldung. Besonders gefragt sind Termine am frühen Abend, weil viele Menschen tagsüber arbeiten oder lernen. In der ersten Woche ist die Teilnahme kostenlos, später kostet Material fünf Euro. {details[i]} Die Organisatoren möchten außerdem Menschen aus verschiedenen Stadtteilen miteinander ins Gespräch bringen. Termine werden sechs Wochen im Voraus veröffentlicht."
   texts.append({"id":f"T{j+1}","title":f"Neues Angebot: {t}","text":body,"translation":"Новый городской проект: расписание, регистрация, стоимость и цель."})
   n=j*3
   qs += [mc(f"L2-{i+1}-Q{n+1}","Was ist neu?",["Feste Termine und Online-Anmeldung","Nur Morgentermine","Sofort hohe Kosten"],0,"feste Termine und Online-Anmeldung","Это прямо сказано.","Другие варианты противоречат тексту."),
