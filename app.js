@@ -62,7 +62,8 @@ function fresh(){
       translation:false,instructionHelp:false,strategy:false,dictionary:false,dictionaryAll:false,
       helpOpen:false,review:false,completed:false
     },
-    ui:{ottoOpen:false,helpOpen:false}
+    ui:{ottoOpen:false,helpOpen:false,micHelp:false},
+    dailySession:{started:false,completed:[]}
   };
 }
 
@@ -82,8 +83,9 @@ function normalizeRuntimeState(){
   if(!S.assistanceEvidence)S.assistanceEvidence=[];
   if(!S.learning)S.learning=fresh().learning;
   else S.learning=Object.assign(fresh().learning,S.learning);
-  if(!S.ui)S.ui={ottoOpen:false,helpOpen:false};
-  else S.ui=Object.assign({ottoOpen:false,helpOpen:false},S.ui);
+  if(!S.ui)S.ui={ottoOpen:false,helpOpen:false,micHelp:false};
+  else S.ui=Object.assign({ottoOpen:false,helpOpen:false,micHelp:false},S.ui);
+  if(!S.dailySession)S.dailySession={started:false,completed:[]};
   if(!S.selectedGuide)S.selectedGuide=S.selectedModule||'Lesen';
 }
 normalizeRuntimeState();
@@ -252,15 +254,20 @@ function productiveView(){
   const s=S.diagnostic.session;
   if(s.phase==='closed_complete'||s.phase==='writing'){
     const w=ENGINE.selectWritingPrompt(s);
-    return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">Напишите короткий ответ по-немецки</h1><p class="muted">Нам нужен живой образец письма, чтобы не судить о Schreiben только по тестам с вариантами ответа.</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:80%"></i></div><div class="friendly-note"><b>Что делать:</b> прочитайте условие и напишите связный ответ по-немецки. Постарайтесь выполнить все пункты задания.</div><div class="task-text">'+esc(w.prompt)+'</div><textarea id="writingSample" class="field" rows="11" placeholder="Schreiben Sie auf Deutsch…">'+esc(s.writing?.text||'')+'</textarea><div class="notice">Этот текст сохраняется для оценки навыка. Пока он не прошёл надёжную проверку по критериям, Otto не будет придумывать вам точный уровень Schreiben.</div><div class="button-row">'+button('Сохранить и перейти к Sprechen','save-writing')+'</div>';
+    return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">Напишите короткий ответ по-немецки</h1><p class="muted">Живой образец письма делает диагностику точнее. Если сейчас не готовы — этот шаг можно пропустить.</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:80%"></i></div><div class="friendly-note"><b>Что делать:</b> прочитайте условие и напишите связный ответ по-немецки. Постарайтесь выполнить все пункты задания.</div><div class="task-text">'+esc(w.prompt)+'</div><textarea id="writingSample" class="field" rows="11" placeholder="Schreiben Sie auf Deutsch…">'+esc(s.writing?.text||'')+'</textarea><div class="notice">Если пропустите, общий стартовый ориентир всё равно будет рассчитан по закрытой части диагностики; Schreiben останется навыком для последующего уточнения.</div><div class="button-row">'+button('Сохранить и перейти к Sprechen','save-writing')+button('Пропустить Schreiben','skip-writing','ghost')+'</div>';
   }
   if(s.phase==='speaking')return speakingView();
   return reportView();
 }
 function saveWriting(){
   const s=S.diagnostic.session,w=ENGINE.selectWritingPrompt(s),text=$('#writingSample').value.trim(),gate=writingGate(text,w);
-  if(!gate.valid)return alert('Нужен осмысленный преимущественно немецкий текст минимум примерно '+gate.min+' слов для этой диагностической пробы.');
+  if(!gate.valid)return alert('Нужен осмысленный преимущественно немецкий текст минимум примерно '+gate.min+' слов. Если сейчас не готовы — нажмите «Пропустить Schreiben».');
   ENGINE.saveWritingSample(s,w.item_id,text,{gate_version:'meaningful-german-v1'});
+  S.diagnostic.speakingIndex=0;save();render();
+}
+function skipWriting(){
+  const s=S.diagnostic.session,w=ENGINE.selectWritingPrompt(s);
+  ENGINE.skipWritingSample(s,w.item_id);
   S.diagnostic.speakingIndex=0;save();render();
 }
 function speakingView(){
@@ -269,7 +276,10 @@ function speakingView(){
   const b1=p.item_id==='S-B1';
   return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">Sprechen · речевой образец</h1><p class="muted">'+(b1?'Здесь важно не только говорить самому, но и реагировать на партнёра.':'Запишите короткий ответ по-немецки. Главное — естественная понятная речь, а не заученный текст.')+'</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:'+(88+i*5)+'%"></i></div><div class="task-text">'+esc(p.prompt)+'</div>'+
     (b1?'<div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><div><b>Otto — партнёр</b><div class="muted">Wir könnten den Lerntag am Samstag ab zehn Uhr in der Bibliothek machen. Ich würde aber nur eine kurze Mittagspause planen. Was meinst du?</div></div></div><div class="button-row">'+button('🔊 Otto говорит','speak-otto','secondary')+'</div>':'')+
-    '<div id="recordBox" class="record-box '+(recorder&&recorder.state==='recording'?'recording':'')+'"><span class="record-dot"></span><b> Реальная запись микрофона</b><div class="button-row" style="justify-content:center">'+button(recorder&&recorder.state==='recording'?'■ Остановить':'🎙 Начать запись','record-speaking','secondary')+'</div></div><div class="notice">Transcript ≠ оценка Sprechen. Без отдельной audio/rubric evaluation мы не придумываем pronunciation, fluency или B1.1/B1.2.</div><div class="button-row">'+button('Сохранить этот sample','finish-speaking')+button('Нет доступа к микрофону','skip-speaking','ghost')+'</div>';
+    '<div id="recordBox" class="record-box '+(recorder&&recorder.state==='recording'?'recording':'')+'"><span class="record-dot"></span><b> Реальная запись микрофона</b><div class="button-row" style="justify-content:center">'+button(recorder&&recorder.state==='recording'?'■ Остановить':'🎙 Начать запись','record-speaking','secondary')+button('Как разрешить микрофон','mic-help','ghost')+'</div></div>'+
+    (S.ui.micHelp?'<div class="friendly-note"><b>Как разрешить микрофон:</b> нажмите значок замка/настроек слева от адреса сайта → «Микрофон» → «Разрешить», затем обновите страницу. В Windows: Параметры → Конфиденциальность и безопасность → Микрофон → включите доступ для приложений и браузера.</div>':'')+
+    (S.diagnostic.micError?'<div class="notice"><b>Микрофон пока недоступен:</b> '+esc(S.diagnostic.micError)+'</div>':'')+
+    '<div class="notice">Если вы не готовы говорить сейчас, Sprechen можно полностью пропустить. Общий стартовый ориентир всё равно будет рассчитан по остальной диагностике.</div><div class="button-row">'+button('Сохранить этот sample','finish-speaking')+button('Пропустить Sprechen','skip-speaking','ghost')+'</div>';
 }
 async function toggleSpeakingRecord(){
   if(recorder&&recorder.state==='recording'){
@@ -285,7 +295,22 @@ async function toggleSpeakingRecord(){
       save();recorder=null;render();
     };
     recorder.start();render();
-  }catch(e){alert('Нет доступа к микрофону: '+e.message);}
+  }catch(e){
+    S.diagnostic.micError=(e&&e.name==='NotAllowedError')?'Браузер отклонил разрешение. Разрешите микрофон для этого сайта и попробуйте снова.':(e&&e.message?e.message:'Не удалось открыть микрофон.');
+    S.ui.micHelp=true;save();render();
+  }
+}
+function skipAllSpeaking(){
+  const s=S.diagnostic.session,prompts=ENGINE.selectSpeakingPrompts(s);
+  for(let i=S.diagnostic.speakingIndex;i<prompts.length;i++){
+    const p=prompts[i];
+    ENGINE.saveSpeakingSample(s,p.item_id,{audio:false,bytes:0,interaction:false,evaluation_status:'SKIPPED'});
+  }
+  S.diagnostic.lastRecording=null;
+  S.diagnostic.speakingIndex=prompts.length;
+  ENGINE.markComplete(s);
+  S.diagnostic.result=ENGINE.result(s);
+  save();go('report');
 }
 function finishSpeaking(skipped=false){
   const s=S.diagnostic.session,prompts=ENGINE.selectSpeakingPrompts(s),p=prompts[S.diagnostic.speakingIndex];
@@ -319,13 +344,19 @@ function ensureResult(){
 }
 
 function profileLine(v){
-  if(v.status==='NEED_CONFIRMATION')return 'пока недостаточно данных · проверок: '+v.evidenceCount;
+  if(v.status==='NEED_CONFIRMATION')return 'будем уточнять в занятиях · проверок: '+v.evidenceCount;
   return (v.band?'ориентир '+v.band:'зона пока не определена')+' · уверенность '+confidenceRu(v.confidence)+' · проверок: '+v.evidenceCount;
 }
 function placementHeading(r){
-  if(r.placement.status==='NEED_CONFIRMATION')return 'Пока нужно ещё немного данных';
   const b=r.placement.band||r.placement.closerTo;
-  return b?'Ваш текущий ориентир: ближе к '+b:'Ваш текущий ориентир уточняется';
+  return b?'Ваш стартовый ориентир: '+b:'Стартовый ориентир определён';
+}
+function readinessRecommendation(r){
+  const b=r.placement.band||r.placement.closerTo||'A2.1';
+  const correct=(S.diagnostic.session.answers||[]).filter(x=>x.correct).length;
+  if(b==='A1.1'&&correct<=2)return {kind:'START',title:'Сначала Otto Start',text:'Сейчас полезнее начать с самых базовых конструкций и словаря, а затем вернуться к B1-диагностике.'};
+  if(b==='A1.1')return {kind:'A1',title:'Сначала Otto A1',text:'B1 пока будет слишком резким скачком. Надёжнее укрепить A1, а затем вернуться сюда.'};
+  return {kind:'B1',title:'Можно строить маршрут к B1',text:'База уже позволяет готовиться здесь: Otto будет дозировать B1 и закрывать пробелы по ходу занятий.'};
 }
 function humanRouteTitle(type){
   if(type==='FOUNDATION_FIRST')return 'Сначала укрепим базу';
@@ -357,8 +388,10 @@ function reportView(){
   });
   domains+='</div>';
   let gaps=r.gaps.length?r.gaps.map(function(g){return '<li><b>'+esc(domainLabel(g.module))+'</b> — '+esc(humanRouteCopy(g.reason))+'</li>';}).join(''):'<li>Сейчас нет одного явного провала. Дальше Otto будет уточнять профиль на новых заданиях.</li>';
-  return '<span class="eyebrow">Результат диагностики</span><h1 class="h2">'+esc(placementHeading(r))+'</h1><p class="lead">Это учебный ориентир для маршрута, а не официальный сертификат уровня. Если данных мало, Otto не будет придумывать точность.</p>'+
-    card('Насколько уверенно можно использовать результат',confidenceRu(r.placement.confidence),r.placement.status==='NEED_CONFIRMATION'?'warn':'good')+
+  const rec=readinessRecommendation(r);
+  return '<span class="eyebrow">Результат диагностики</span><h1 class="h2">'+esc(placementHeading(r))+'</h1><p class="lead">Это учебный стартовый ориентир для маршрута, а не официальный сертификат CEFR. Пропущенные Schreiben/Sprechen не мешают определить рабочую стартовую зону по закрытым заданиям.</p>'+
+    card(rec.title,rec.text,rec.kind==='B1'?'good':'warn')+
+    card('Насколько уверенно можно использовать результат',confidenceRu(r.placement.confidence),r.placement.confidence==='low'?'warn':'good')+
     '<h3>Что видно по отдельным навыкам</h3>'+domains+
     '<h3>До Goethe B1 сейчас важнее всего</h3><div class="card"><ul>'+gaps+'</ul></div>'+
     '<div class="button-row">'+button('Открыть мой маршрут','open-route')+button('Гид B1: понять экзамен','open-guide','secondary')+button('На главную','open-home','ghost')+'</div>';
@@ -375,11 +408,23 @@ function homeView(){
 }
 function routeView(){
   const r=ensureResult();if(!r)return diagnosticGate();
-  let html='<span class="eyebrow">Персональный маршрут</span><h1 class="route-human">'+esc(humanRouteTitle(r.route.routeType))+'</h1><p class="lead">'+esc(humanRouteCopy(r.route.summary))+'</p><p class="muted">Настройка '+S.dailyMinutes+' минут влияет на объём будущего занятия, но не меняет результат диагностики.</p><div class="stack">';
-  r.route.blocks.forEach(function(b,i){
-    html+=card((i+1)+'. '+humanRouteCopy(b.label),esc(humanRouteCopy(b.why))+(b.weight?' · ориентир по времени '+b.weight+'%':''),b.id&&b.id.includes('confirm')?'warn':'');
-  });
-  html+='</div><div class="button-row">'+button('Модули','open-modules','ghost')+button('Гид B1','open-guide','secondary')+button('Прогресс','open-progress','secondary')+'</div>';return html;
+  const rec=readinessRecommendation(r);
+  if(rec.kind==='START')return '<span class="eyebrow">Ваш следующий шаг</span><h1 class="route-human">Сначала Otto Start</h1><p class="lead">'+esc(rec.text)+'</p>'+card('Почему так','Если базовые A1-задания пока нестабильны, погружение в B1 только перегружает. Вернитесь к B1 после базового курса.','warn')+'<div class="button-row"><a class="btn primary" href="https://otto-start.netlify.app/" target="_blank" rel="noopener">Открыть Otto Start</a>'+button('На главную','open-home','ghost')+'</div>';
+  if(rec.kind==='A1')return '<span class="eyebrow">Ваш следующий шаг</span><h1 class="route-human">Сначала Otto A1</h1><p class="lead">'+esc(rec.text)+'</p>'+card('Рекомендация Otto','Сначала закрепите A1, затем вернитесь в этот тренажёр и пройдите диагностику снова.','warn')+'<div class="button-row"><a class="btn primary" href="https://otto-a1-new.netlify.app/" target="_blank" rel="noopener">Открыть Otto A1</a>'+button('На главную','open-home','ghost')+'</div>';
+  let html='<span class="eyebrow">Персональный маршрут</span><h1 class="route-human">'+esc(humanRouteTitle(r.route.routeType))+'</h1><p class="lead">'+esc(humanRouteCopy(r.route.summary))+'</p><div class="friendly-note"><b>Otto ведёт вас сам.</b> Нажмите ниже — откроется сегодняшняя последовательность на '+S.dailyMinutes+' минут.</div><div class="button-row">'+button('Начать сегодняшнюю сессию','start-session')+'</div><div class="stack">';
+  r.route.blocks.forEach(function(b,i){html+=card((i+1)+'. '+humanRouteCopy(b.label),esc(humanRouteCopy(b.why))+(b.weight?' · ориентир по времени '+b.weight+'%':''));});
+  return html+'</div><div class="button-row">'+button('Выбрать модуль вручную','open-modules','ghost')+button('Гид B1','open-guide','secondary')+'</div>';
+}
+function sessionPlan(){
+  if(S.dailyMinutes>=45)return [['Schreiben',15,'Разобрать хороший образец и написать свой план ответа'],['Lesen',15,'Полный Teil 1 с доказательствами в тексте'],['Hören',10,'Стратегия понимания речи и типичные ловушки'],['Sprechen',5,'Короткая речевая разминка по структуре B1']];
+  if(S.dailyMinutes>=25)return [['Schreiben',10,'Образец + каркас собственного ответа'],['Lesen',8,'Тренировка поиска доказательства'],['Hören',5,'Стратегия прослушивания'],['Sprechen',2,'Короткая речевая разминка']];
+  return [['Schreiben',4,'Один каркас ответа'],['Lesen',3,'Одна стратегия чтения'],['Hören',2,'Один приём для аудирования'],['Sprechen',1,'Одна фраза вслух']];
+}
+function sessionView(){
+  const plan=sessionPlan();
+  let html='<span class="eyebrow">Сегодня · '+S.dailyMinutes+' минут</span><h1 class="h2">Otto уже собрал занятие</h1><p class="lead">Начинаем со Schreiben, затем переключаем нагрузку. Идите по порядку.</p><div class="stack">';
+  plan.forEach(function(x,i){html+='<div class="card '+(i===0?'good':'')+'"><span class="subtle-label">'+(i+1)+' · '+x[1]+' мин.</span><h3>'+x[0]+'</h3><p class="muted">'+esc(x[2])+'</p><div class="button-row"><button class="btn '+(i===0?'primary':'secondary')+'" data-session-module="'+x[0]+'">'+(i===0?'Начать':'Открыть')+'</button></div></div>';});
+  return html+'</div><div class="notice">Где полноценный тренажёр ещё не опубликован, Otto открывает проверенные образцы, стратегию и структуру, а не фиктивное задание.</div>';
 }
 function modulesView(){
   let html='<span class="eyebrow">Goethe-Zertifikat B1</span><h1 class="h2">Четыре модуля</h1><p class="lead">Сначала смысл, потом терминология: откройте модуль, посмотрите, как он устроен на экзамене, и переходите к доступной проверенной тренировке.</p>'+
@@ -670,10 +715,12 @@ function render(){
   const views={
     register:registerView,verify:verifyView,'diagnostic-gate':diagnosticGate,diagnostic:diagnosticView,
     report:reportView,home:homeView,route:routeView,modules:modulesView,module:moduleView,
-    guide:guideView,learn:learnView,'learn-summary':learningSummaryView,
+    guide:guideView,learn:learnView,'learn-summary':learningSummaryView,session:sessionView,
     errors:errorsView,progress:progressView
   };
-  $('#screen').innerHTML=(views[r]||registerView)();
+  const content=(views[r]||registerView)();
+  const unlockedBack=!['register','verify','diagnostic-gate','diagnostic','home'].includes(r);
+  $('#screen').innerHTML=(unlockedBack?'<div class="page-back"><button class="btn ghost" data-action="nav-back">← К предыдущему экрану</button></div>':'')+content;
   const locked=['register','verify','diagnostic-gate','diagnostic'].includes(r);
   $('#bottomNav').classList.toggle('hidden',locked);
   $('#guideButton').classList.toggle('hidden',locked);
@@ -696,6 +743,11 @@ function click(e){
   const mod=e.target.closest('[data-module]');if(mod){S.selectedModule=mod.dataset.module;S.selectedGuide=S.selectedModule;save();go('module');return;}
   const mins=e.target.closest('[data-minutes]');if(mins){captureRegistrationDraft();S.dailyMinutes=Number(mins.dataset.minutes);save();render();return;}
   const ch=e.target.closest('[data-diag-choice]');if(ch){answerDiagnostic(Number(ch.dataset.diagChoice));return;}
+  const sessionMod=e.target.closest('[data-session-module]');if(sessionMod){
+    const m=sessionMod.dataset.sessionModule;S.selectedModule=m;S.selectedGuide=m;save();
+    if(m==='Lesen')startLearning(1,'training');else go('guide');
+    return;
+  }
   const a=e.target.closest('[data-action]');if(!a)return;
   const x=a.dataset.action;
   if(x==='auth-email'){captureRegistrationDraft();S.auth.method='email';save();render();}
@@ -707,11 +759,15 @@ function click(e){
   else if(x==='diag-resume')go('diagnostic');
   else if(x==='diag-audio')playDiagnosticAudio();
   else if(x==='save-writing')saveWriting();
+  else if(x==='skip-writing')skipWriting();
   else if(x==='record-speaking')toggleSpeakingRecord();
+  else if(x==='mic-help'){S.ui.micHelp=!S.ui.micHelp;save();render();}
   else if(x==='finish-speaking')finishSpeaking(false);
-  else if(x==='skip-speaking')finishSpeaking(true);
+  else if(x==='skip-speaking')skipAllSpeaking();
   else if(x==='speak-otto')speakOtto();
   else if(x==='open-route')go('route');
+  else if(x==='start-session'){S.dailySession.started=true;save();go('session');}
+  else if(x==='nav-back'){if(history.length>1)history.back();else go('home');}
   else if(x==='open-home')go('home');
   else if(x==='open-modules')go('modules');
   else if(x==='open-progress')go('progress');

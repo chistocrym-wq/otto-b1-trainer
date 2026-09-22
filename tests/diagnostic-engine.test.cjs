@@ -44,7 +44,7 @@ function resultOf(s){return ENGINE.result(s);}
   assert.equal(resultOf(s).route.routeType,'BRIDGE_TO_B1');
 }
 
-// 3. Borderline A2.2/B1.1 result gets extra independent evidence and can remain NEED_CONFIRMATION.
+// 3. Borderline A2.2/B1.1 result gets extra evidence and resolves to a conservative training start.
 {
   const s=ENGINE.createSession();
   const counts={};
@@ -63,8 +63,9 @@ function resultOf(s){return ENGINE.result(s);}
   }
   assert.equal(s.extraTriggered,true);
   assert.equal(s.boundaryRounds,2);
-  assert.equal(s.closedDecision.status,'NEED_CONFIRMATION');
-  assert.match(s.closedDecision.label,/A2\.2|B1\.1/);
+  assert.equal(s.closedDecision.status,'PLACED');
+  assert.equal(s.closedDecision.band,'A2.2');
+  assert.equal(s.closedDecision.confidence,'low');
 }
 
 // 4. One random error must not collapse an otherwise supported A2.2 placement.
@@ -127,7 +128,17 @@ function resultOf(s){return ENGINE.result(s);}
   assert.equal(r.profiles.Schreiben.band,'A2.2');
 }
 
-// 10-13. Content QA / legacy quarantine / metadata.
+// 10. Grammar/vocabulary profile must stay usable for routing even when evidence is mixed.
+{
+  const s=runClosed(threshold('A1.2'));
+  const r=resultOf(s);
+  assert.notEqual(r.profiles.language_system.status,'NEED_CONFIRMATION');
+  assert.ok(r.profiles.language_system.band);
+  assert.ok(r.profiles.vocabulary.band);
+  assert.ok(r.profiles.grammar.band);
+}
+
+// 11-14. Content QA / legacy quarantine / metadata.
 {
   const v=ENGINE.validateBank();
   assert.equal(v.ok,true,v.errors.join('\n'));

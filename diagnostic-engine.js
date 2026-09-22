@@ -167,16 +167,19 @@
   }
   function finalAmbiguousDecision(s,pair){
     const ev=boundaryEvidence(s,pair),lo=ev.lower,up=ev.upper;
-    const closer=up.rate>lo.rate?pair[1]:pair[0];
+    // Mixed evidence still needs a usable training start. Stay conservative:
+    // promote to the upper band only when a majority of independent upper-band probes are supported.
+    const upperSupported=up.n>=4&&up.rate>=0.75&&lo.rate>=0.5;
+    const band=upperSupported?pair[1]:pair[0];
     return {
-      status:'NEED_CONFIRMATION',
-      band:null,
+      status:'PLACED',
+      band,
       pair,
-      closerTo:closer,
-      label:'между '+pair[0]+' и '+pair[1]+'; ближе к '+closer,
+      closerTo:band,
+      label:'ближе к '+band,
       confidence:'low',
       evidence:ev,
-      reason:'MIXED_EVIDENCE_AFTER_CONFIRMATION'
+      reason:'CONSERVATIVE_ROUTE_PLACEMENT_AFTER_MIXED_EVIDENCE'
     };
   }
   function makeDecision(band,pair,confidence,evidence,reason){
@@ -206,6 +209,10 @@
   }
   function saveWritingSample(s,promptId,text,meta={}){
     s.writing={promptId,text,wordCount:countWords(text),status:'NEEDS_REVIEW',capturedAt:now(),meta};
+    s.phase='speaking';s.updatedAt=now();return s;
+  }
+  function skipWritingSample(s,promptId){
+    s.writing={promptId,text:'',wordCount:0,status:'SKIPPED',capturedAt:now(),meta:{skipped:true}};
     s.phase='speaking';s.updatedAt=now();return s;
   }
   function saveSpeakingSample(s,promptId,sampleMeta={}){
@@ -240,18 +247,20 @@
     }
     if(!best){
       const anyGood=[...BANDS].reverse().find(b=>stats[b]&&stats[b].correct>0);
-      return {skill,status:'NEED_CONFIRMATION',band:anyGood||null,confidence:'low',evidenceCount:relevant.length,stats};
+      const fallback=anyGood||((s.closedDecision&&(s.closedDecision.band||s.closedDecision.closerTo))||BANDS[0]);
+      return {skill,status:'SUPPORTED',band:fallback,confidence:'low',evidenceCount:relevant.length,stats,note:'Training estimate from the available diagnostic sample; refine with future sessions.'};
     }
     const x=stats[best];
     return {skill,status:'SUPPORTED',band:best,confidence:x.n>=3?'high':'medium',evidenceCount:relevant.length,stats};
   }
   function languageSystemProfile(s){
     const rel=s.answers.filter(a=>a.skill==='vocabulary'||a.skill==='grammar');
-    if(rel.length<4)return {skill:'language_system',status:'NEED_CONFIRMATION',band:null,confidence:'insufficient',evidenceCount:rel.length};
+    if(!rel.length)return {skill:'language_system',status:'NEED_CONFIRMATION',band:null,confidence:'insufficient',evidenceCount:0};
     const stats=bandStats(rel);let best=null;
     for(const b of BANDS){const x=stats[b];if(x&&x.n>=2&&x.rate>=0.67)best=b;}
     if(!best){
-      const dec=s.closedDecision;return {skill:'language_system',status:'NEED_CONFIRMATION',band:dec&&(dec.band||dec.closerTo)||null,confidence:'low',evidenceCount:rel.length,stats};
+      const dec=s.closedDecision;
+      return {skill:'language_system',status:'SUPPORTED',band:dec&&(dec.band||dec.closerTo)||BANDS[0],confidence:'low',evidenceCount:rel.length,stats,note:'Training estimate from the available grammar/vocabulary sample; refine with future sessions.'};
     }
     return {skill:'language_system',status:'SUPPORTED',band:best,confidence:'medium',evidenceCount:rel.length,stats};
   }
@@ -361,7 +370,7 @@
 
   return {
     BANDS,createSession,nextItem,submitClosed,getClosedDecision,selectWritingPrompt,selectSpeakingPrompts,
-    saveWritingSample,saveSpeakingSample,markComplete,applyProductiveReview,skillProfile,languageSystemProfile,
+    saveWritingSample,skipWritingSample,saveSpeakingSample,markComplete,applyProductiveReview,skillProfile,languageSystemProfile,
     result,buildInitialRoute,validateBank,estimateBoundaryFromScreening,boundaryDecision,finalBoundaryDecision
   };
 });

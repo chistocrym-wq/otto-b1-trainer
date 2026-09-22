@@ -1,0 +1,5 @@
+# Local tooling and generated artifacts
+.netlify/
+node_modules/
+test-results/
+playwright-report/

@@ -12,6 +12,7 @@ test.beforeAll(async()=>{
   server=http.createServer((req,res)=>{
     let p=new URL(req.url,'http://127.0.0.1').pathname;
     if(p==='/')p='/index.html';
+    if(p==='/favicon.ico'){res.writeHead(204);return res.end();}
     const file=path.normalize(path.join(root,p));
     if(!file.startsWith(root)){res.writeHead(403);return res.end();}
     fs.readFile(file,(e,b)=>{
@@ -104,9 +105,9 @@ async function runA22Diagnostic(page,{resumeCheck=false}={}){
     const state=await page.evaluate(()=>window.__OTTO_TEST__.getState());
     if(state.diagnostic.session.completed)break;
     await expect(page.getByText(/Sprechen · речевой образец/)).toBeVisible();
-    await page.getByRole('button',{name:'Нет доступа к микрофону'}).click();
+    await page.getByRole('button',{name:'Пропустить Sprechen'}).click();
   }
-  await expect(page.getByText(/Ваш текущий ориентир:|Пока нужно ещё немного данных/)).toBeVisible();
+  await expect(page.getByText(/Ваш стартовый ориентир:/)).toBeVisible();
 }
 
 test('registration persists; diagnostic hides engine internals and resumes; human route is shown',async({page},testInfo)=>{
@@ -294,4 +295,44 @@ test('Beta labels and pending modules do not expose technical release language o
     await page.evaluate(()=>{location.hash='#modules';});
     await page.waitForTimeout(40);
   }
+});
+
+
+test('diagnostic can skip productive samples; mic help and Otto-led daily session work',async({page})=>{
+  await fresh(page);await register(page);
+  await page.evaluate(()=>{
+    const engine=window.__OTTO_TEST__.engine;
+    const state=window.__OTTO_TEST__.getState();
+    const ds=engine.createSession();
+    const order=engine.BANDS;
+    let item;
+    while((item=engine.nextItem(ds))){
+      const ok=order.indexOf(item.target_band)<=order.indexOf('A2.2');
+      engine.submitClosed(ds,item.item_id,ok?item.correct_answer:(item.correct_answer===0?1:0));
+    }
+    state.diagnostic.session=ds;
+    state.diagnostic.result=null;
+    window.__OTTO_TEST__.setState(state);
+    location.hash='#diagnostic';
+  });
+  await page.waitForTimeout(80);
+  await expect(page.getByText('Напишите короткий ответ по-немецки')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Пропустить Schreiben'})).toBeVisible();
+  await page.getByRole('button',{name:'Пропустить Schreiben'}).click();
+
+  await expect(page.getByText(/Sprechen · речевой образец/)).toBeVisible();
+  await page.getByRole('button',{name:'Как разрешить микрофон'}).click();
+  await expect(page.getByText(/значок замка\/настроек слева от адреса сайта/)).toBeVisible();
+  await page.getByRole('button',{name:'Пропустить Sprechen'}).click();
+
+  await expect(page.getByText(/Ваш стартовый ориентир:/)).toBeVisible();
+  await page.getByRole('button',{name:'Открыть мой маршрут'}).click();
+  await expect(page.getByRole('button',{name:'Начать сегодняшнюю сессию'})).toBeVisible();
+  await page.getByRole('button',{name:'Начать сегодняшнюю сессию'}).click();
+  await expect(page.getByText('Otto уже собрал занятие')).toBeVisible();
+  await expect(page.locator('[data-session-module="Schreiben"]')).toBeVisible();
+  await page.locator('[data-session-module="Schreiben"]').click();
+  await expect(page.locator('.guide-tab.active')).toHaveText('Schreiben');
+  await expect(page.getByText('Образцы — один хороший вариант')).toBeVisible();
+  await expect(page.getByRole('button',{name:'← К предыдущему экрану'})).toBeVisible();
 });
