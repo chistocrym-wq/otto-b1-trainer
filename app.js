@@ -711,6 +711,253 @@ async function shareApp(){
 }
 
 
+/* ---------- Full learning preview v1 ---------- */
+function defaultLesson(){
+  return {task_id:null,mode:'training',index:0,answers:{},checked:{},audioPlays:{},translation:false,strategy:false,dictionary:false,sample:false,userText:'',submitted:false,feedback:null,transcript:'',assistance_used:false,micStatus:'',recordingReady:false,fromSession:false,score:null};
+}
+function resetLesson(task,mode,fromSession){
+  S.lesson=Object.assign(defaultLesson(),{task_id:task.task_id,mode:mode||'training',fromSession:!!fromSession});
+  lessonAudioBlob=null;lessonAudioUrl=null;micTestBlob=null;micTestUrl=null;
+  save();
+}
+function generatedPart(module,part){
+  const cat=window.OTTO_CONTENT_CATALOG||{},pm=cat[module]||{};
+  return pm[String(part)]||pm[Number(part)]||[];
+}
+function chooseGeneratedTask(module,part){
+  const sets=generatedPart(module,part);
+  if(!sets.length)return null;
+  return sets.slice().sort(function(a,b){
+    const ah=S.task_history&&S.task_history[a.task_id],bh=S.task_history&&S.task_history[b.task_id];
+    if(!ah&&!bh)return a.task_id.localeCompare(b.task_id);
+    if(!ah)return -1;if(!bh)return 1;
+    return String(ah.last_seen||'').localeCompare(String(bh.last_seen||''));
+  })[0];
+}
+function startFullLearning(part,mode){
+  const task=chooseGeneratedTask(S.selectedModule,Number(part));
+  if(!task)return alert('Для этой части пока нет проверенного задания.');
+  resetLesson(task,mode,false);go('lesson');
+}
+function startSessionTask(){
+  const r=ensureResult();if(!r||!FULL)return;
+  if(!FULL.shouldResume(S))FULL.buildPlan(S,r);
+  const task=FULL.currentSessionTask(S);
+  if(!task){go('session-summary');return;}
+  resetLesson(task,'training',true);go('lesson');
+}
+function startFirstLesson(){
+  const r=ensureResult();if(!r||!FULL)return;
+  FULL.buildPlan(S,r);save();startSessionTask();
+}
+function currentFullTask(){return FULL?FULL.findTask(S.lesson&&S.lesson.task_id):null;}
+function closedItems(task){
+  const out=[];
+  if(task.module==='Lesen'&&Number(task.teil)===1){
+    task.questions.forEach((q,i)=>out.push({id:q.id,prompt:q.statement,choices:['Richtig','Falsch'],correct:q.correct?'Richtig':'Falsch',why:q.why,evidence:q.evidence,trap:q.trap,translation:q.translation,material:task.text}));
+  }else if(task.module==='Lesen'&&Number(task.teil)===2){
+    task.questions.forEach((q,i)=>out.push({id:q.id,prompt:q.question,choices:q.options,correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,translation:q.translation||'',material:task.texts[i<3?0:1]}));
+  }else if(task.module==='Lesen'&&Number(task.teil)===3){
+    const choices=task.ads.map(x=>x.id).concat('0');
+    task.situations.forEach(q=>out.push({id:task.task_id+'-S'+q.id,prompt:q.text,choices,correct:String(q.correct),why:q.why,evidence:'Проверьте все условия ситуации и объявления.',trap:q.trap,translation:'',material:task.ads}));
+  }else if(task.module==='Lesen'&&Number(task.teil)===4){
+    task.opinions.forEach(q=>out.push({id:task.task_id+'-O'+q.id,prompt:q.text,choices:['Ja','Nein'],correct:q.correct,why:q.why,evidence:'Определите общую позицию автора.',trap:q.trap,translation:'',material:null}));
+  }else if(task.module==='Lesen'&&Number(task.teil)===5){
+    task.questions.forEach(q=>out.push({id:q.id,prompt:q.question,choices:q.options,correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,translation:q.translation||'',material:task.text}));
+  }else if(task.module==='Hören'&&Number(task.teil)===1){
+    task.scenes.forEach(sc=>sc.questions.forEach(q=>out.push({id:q.id,prompt:q.question,choices:q.options,correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,audio:sc.audio,image:sc.image,translation:task.translation,material:sc.context})));
+  }else if(task.module==='Hören'&&Number(task.teil)===2){
+    task.questions.forEach(q=>out.push({id:q.id,prompt:q.question,choices:q.options,correct:q.options[q.correct_index],why:q.why,evidence:q.evidence,trap:q.trap,audio:task.audio,image:task.image,translation:task.translation,material:task.topic}));
+  }else if(task.module==='Hören'&&Number(task.teil)===3){
+    task.questions.forEach(q=>out.push({id:q.id,prompt:q.statement,choices:['Richtig','Falsch'],correct:q.correct?'Richtig':'Falsch',why:q.why,evidence:q.evidence,trap:q.trap,audio:task.audio,image:task.image,translation:task.translation,material:task.topic}));
+  }else if(task.module==='Hören'&&Number(task.teil)===4){
+    task.questions.forEach(q=>out.push({id:q.id,prompt:q.statement,choices:['Moderatorin','Person A','Person B'],correct:q.correct_speaker,why:q.why,evidence:'Слушайте, кто именно формулирует эту мысль.',trap:q.trap,audio:task.audio,image:task.image,translation:task.translation,material:task.topic}));
+  }
+  return out;
+}
+function lessonTools(task){
+  if(S.lesson.mode==='exam'&&!S.lesson.submitted)return '<div class="exam-lock"><b>Как на экзамене.</b> Перевод, словарь, образец и подсказки скрыты до завершения попытки.</div>';
+  let html='<div class="task-tools"><button class="chip" data-action="lesson-translation">👁 Перевод</button><button class="chip" data-action="lesson-strategy">☝ Стратегия Otto</button><button class="chip" data-action="lesson-dictionary">Aa Словарь</button>';
+  if(task.sample)html+='<button class="chip" data-action="lesson-sample">◎ Образец</button>';
+  html+='</div>';
+  if(S.lesson.translation)html+='<div class="translation-box">'+esc(task.translation||task.sample_translation||'Перевод для этого материала пока не добавлен.')+'</div>';
+  if(S.lesson.strategy)html+='<div class="notice"><b>Стратегия:</b> '+esc(task.strategy||'Сначала выполните задание самостоятельно, затем сверяйтесь с доказательством.')+'</div>';
+  if(S.lesson.dictionary&&task.glossary)html+='<div class="card soft"><b>Словарь</b><div class="dictionary-list">'+task.glossary.map(x=>'<div class="dictionary-row"><b>'+esc(x.de)+'</b><span>'+esc(x.ru)+'</span><button class="word-audio" data-speak-word="'+esc(x.de)+'">▶</button></div>').join('')+'</div></div>';
+  if(S.lesson.sample&&task.sample)html+='<div class="sample-card"><b>Хороший образец</b><div class="sample-text">'+esc(task.sample)+'</div><p class="small">'+esc(task.sample_translation||'')+'</p></div>';
+  return html;
+}
+function lessonMaterial(task,item){
+  if(task.module==='Lesen'&&Number(task.teil)===2&&item.material)return '<div class="learning-text"><b>'+esc(item.material.title)+'</b><br><br>'+esc(item.material.text)+'</div>';
+  if(task.module==='Lesen'&&Number(task.teil)===3&&Array.isArray(item.material))return '<div class="stack">'+item.material.map(a=>'<div class="card"><b>'+esc(a.id)+' · '+esc(a.title)+'</b><p>'+esc(a.text)+'</p></div>').join('')+'</div>';
+  if(typeof item.material==='string'&&task.module==='Lesen')return '<div class="learning-text">'+esc(item.material)+'</div>';
+  return '';
+}
+function audioPanel(item){
+  if(!item.audio)return '';
+  const used=S.lesson.audioPlays[item.audio.audio_id]||0,p=item.audio.playback_rules||{},limit=S.lesson.mode==='exam'?p.exam_play_count:p.training_play_count;
+  const disabled=used>=limit?'disabled':'';
+  return '<div class="audio-card">'+(item.image?'<img class="hearing-image" src="'+esc(item.image.src)+'" alt="'+esc(item.image.alt)+'">':'')+'<div><b>Аудио задания</b><div class="small">Прослушано: '+used+' / '+limit+(S.lesson.mode==='exam'?'':' · дополнительное прослушивание учитывается как помощь')+'</div></div><button class="btn secondary" data-action="lesson-audio" '+disabled+'>▶ Слушать</button></div>';
+}
+function closedLessonView(task){
+  const items=closedItems(task),i=Math.min(S.lesson.index,Math.max(0,items.length-1)),q=items[i],answer=S.lesson.answers[q.id],checked=!!S.lesson.checked[q.id];
+  let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(S.lesson.mode==='exam'?'Как на экзамене':'Учебный режим')+' · '+esc(task.module)+'</span><h1 class="h2">'+esc(task.module)+' · '+(task.module==='Lesen'?'Teil ':'Teil ')+task.teil+'</h1></div><div class="learning-progress">Задание '+(i+1)+' из '+items.length+'</div></div><div class="progress-line"><i style="width:'+((i+1)/items.length*100)+'%"></i></div>';
+  html+='<div class="card soft"><div class="small">Инструкция</div><b>'+esc(task.german_instruction)+'</b><p>'+esc(task.instruction_ru)+'</p></div>'+lessonTools(task)+lessonMaterial(task,q)+audioPanel(q);
+  if(S.lesson.translation&&q.translation)html+='<div class="translation-box">'+esc(q.translation)+'</div>';
+  html+='<div class="card"><h3>'+esc(q.prompt)+'</h3><div class="choice-grid">'+q.choices.map(c=>'<button class="choice '+(answer===c?'selected':'')+'" data-full-choice="'+esc(c)+'" '+(checked?'disabled':'')+'>'+esc(c)+'</button>').join('')+'</div></div>';
+  if(checked){
+    const ok=answer===q.correct;
+    html+='<div class="feedback-card '+(ok?'correct':'wrong')+'"><h3>'+(ok?'✓ Правильно':'✕ Нужно разобрать')+'</h3><p><b>Правильный ответ:</b> '+esc(q.correct)+'</p><p><b>Почему:</b> '+esc(q.why||'Сверьтесь с материалом.')+'</p><blockquote>'+esc(q.evidence||'')+'</blockquote><p><b>Ловушка:</b> '+esc(q.trap||'Не выбирайте ответ только по одному знакомому слову.')+'</p></div>';
+  }
+  html+='<div class="button-row">';
+  if(i>0)html+='<button class="btn ghost" data-action="full-back">← Назад</button>';
+  if(!checked)html+='<button class="btn primary" data-action="full-check">Проверить</button>';
+  else html+='<button class="btn primary" data-action="full-next">'+(i===items.length-1?'Завершить задание':'Далее →')+'</button>';
+  return html+'</div></div>';
+}
+function writingLessonView(task){
+  const words=countGermanWords(S.lesson.userText||'');
+  let html='<div class="learning-shell"><span class="eyebrow">'+(S.lesson.mode==='exam'?'Как на экзамене':'Учебный режим')+' · Schreiben</span><h1 class="h2">Schreiben · Aufgabe '+task.teil+'</h1><div class="card soft"><b>'+esc(task.instruction_de)+'</b><p>'+esc(task.instruction_ru)+'</p></div>'+lessonTools(task);
+  html+='<textarea id="fullWriting" class="field" rows="13" placeholder="Schreiben Sie auf Deutsch…">'+esc(S.lesson.userText||'')+'</textarea><div class="small">Слов: '+words+' · ориентир '+task.target_words+'</div>';
+  if(!S.lesson.submitted)html+='<div class="button-row"><button class="btn primary" data-action="writing-submit">Проверить мой текст</button></div>';
+  else{
+    const fb=S.lesson.feedback||{};
+    html+='<div class="feedback-card '+(fb.ok?'correct':'wrong')+'"><h3>'+esc(fb.title||'Учебная проверка')+'</h3><p>'+esc(fb.text||'')+'</p><p><b>Что проверить вручную:</b> раскрыты ли все пункты, подходит ли обращение и есть ли связки между мыслями.</p></div><div class="button-row"><button class="btn secondary" data-action="ask-otto">Спросить Otto о тексте</button><button class="btn primary" data-action="lesson-complete">Далее</button></div>';
+  }
+  return html+'</div>';
+}
+function speakingLessonView(task){
+  let html='<div class="learning-shell"><span class="eyebrow">'+(S.lesson.mode==='exam'?'Как на экзамене':'Учебный режим')+' · Sprechen</span><h1 class="h2">Sprechen · Aufgabe '+task.teil+'</h1><div class="card soft"><b>'+esc(task.instruction_de)+'</b><p>'+esc(task.instruction_ru)+'</p></div>'+lessonTools(task);
+  html+='<div class="card"><h3>Сначала проверьте микрофон</h3><p class="muted">Тест запросит разрешение, запишет 5 секунд и позволит прослушать результат.</p><div class="button-row"><button class="btn secondary" data-action="mic-preflight">Проверить микрофон</button></div>'+(S.lesson.micStatus?'<div class="notice">'+esc(S.lesson.micStatus)+'</div>':'')+(micTestUrl?'<audio class="record-playback" controls src="'+micTestUrl+'"></audio>':'')+'</div>';
+  html+='<div class="record-box '+(lessonRecorder&&lessonRecorder.state==='recording'?'recording':'')+'"><b>'+(lessonRecorder&&lessonRecorder.state==='recording'?'Идёт запись…':'Ваш ответ')+'</b><div class="button-row"><button class="btn primary" data-action="lesson-record">'+(lessonRecorder&&lessonRecorder.state==='recording'?'■ Остановить':'🎙 Начать запись')+'</button></div></div>';
+  if(lessonAudioUrl)html+='<div class="card good"><b>Запись готова</b><p class="muted">Прослушайте себя перед отправкой.</p><audio class="record-playback" controls src="'+lessonAudioUrl+'"></audio></div>';
+  if(S.lesson.transcript)html+='<div class="card soft"><b>Расшифровка</b><p>'+esc(S.lesson.transcript)+'</p><p class="small">Расшифровка помогает разбирать содержание и грамматику, но не является оценкой произношения.</p></div>';
+  if(!S.lesson.submitted)html+='<div class="button-row"><button class="btn primary" data-action="speaking-submit" '+(!lessonAudioBlob?'disabled':'')+'>Отправить запись</button><button class="btn ghost" data-action="speaking-skip">Пропустить это задание</button></div>';
+  else html+='<div class="feedback-card correct"><h3>Ответ сохранён</h3><p>'+esc(S.lesson.feedback?.text||'Запись выполнена. На следующем шаге Otto учтёт эту практику.')+'</p></div><div class="button-row"><button class="btn primary" data-action="lesson-complete">Далее</button></div>';
+  return html+'</div>';
+}
+function lessonView(){
+  const task=currentFullTask();
+  if(!task)return '<div class="notice">Задание не найдено. Вернитесь на главную и соберите занятие снова.</div>';
+  if(task.module==='Schreiben')return writingLessonView(task);
+  if(task.module==='Sprechen')return speakingLessonView(task);
+  return closedLessonView(task);
+}
+function selectFullChoice(v){
+  const task=currentFullTask(),items=closedItems(task),q=items[S.lesson.index];if(!q||S.lesson.checked[q.id])return;
+  S.lesson.answers[q.id]=v;save();render();
+}
+function lessonAssistance(kind){
+  if(S.lesson.mode==='exam'&&!S.lesson.submitted)return;
+  S.lesson[kind]=!S.lesson[kind];if(S.lesson[kind])S.lesson.assistance_used=true;save();render();
+}
+function checkFullAnswer(){
+  const task=currentFullTask(),items=closedItems(task),q=items[S.lesson.index];if(!q)return;
+  const answer=S.lesson.answers[q.id];if(answer==null)return alert('Сначала выберите ответ.');
+  S.lesson.checked[q.id]=true;
+  if(answer!==q.correct){
+    if(!S.learningErrors)S.learningErrors=[];
+    if(!S.learningErrors.some(x=>x.task_id===task.task_id&&x.question_id===q.id))S.learningErrors.push({task_id:task.task_id,question_id:q.id,module:task.module,skill:task.module,micro_skill:task.micro_skill,created_at:now()});
+  }
+  save();render();
+}
+function fullBack(){if(S.lesson.index>0){S.lesson.index--;save();render();}}
+function fullNext(){
+  const task=currentFullTask(),items=closedItems(task);
+  if(S.lesson.index<items.length-1){S.lesson.index++;S.lesson.translation=false;S.lesson.strategy=false;S.lesson.dictionary=false;save();render();return;}
+  const correct=items.filter(q=>S.lesson.answers[q.id]===q.correct).length;
+  S.lesson.score=items.length?correct/items.length:0;S.lesson.submitted=true;save();
+  finishLessonAndAdvance();
+}
+function saveWritingDraft(){const el=$('#fullWriting');if(el){S.lesson.userText=el.value;save();}}
+function submitWritingLesson(){
+  saveWritingDraft();const task=currentFullTask(),words=countGermanWords(S.lesson.userText),target=Number(task.target_words)||80,min=Math.max(20,Math.round(target*.6));
+  if(words<min)return alert('Текст пока слишком короткий для полезной проверки. Напишите хотя бы примерно '+min+' слов.');
+  const near=words>=target*.75&&words<=target*1.45;
+  S.lesson.submitted=true;S.lesson.score=near?.8:.65;S.lesson.feedback={ok:near,title:near?'Хорошая основа':'Проверьте объём и структуру',text:near?'Объём близок к заданию. Теперь проверьте все обязательные пункты и связность текста.':'Текст можно улучшить: приблизьте объём к ориентиру и проверьте, что каждый обязательный пункт раскрыт.'};
+  if(!near)S.learningErrors.push({task_id:task.task_id,module:'Schreiben',skill:'Schreiben',micro_skill:'task_completion',created_at:now()});
+  save();render();
+}
+function base64Blob(blob){return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(String(fr.result).split(',')[1]||'');fr.onerror=reject;fr.readAsDataURL(blob);});}
+function recorderMime(){
+  if(!window.MediaRecorder)return '';
+  for(const x of ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'])if(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(x))return x;
+  return '';
+}
+async function microphonePreflight(){
+  S.lesson.micStatus='Проверяем доступ к микрофону…';save();render();
+  if(!(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){S.lesson.micStatus='Микрофон работает только на защищённой HTTPS-странице.';save();render();return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){S.lesson.micStatus='Браузер не поддерживает доступ к микрофону через mediaDevices.';save();render();return;}
+  if(!window.MediaRecorder){S.lesson.micStatus='В этом браузере недоступна запись через MediaRecorder.';save();render();return;}
+  try{
+    if(navigator.permissions&&navigator.permissions.query){try{const p=await navigator.permissions.query({name:'microphone'});if(p.state==='denied')throw new Error('Доступ к микрофону запрещён в настройках браузера.');}catch(e){if(/запрещён/.test(e.message))throw e;}}
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const devices=await navigator.mediaDevices.enumerateDevices();if(!devices.some(d=>d.kind==='audioinput'))throw new Error('Браузер не видит устройство ввода звука.');
+    const mime=recorderMime(),parts=[],rec=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
+    rec.ondataavailable=e=>{if(e.data&&e.data.size)parts.push(e.data);};
+    await new Promise((resolve,reject)=>{rec.onerror=e=>reject(e.error||e);rec.onstop=resolve;rec.start();setTimeout(()=>{if(rec.state==='recording')rec.stop();},5000);});
+    stream.getTracks().forEach(t=>t.stop());micTestBlob=new Blob(parts,{type:mime||parts[0]?.type||'audio/webm'});
+    if(micTestUrl)URL.revokeObjectURL(micTestUrl);micTestUrl=URL.createObjectURL(micTestBlob);
+    S.lesson.micStatus='Запись готова. Прослушайте 5-секундный тест ниже.';save();render();
+  }catch(e){S.lesson.micStatus='Микрофон недоступен: '+(e&&e.message?e.message:'проверьте разрешение браузера и Windows.');save();render();}
+}
+async function toggleLessonRecording(){
+  if(lessonRecorder&&lessonRecorder.state==='recording'){lessonRecorder.stop();return;}
+  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)return alert('Запись микрофона не поддерживается.');
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true}),mime=recorderMime();lessonChunks=[];
+    lessonRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
+    lessonRecorder.ondataavailable=e=>{if(e.data&&e.data.size)lessonChunks.push(e.data);};
+    lessonRecorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());lessonAudioBlob=new Blob(lessonChunks,{type:mime||lessonChunks[0]?.type||'audio/webm'});if(lessonAudioUrl)URL.revokeObjectURL(lessonAudioUrl);lessonAudioUrl=URL.createObjectURL(lessonAudioBlob);S.lesson.recordingReady=true;S.lesson.micStatus='Запись готова.';lessonRecorder=null;save();render();};
+    lessonRecorder.start();S.lesson.micStatus='Идёт запись…';save();render();
+  }catch(e){S.lesson.micStatus='Не удалось начать запись: '+(e&&e.message?e.message:'нет доступа к микрофону');save();render();}
+}
+async function submitSpeakingLesson(skip){
+  const task=currentFullTask();
+  if(skip){S.lesson.submitted=true;S.lesson.score=null;S.lesson.feedback={text:'Задание пропущено. Otto предложит устную практику снова позже.'};S.learningErrors.push({task_id:task.task_id,module:'Sprechen',skill:'Sprechen',micro_skill:'speaking_practice',created_at:now()});save();render();return;}
+  if(!lessonAudioBlob)return alert('Сначала запишите ответ.');
+  S.lesson.micStatus='Сохраняем запись…';save();render();
+  try{
+    const audio_base64=await base64Blob(lessonAudioBlob);
+    const res=await fetch('/.netlify/functions/transcribe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({audio_base64,mime_type:lessonAudioBlob.type})});
+    const data=await res.json().catch(()=>({}));
+    if(res.ok&&data.text)S.lesson.transcript=data.text;
+    else if(res.status===503)S.lesson.transcript='Расшифровка станет доступна после подключения серверного сервиса.';
+    else S.lesson.transcript='Расшифровку получить не удалось, но запись можно использовать для самостоятельного прослушивания.';
+  }catch(e){S.lesson.transcript='Расшифровку получить не удалось, но запись сохранена в текущей попытке.';}
+  S.lesson.submitted=true;S.lesson.score=.7;S.lesson.feedback={text:'Запись выполнена. Проверьте, раскрыли ли вы задачу, использовали ли связки и говорили ли законченными фразами.'};S.lesson.micStatus='Запись готова.';save();render();
+}
+function recordManualHistory(task,score,assisted){
+  const old=S.task_history[task.task_id]||{},d=new Date(),next=new Date(d);next.setUTCDate(next.getUTCDate()+(score!=null&&score<.7?2:5));
+  S.task_history[task.task_id]={task_id:task.task_id,module:task.module,part:Number(task.teil),completed_at:now(),score:score,assistance_used:!!assisted,last_seen:d.toISOString().slice(0,10),next_review:next.toISOString().slice(0,10),attempt_count:(old.attempt_count||0)+1};
+}
+function finishLessonAndAdvance(){
+  const task=currentFullTask();if(!task)return;
+  if(S.lesson.fromSession&&FULL){FULL.recordCompletion(S,task,{score:S.lesson.score,assistance_used:S.lesson.assistance_used});save();if(S.dailySession.finished){go('session-summary');return;}startSessionTask();return;}
+  recordManualHistory(task,S.lesson.score,S.lesson.assistance_used);save();S.selectedModule=task.module;go('module');
+}
+function sessionSummaryView(){
+  const done=S.dailySession.completed||[],history=S.task_history||{},good=done.filter(id=>history[id]&&history[id].score!=null&&history[id].score>=.7).length;
+  return '<span class="eyebrow">Сегодня готово</span><h1 class="h2">Занятие завершено</h1><p class="lead">Выполнено заданий: '+done.length+'. Уверенно получилось: '+good+'.</p>'+card('Что получилось',good?good+' заданий выполнены устойчиво.':'Сегодня важнее было разобрать трудные места, а не гнаться за числом.','good')+card('Что повторим',S.learningErrors.length?'Otto вернёт в маршрут ошибки, которые повторялись сегодня.':'Явных повторяющихся ошибок сегодня не добавилось.','soft')+card('Следующая сессия','При следующем входе Otto выберет новые задания и учтёт сроки повторения.','soft')+'<div class="button-row">'+button('На главную','open-home')+button('Посмотреть маршрут','open-route','ghost')+'</div>';
+}
+function playLessonAudio(){
+  const task=currentFullTask(),items=closedItems(task),q=items[S.lesson.index];if(!q?.audio)return;
+  const p=q.audio.playback_rules||{},used=S.lesson.audioPlays[q.audio.audio_id]||0,limit=S.lesson.mode==='exam'?p.exam_play_count:p.training_play_count;
+  if(used>=limit)return;
+  S.lesson.audioPlays[q.audio.audio_id]=used+1;if(used+1>(p.exam_play_count||1))S.lesson.assistance_used=true;save();
+  const a=new Audio(q.audio.asset_src);a.play().catch(()=>alert('Аудио пока не загрузилось. Обновите страницу или попробуйте позже.'));render();
+}
+async function sendOttoMessage(){
+  const input=$('#ottoMessage');if(!input||S.ottoChat.sending)return;const message=input.value.trim();if(!message)return;if(message.length>2000)return alert('Сообщение слишком длинное.');
+  const task=currentFullTask();S.ottoChat.messages.push({role:'user',text:message});S.ottoChat.sending=true;S.ottoChat.error=null;save();renderModal();
+  try{
+    const res=await fetch('/.netlify/functions/otto-chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message,context:FULL?FULL.ottoContext(S,task):{module:S.selectedModule}})});
+    const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.message||'Otto сейчас недоступен.');
+    S.ottoChat.messages.push({role:'otto',text:data.text});
+  }catch(e){S.ottoChat.messages.push({role:'otto',text:e&&e.message?e.message:'Otto сейчас недоступен.'});}
+  S.ottoChat.sending=false;save();renderModal();
+}
+
+
 function render(){
   normalizeRuntimeState();
   let r=route();
