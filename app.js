@@ -126,11 +126,11 @@ function captureRegistrationDraft(){
 function registerView(){
   const contact=S.auth.method==='email'
     ? '<label><b>Email</b><input id="regContact" class="field" type="email" value="'+esc(S.auth.contact)+'" placeholder="name@example.com"></label>'
-    : '<div class="friendly-note"><b>Telegram</b><br>В Beta вход через Telegram ещё не подключён. Сейчас профиль сохраняется только в этом браузере на этом устройстве.</div>';
+    : '<div class="friendly-note"><b>Telegram</b><br>Вход через Telegram пока не подключён. Сейчас профиль сохраняется только в этом браузере на этом устройстве.</div>';
   return '<section class="first-onboarding"><div class="first-copy"><span class="kicker">Тренажёр Otto · Goethe-Zertifikat B1</span><h1 class="h1">Готовимся к сертификату B1</h1><p class="lead">Чем точнее мы определим старт, тем меньше времени вы потратите на слишком лёгкие или слишком сложные задания.</p><div class="auth-card"><h2>Регистрация</h2><div class="form-grid"><label><b>Имя</b><input id="regName" class="field" value="'+esc(S.name)+'"></label><label><b>Как к вам обращаться?</b><select id="regGender" class="field"><option value="">Не указывать</option><option value="female" '+(S.gender==='female'?'selected':'')+'>Женский род</option><option value="male" '+(S.gender==='male'?'selected':'')+'>Мужской род</option></select></label><div><b>Способ входа</b><div class="auth-tabs"><button data-action="auth-email" class="'+(S.auth.method==='email'?'active':'')+'">Email</button><button data-action="auth-telegram" class="'+(S.auth.method==='telegram'?'active':'')+'">Telegram</button></div></div>'+contact+'<label><b>Дата экзамена, если известна</b><input id="regExamDate" class="field" type="date" value="'+esc(S.examDate)+'"></label><div><b>Сколько времени удобно заниматься в обычный день?</b><div class="button-row">'+[10,25,45].map(n=>'<button class="btn '+(S.dailyMinutes===n?'primary':'ghost')+'" data-minutes="'+n+'">'+n+' минут</button>').join('')+'</div><p class="small">Это настройка ежедневного маршрута. Она не ограничивает первоначальную диагностику.</p></div></div><div class="button-row">'+button(S.auth.method==='email'?'Получить код':'Продолжить в Telegram','register-submit')+'</div></div></div><div class="first-otto"><img src="'+window.OTTO_SRC+'" alt="Otto"></div></section>';
 }
 function verifyView(){
-  return '<div class="auth-wrap"><div class="auth-card"><span class="eyebrow">Beta</span><h1 class="h2">Профиль для тестовой версии</h1><div class="friendly-note"><b>Важно:</b> в этой Beta реальная отправка кода на Email и вход через Telegram ещё не подключены. Данные профиля сохраняются локально в вашем браузере. Нажмите «Продолжить в Beta», чтобы перейти к диагностике.</div><div class="button-row">'+button('Продолжить в Beta','verify')+button('Назад','back-register','ghost')+'</div></div></div>';
+  return '<div class="auth-wrap"><div class="auth-card"><span class="eyebrow">Профиль</span><h1 class="h2">Профиль сохранён</h1><div class="friendly-note"><b>Сейчас:</b> отправка кода на Email и вход через Telegram ещё не подключены. Данные профиля сохраняются локально в вашем браузере. Можно перейти к диагностике и начать заниматься.</div><div class="button-row">'+button('Перейти к диагностике','verify')+button('Назад','back-register','ghost')+'</div></div></div>';
 }
 function submitRegistration(){
   captureRegistrationDraft();
@@ -315,7 +315,7 @@ function skipAllSpeaking(){
 function finishSpeaking(skipped=false){
   const s=S.diagnostic.session,prompts=ENGINE.selectSpeakingPrompts(s),p=prompts[S.diagnostic.speakingIndex];
   if(!p){ENGINE.markComplete(s);S.diagnostic.result=ENGINE.result(s);save();return go('report');}
-  if(!skipped&&!S.diagnostic.lastRecording?.recorded)return alert('Сначала запишите речевой sample или выберите «Нет доступа к микрофону».');
+  if(!skipped&&!S.diagnostic.lastRecording?.recorded)return alert('Сначала запишите ответ или выберите «Пропустить Sprechen».');
   ENGINE.saveSpeakingSample(s,p.item_id,{
     audio:!skipped,
     bytes:skipped?0:S.diagnostic.lastRecording.bytes,
@@ -404,7 +404,7 @@ function homeView(){
     '<div class="mode-grid"><div class="mode-card primary-mode"><span class="subtle-label">Основной режим</span><h3>Otto ведёт меня</h3><p class="muted">'+esc(humanRouteCopy(r.route.summary))+'</p>'+button('Посмотреть мой маршрут','open-route')+'</div>'+
     '<div class="mode-card"><span class="subtle-label">Свободная практика</span><h3>Выбрать модуль</h3><p class="muted">Можно отдельно открыть Lesen, Hören, Schreiben или Sprechen. Непроверенные задания по-прежнему не выдаются за готовый контент.</p>'+button('Открыть модули','open-modules','secondary')+'</div></div>'+
     '<div class="grid2"><div class="card soft"><span class="eyebrow">Учебный справочник</span><h3>Гид B1</h3><p class="muted">Как проходит экзамен, стратегии, образцы, шаблоны и подсказки — простым русским языком.</p>'+button('Открыть Гид B1','open-guide','secondary')+'</div>'+
-    '<div class="card soft"><span class="eyebrow">Training → Exam</span><h3>Помощи становится меньше</h3><p class="muted">Сначала можно учиться с объяснениями. Затем перевод, шаблоны и подсказки постепенно убираются. В Exam во время попытки помощи нет.</p></div></div>';
+    '<div class="card soft"><span class="eyebrow">От учёбы к экзамену</span><h3>Помощи становится меньше</h3><p class="muted">Сначала можно учиться с объяснениями. Затем перевод, шаблоны и подсказки постепенно убираются. В режиме «Как на экзамене» во время попытки помощи нет.</p></div></div>';
 }
 function routeView(){
   const r=ensureResult();if(!r)return diagnosticGate();
@@ -428,7 +428,7 @@ function sessionView(){
 }
 function modulesView(){
   let html='<span class="eyebrow">Goethe-Zertifikat B1</span><h1 class="h2">Четыре модуля</h1><p class="lead">Сначала смысл, потом терминология: откройте модуль, посмотрите, как он устроен на экзамене, и переходите к доступной проверенной тренировке.</p>'+
-    '<div class="notice">В Beta открываются только задания, которые уже полностью проверены. Остальные части можно изучить в Гиде B1, а тренировка появится после проверки материалов.</div>'+
+    '<div class="notice">В тренировку попадают только задания, которые прошли проверку структуры и комплектности.</div>'+
     '<div class="button-row">'+button('Открыть Гид B1','open-guide','secondary')+'</div><div class="modules-grid">';
   MODULES.forEach(function(m){
     const g=GUIDE.modules[m];
@@ -446,9 +446,9 @@ function moduleView(){
     const task=published[String(part.id)];
     html+='<div class="teil-row"><div class="teil-num">'+esc(part.label.split(' — ')[0])+'</div><div><b>'+esc(part.label.split(' — ').slice(1).join(' — '))+'</b><p>'+esc(part.what)+'</p><div class="small">'+esc(part.count)+' · '+esc(part.format)+' · '+esc(part.time)+'</div></div>';
     if(task){
-      html+='<div><span class="pill part-ready">Доступно в Beta</span><div class="button-row" style="margin-top:8px">'+
+      html+='<div><span class="pill part-ready">Доступно</span><div class="button-row" style="margin-top:8px">'+
         '<button class="btn secondary" data-start-learning="'+part.id+'">Тренировать</button>'+
-        '<button class="btn ghost" data-start-exam="'+part.id+'">Exam-like</button></div></div>';
+        '<button class="btn ghost" data-start-exam="'+part.id+'">Как на экзамене</button></div></div>';
     }else{
       html+='<span class="pill part-pending">Готовится</span>';
     }
@@ -456,25 +456,41 @@ function moduleView(){
   });
   return html+'</div><div class="button-row">'+button('← Все модули','open-modules','ghost')+'</div>';
 }
+const ERROR_MODELS={
+  matching_constraints:{title:'Не все условия объявления были учтены',what:'Вы нашли вариант с подходящей темой, но одно или несколько важных условий ситуации не совпали.',why:'В Lesen Teil 3 правильный ответ должен подходить сразу по всем ограничениям.',fix:'Перед выбором отдельно проверьте место, время, цену, возраст и другие условия.',target:'Потренировать это',module:'Lesen'},
+  embedded_question:{title:'Порядок слов в косвенном вопросе',what:'После вводной фразы порядок слов остался как в прямом вопросе.',why:'После фраз вроде Ich weiß nicht, ... или Können Sie mir sagen, ... спрягаемый глагол обычно уходит в конец придаточной части.',fix:'Сначала найдите вводную фразу, затем перенесите глагол в конец придаточной части.',target:'Потренировать',module:'Грамматика'},
+  purpose_paraphrase:{title:'Трудно распознать ту же мысль другими словами',what:'Вопрос и текст выражают один смысл разными словами, и связь не была замечена.',why:'В заданиях B1 часто проверяется смысл, а не совпадение формулировок.',fix:'Сформулируйте вопрос своими словами и ищите в тексте смысловой эквивалент.',target:'Потренировать перефразирование',module:'Lesen'},
+  evidence_and_paraphrase:{title:'Ответ выбран без достаточного доказательства в тексте',what:'Подходящий по теме вариант оказался не подтверждён конкретным фрагментом.',why:'Совпавшее слово ещё не доказывает правильность ответа.',fix:'Перед ответом найдите предложение, которое прямо подтверждает или опровергает утверждение.',target:'Потренировать поиск доказательства',module:'Lesen'},
+  change_detection:{title:'Пропущено изменение плана',what:'В ответ попал первоначальный план, хотя позже в тексте или аудио он изменился.',why:'Слова jedoch, aber, deshalb, doch, am Ende часто разворачивают ситуацию.',fix:'Отмечайте отдельно: что планировали сначала и что произошло в итоге.',target:'Потренировать изменения договорённости',module:'Hören'},
+  speaker_tracking:{title:'Смешались мнения говорящих',what:'Правильная мысль была услышана, но отнесена не к тому человеку.',why:'В дискуссии важно удерживать не только содержание, но и автора каждой позиции.',fix:'Во время прослушивания коротко помечайте позицию каждого говорящего.',target:'Потренировать говорящих',module:'Hören'},
+  word_order:{title:'Нужно укрепить порядок слов',what:'Глагол оказался не на той позиции в предложении.',why:'В немецком порядок слов зависит от типа главной и придаточной части.',fix:'Определите тип предложения, найдите сказуемое и только потом собирайте порядок слов.',target:'Потренировать порядок слов',module:'Грамматика'},
+  paraphrase:{title:'Нужно потренировать перефразирование',what:'Одинаковый смысл в другой формулировке распознаётся пока нестабильно.',why:'Goethe B1 часто проверяет понимание перефразированной информации.',fix:'Сравнивайте не отдельные слова, а кто, что сделал, когда, зачем и при каком условии.',target:'Потренировать перефразирование',module:'Lesen'}
+};
+function errorModel(a){
+  const code=String(a&&a.micro_skill||'');
+  const known=ERROR_MODELS[code];
+  if(known)return known;
+  const module=domainLabel(a&&a.skill||'Языковая база');
+  return {title:'Здесь нужна ещё одна тренировка',what:'В этом типе задания ответ пока получился неверным.',why:'Одной ошибки недостаточно для вывода о навыке, но её полезно разобрать.',fix:'Вернитесь к похожему заданию и сначала найдите доказательство своего ответа.',target:'Потренировать',module:module};
+}
+function errorCard(model,index){
+  return '<div class="card error-learning-card"><span class="subtle-label">'+esc(model.module)+'</span><h3>'+esc(model.title)+'</h3><p>'+esc(model.what)+'</p><div class="friendly-note"><b>Почему это важно:</b> '+esc(model.why)+'</div><p><b>Что делать:</b> '+esc(model.fix)+'</p><div class="button-row"><button class="btn secondary" data-error-train="'+index+'">'+esc(model.target)+'</button></div></div>';
+}
 function errorsView(){
-  const s=S.diagnostic.session;
-  const wrong=s.answers.filter(function(a){return a.correct===false;});
-  let html='<span class="eyebrow">Мои ошибки</span><h1 class="h2">Что уже стоит перепроверить</h1><p class="lead">Здесь показываем смысл пробела, а не внутренние item IDs и служебные коды.</p><div class="stack">';
-  wrong.forEach(function(a){
-    html+=card(domainLabel(a.skill),humanMicroSkill(a.micro_skill),'bad');
-  });
+  const ds=S.diagnostic.session;
+  const wrong=ds.answers.filter(function(a){return a.correct===false;});
+  let models=wrong.map(errorModel);
   const le=S.learning&&S.learning.answerEvidence?Object.values(S.learning.answerEvidence).filter(function(x){return x.correct===false;}):[];
-  le.forEach(function(x){html+=card('Lesen · Teil 1','Нужно ещё потренировать: '+esc(x.label||'доказательство в тексте'),'bad');});
-  if(!wrong.length&&!le.length)html+=card('Пока пусто','Подтверждённые ошибки появятся здесь после реальных попыток.','soft');
+  le.forEach(function(){models.push(ERROR_MODELS.evidence_and_paraphrase);});
+  if(Array.isArray(S.learningErrors))S.learningErrors.forEach(function(x){models.push(errorModel(x));});
+  let html='<span class="eyebrow">Мои ошибки</span><h1 class="h2">Разбираем и превращаем в тренировку</h1><p class="lead">Здесь только понятные объяснения: что произошло, почему это важно и что потренировать дальше.</p><div class="stack">';
+  models.forEach(function(m,i){html+=errorCard(m,i);});
+  if(!models.length)html+=card('Пока пусто','После реальных попыток здесь появятся ошибки с объяснением и кнопкой для повторения.','soft');
   return html+'</div>';
 }
 function humanMicroSkill(x){
-  const map={
-    paraphrase:'перефразирование',evidence_and_paraphrase:'поиск доказательства и перефразирование',
-    main_idea:'главная мысль',detail:'точная деталь',word_order:'порядок слов',
-    change_detection:'изменение договорённости',speaker_tracking:'кто что сказал'
-  };
-  return map[x]||String(x||'нужно дополнительное подтверждение').replace(/_/g,' ');
+  const m=ERROR_MODELS[String(x||'')];
+  return m?m.title:'Здесь нужна ещё одна тренировка';
 }
 function progressView(){
   const r=ensureResult();if(!r)return diagnosticGate();
@@ -483,7 +499,7 @@ function progressView(){
     const v=r.profiles[d];
     html+='<div class="card"><b>'+domainLabel(d)+'</b><p class="muted">'+profileLine(v)+'</p></div>';
   });
-  html+='</div>'+card('Schreiben и Sprechen','Если productive sample ещё не прошёл надёжную проверку, Otto честно оставляет статус «нужно подтверждение». Transcript сам по себе не является оценкой произношения или беглости.','warn')+
+  html+='</div>'+card('Письмо и устная речь','Письменную и устную речь мы продолжаем уточнять на следующих заданиях. Расшифровка записи помогает разобрать содержание, но сама по себе не оценивает произношение или беглость.','warn')+
     card('Использование помощи','Зафиксировано действий с переводом / стратегией / словарём / помощью: '+S.assistanceEvidence.length+'. Такие попытки не считаются полностью самостоятельными.','soft');
   return html;
 }
@@ -635,7 +651,7 @@ function learnView(){
   const task=learningTask(),l=S.learning,i=l.index,q=task.questions[i];
   if(l.completed)return learningSummaryView();
   const exam=l.mode==='exam';
-  let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(exam?'Exam-like':'Training · русская поддержка')+'</span><h1 class="h2">'+(exam?'Lesen · Teil 1':'Lesen Teil 1 — верно или неверно')+'</h1></div><div class="learning-progress">'+(exam?('Aufgabe '+(i+1)+' / 6'):('Задание '+(i+1)+' из 6'))+'</div></div><div class="progress-line"><i style="width:'+(((i+1)/6)*100)+'%"></i></div>';
+  let html='<div class="learning-shell"><div class="learning-head"><div><span class="eyebrow">'+(exam?'Как на экзамене':'Учебный режим · русская поддержка')+'</span><h1 class="h2">'+(exam?'Lesen · Teil 1':'Lesen Teil 1 — верно или неверно')+'</h1></div><div class="learning-progress">'+(exam?('Aufgabe '+(i+1)+' / 6'):('Задание '+(i+1)+' из 6'))+'</div></div><div class="progress-line"><i style="width:'+(((i+1)/6)*100)+'%"></i></div>';
   if(exam)html+='<div class="exam-lock"><b>Prüfungsmodus.</b> Keine Übersetzung, kein Wörterbuch und keine Tipps während der Bearbeitung.</div>';
   else html+=supportLevels();
   html+='<div class="card soft"><div class="small">Немецкая инструкция</div><b>'+esc(task.german_instruction)+'</b></div>';
@@ -678,9 +694,9 @@ function learnExamNext(){
 function learnBack(){if(S.learning.index>0){S.learning.index--;save();render();}}
 function learningSummaryView(){
   const task=learningTask(),ev=Object.values(S.learning.answerEvidence),score=ev.filter(function(x){return x.correct;}).length;
-  let html='<div class="learning-shell"><span class="eyebrow">'+(S.learning.mode==='exam'?'Exam-like завершён':'Teil завершён')+'</span><h1 class="h2">'+score+' / 6</h1><p class="lead">Главное не число само по себе, а то, какие ошибки повторились и сколько помощи потребовалось.</p>';
+  let html='<div class="learning-shell"><span class="eyebrow">'+(S.learning.mode==='exam'?'Как на экзамене завершён':'Teil завершён')+'</span><h1 class="h2">'+score+' / 6</h1><p class="lead">Главное не число само по себе, а то, какие ошибки повторились и сколько помощи потребовалось.</p>';
   const assisted=ev.filter(function(x){return x.assisted;}).length;
-  html+=card('Самостоятельность','Попыток с учебной помощью: '+assisted+' из '+ev.length+'. Перевод или стратегия до ответа делают evidence assisted.','soft');
+  html+=card('Самостоятельность','Попыток с учебной помощью: '+assisted+' из '+ev.length+'. Перевод или стратегия до ответа делают попытку с учебной помощью.','soft');
   const wrong=ev.filter(function(x){return !x.correct;});
   html+=card('Что Otto будет учитывать дальше',wrong.length?'Нужно вернуться к '+wrong.map(function(x){return x.label;}).join(', ')+'.':'В этом Teil явных повторяющихся ошибок пока не видно. Для устойчивого вывода нужны новые тексты.',''+(wrong.length?'warn':'good'));
   if(S.learning.mode==='exam'&&!S.learning.review){
@@ -795,7 +811,7 @@ function click(e){
   else if(x==='learn-guide'){S.selectedGuide='Lesen';save();go('guide');}
 }
 document.addEventListener('click',click);
-$('#resetButton').addEventListener('click',()=>{if(confirm('Сбросить данные Beta и диагностику?'))reset();});
+$('#resetButton').addEventListener('click',()=>{if(confirm('Сбросить профиль, диагностику и прогресс?'))reset();});
 window.addEventListener('popstate',render);
 window.addEventListener('hashchange',render);
 
