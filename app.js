@@ -572,7 +572,12 @@ function helpModal(){
   return '<div class="modal-backdrop"><div class="help-drawer"><div class="help-panel"><div class="modal-head"><div><span class="eyebrow">Помощь · '+esc(m)+'</span><h2 style="margin:0">Что делать и на что смотреть</h2></div><button class="close" data-action="close-modal">×</button></div><h4>Как выполнять</h4>'+listHtml(g.strategy.slice(0,4))+phrase+'<div class="help-actions">'+button('Открыть полный Гид B1','help-open-guide','secondary')+button('Закрыть','close-modal','ghost')+'</div></div></div></div>';
 }
 function ottoModal(){
-  return '<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><span class="eyebrow">Beta</span><h2 style="margin:0">Otto Personal скоро будет доступен</h2></div><button class="close" data-action="close-modal">×</button></div><div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><div><b>Пока без AI-ответов</b><div class="muted">В этой Beta персональный AI-диалог ещё не подключён. Я не буду изображать работу функции, которой пока нет.</div></div></div><div class="button-row">'+button('Открыть Гид B1','otto-open-guide','secondary')+button('Закрыть','close-modal','ghost')+'</div></div></div>';
+  const msgs=(S.ottoChat&&S.ottoChat.messages)||[];
+  let thread='<div class="otto-chat-thread">';
+  if(!msgs.length)thread+='<div class="speaker"><div class="speaker-avatar"><img src="'+window.OTTO_SRC+'" alt="Otto"></div><div><b>Otto</b><div class="muted">Спросите о текущем задании, ошибке, грамматике, Schreiben или Sprechen. Я вижу только минимальный учебный контекст этой попытки.</div></div></div>';
+  msgs.slice(-12).forEach(function(m){thread+='<div class="bubble '+(m.role==='user'?'user':'')+'"><b>'+(m.role==='user'?'Вы':'Otto')+'</b><br>'+esc(m.text)+'</div>';});
+  thread+='</div>';
+  return '<div class="modal-backdrop"><div class="modal otto-chat-modal"><div class="modal-head"><div><span class="eyebrow">Учебный помощник</span><h2 style="margin:0">Спросить Otto</h2></div><button class="close" data-action="close-modal">×</button></div>'+thread+'<textarea id="ottoMessage" class="field" rows="3" maxlength="2000" placeholder="Например: почему этот вариант не подходит?"></textarea><div class="button-row"><button class="btn primary" data-action="otto-send" '+(S.ottoChat.sending?'disabled':'')+'>'+(S.ottoChat.sending?'Отвечаю…':'Отправить')+'</button><button class="btn ghost" data-action="close-modal">Закрыть</button></div><p class="small">Otto помогает учиться и не выдаёт учебный результат за официальный балл Goethe.</p></div></div>';
 }
 function renderModal(){
   const root=$('#modalRoot');if(!root)return;
@@ -967,6 +972,7 @@ function render(){
     register:registerView,verify:verifyView,'diagnostic-gate':diagnosticGate,diagnostic:diagnosticView,
     report:reportView,home:homeView,route:routeView,modules:modulesView,module:moduleView,
     guide:guideView,learn:learnView,'learn-summary':learningSummaryView,session:sessionView,
+    lesson:lessonView,'session-summary':sessionSummaryView,
     errors:errorsView,progress:progressView
   };
   const content=(views[r]||registerView)();
@@ -988,6 +994,14 @@ function click(e){
   const guideTab=e.target.closest('[data-guide-module]');if(guideTab){S.selectedGuide=guideTab.dataset.guideModule;save();render();return;}
   const startLearn=e.target.closest('[data-start-learning]');if(startLearn){startLearning(Number(startLearn.dataset.startLearning),'training');return;}
   const startExam=e.target.closest('[data-start-exam]');if(startExam){startLearning(Number(startExam.dataset.startExam),'exam');return;}
+  const startFull=e.target.closest('[data-start-full]');if(startFull){startFullLearning(Number(startFull.dataset.startFull),startFull.dataset.mode||'training');return;}
+  const fullChoice=e.target.closest('[data-full-choice]');if(fullChoice){selectFullChoice(fullChoice.dataset.fullChoice);return;}
+  const errorTrain=e.target.closest('[data-error-train]');if(errorTrain){
+    const cards=document.querySelectorAll('[data-error-train]'),idx=Array.from(cards).indexOf(errorTrain),models=[];
+    const wrong=S.diagnostic.session.answers.filter(a=>a.correct===false);wrong.forEach(a=>models.push(errorModel(a)));
+    if(Array.isArray(S.learningErrors))S.learningErrors.forEach(a=>models.push(errorModel(a)));
+    const m=models[Math.max(0,idx)]||ERROR_MODELS.evidence_and_paraphrase;S.selectedModule=m.module==='Грамматика'?'Lesen':m.module;save();const sets=generatedPart(S.selectedModule,1);if(sets.length){resetLesson(sets[0],'training',false);go('lesson');}else go('module');return;
+  }
   const learnChoice=e.target.closest('[data-learn-choice]');if(learnChoice){if(!S.learning.checked[S.learning.index]){S.learning.answers[S.learning.index]=Number(learnChoice.dataset.learnChoice);save();render();}return;}
   const support=e.target.closest('[data-support-level]');if(support){S.learning.supportLevel=Number(support.dataset.supportLevel);S.learning.translation=false;S.learning.instructionHelp=false;S.learning.strategy=false;S.learning.dictionary=false;save();render();return;}
   const speakWord=e.target.closest('[data-speak-word]');if(speakWord){speakText(speakWord.dataset.speakWord);return;}
@@ -1017,7 +1031,9 @@ function click(e){
   else if(x==='skip-speaking')skipAllSpeaking();
   else if(x==='speak-otto')speakOtto();
   else if(x==='open-route')go('route');
-  else if(x==='start-session'){S.dailySession.started=true;save();go('session');}
+  else if(x==='start-first')startFirstLesson();
+  else if(x==='resume-session')startSessionTask();
+  else if(x==='start-session')startFirstLesson();
   else if(x==='nav-back'){if(history.length>1)history.back();else go('home');}
   else if(x==='open-home')go('home');
   else if(x==='open-modules')go('modules');
@@ -1029,6 +1045,7 @@ function click(e){
   else if(x==='help-open-guide'){S.ui.helpOpen=false;S.selectedGuide=S.selectedModule;save();go('guide');}
   else if(x==='otto-open-guide'){S.ui.ottoOpen=false;S.selectedGuide=S.selectedModule||'Lesen';save();go('guide');}
   else if(x==='ask-otto'){S.ui.ottoOpen=true;S.ui.helpOpen=false;save();renderModal();}
+  else if(x==='otto-send')sendOttoMessage();
   else if(x==='close-modal'){S.ui.helpOpen=false;S.ui.ottoOpen=false;save();renderModal();}
   else if(x==='share-app')shareApp();
   else if(x==='guide-speak-sample')speakText(GUIDE.modules.Sprechen.presentation.sample);
@@ -1044,8 +1061,23 @@ function click(e){
   else if(x==='learn-review'){S.learning.review=true;save();render();}
   else if(x==='learn-module'){S.selectedModule='Lesen';save();go('module');}
   else if(x==='learn-guide'){S.selectedGuide='Lesen';save();go('guide');}
+  else if(x==='lesson-translation')lessonAssistance('translation');
+  else if(x==='lesson-strategy')lessonAssistance('strategy');
+  else if(x==='lesson-dictionary')lessonAssistance('dictionary');
+  else if(x==='lesson-sample')lessonAssistance('sample');
+  else if(x==='lesson-audio')playLessonAudio();
+  else if(x==='full-check')checkFullAnswer();
+  else if(x==='full-back')fullBack();
+  else if(x==='full-next')fullNext();
+  else if(x==='writing-submit')submitWritingLesson();
+  else if(x==='mic-preflight')microphonePreflight();
+  else if(x==='lesson-record')toggleLessonRecording();
+  else if(x==='speaking-submit')submitSpeakingLesson(false);
+  else if(x==='speaking-skip')submitSpeakingLesson(true);
+  else if(x==='lesson-complete')finishLessonAndAdvance();
 }
 document.addEventListener('click',click);
+document.addEventListener('input',function(e){if(e.target&&e.target.id==='fullWriting'){S.lesson.userText=e.target.value;save();}});
 $('#resetButton').addEventListener('click',()=>{if(confirm('Сбросить профиль, диагностику и прогресс?'))reset();});
 window.addEventListener('popstate',render);
 window.addEventListener('hashchange',render);
