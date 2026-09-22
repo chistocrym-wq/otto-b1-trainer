@@ -100,8 +100,9 @@ test('Lesen training gives feedback; exam mode hides feedback until review',asyn
 test('errors page uses human Russian explanations, never raw codes',async({page})=>{
   await fresh(page);await seedCompleted(page);
   await page.evaluate(()=>{const s=window.__OTTO_TEST__.getState();s.learningErrors=[{task_id:'x1',module:'Lesen',skill:'Lesen',micro_skill:'matching_constraints'},{task_id:'x2',module:'grammar',skill:'grammar',micro_skill:'embedded_question'},{task_id:'x3',module:'Lesen',skill:'Lesen',micro_skill:'purpose_paraphrase'}];window.__OTTO_TEST__.setState(s);});
-  await page.evaluate(()=>{location.hash='#errors';});
-  await page.waitForTimeout(80);const text=await page.locator('#screen').innerText();
+  await page.locator('[data-nav="errors"]').click();
+  await expect(page.getByText('Разбираем и превращаем в тренировку')).toBeVisible();
+  const text=await page.locator('#screen').innerText();
   expect(text).toContain('Не все условия объявления были учтены');expect(text).toContain('Порядок слов в косвенном вопросе');expect(text).toContain('Трудно распознать ту же мысль другими словами');
   expect(text).not.toMatch(/matching_constraints|matching constraints|embedded_question|embedded question|purpose_paraphrase|purpose paraphrase/);
   await expect(page.getByRole('button',{name:/Потренировать/}).first()).toBeVisible();
