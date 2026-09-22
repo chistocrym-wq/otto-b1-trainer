@@ -1,0 +1,45 @@
+name: Generate static learning audio
+on:
+  push:
+    branches:
+      - preview/clean-v1
+    paths:
+      - ".github/workflows/generate-audio-assets.yml"
+      - "tools/generate_static_audio.py"
+      - "tools/generate_full_content.py"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preview/clean-v1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install one-time audio tooling
+        run: python -m pip install edge-tts imageio-ffmpeg
+      - name: Generate deterministic content metadata
+        run: python tools/generate_full_content.py
+      - name: Generate static German audio assets
+        run: python tools/generate_static_audio.py
+      - name: Verify expected static audio count
+        run: |
+          count=$(find assets/audio -type f -name '*.mp3' | wc -l)
+          echo "Static MP3 assets: $count"
+          test "$count" -eq 90
+      - name: Commit versioned audio assets to preview branch
+        run: |
+          git config user.name "otto-preview-audio-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add assets/audio
+          if git diff --cached --quiet; then
+            echo "Audio assets are already current."
+          else
+            git commit -m "audio: add versioned German learning assets"
+            git push origin HEAD:preview/clean-v1
+          fi
