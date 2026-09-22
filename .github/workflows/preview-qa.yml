@@ -14,6 +14,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Generate full learning content
+        run: python3 tools/generate_full_content.py
       - name: Syntax checks
         run: npm run check
       - name: Static build/content smoke
@@ -22,6 +24,14 @@ jobs:
         run: npm run test:diagnostic
       - name: Content bundle readiness regression
         run: npm run test:content
+      - name: Full learning bank regression
+        env:
+          ALLOW_AUDIO_PENDING: "1"
+        run: npm run test:full-content
+      - name: Adaptive planner regression
+        run: npm run test:planner
+      - name: OpenAI server contract regression
+        run: npm run test:openai
       - name: Guide/learning regression
         run: npm run test:guide
       - name: Release/no-secrets regression
