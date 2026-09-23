@@ -31,3 +31,12 @@ test('transcription requires server key and audio',async()=>{
   assert.equal((await transcribe(req({audio_base64:'YWJj',mime_type:'audio/webm'}))).status,503);
   if(old)process.env.OPENAI_API_KEY=old;
 });
+
+test('transcription does not send Netlify gateway token to direct OpenAI audio endpoint',async()=>{
+  const oldKey=process.env.OPENAI_API_KEY,oldBase=process.env.OPENAI_BASE_URL,oldDirect=process.env.OTTO_TRANSCRIBE_API_KEY;
+  process.env.OPENAI_API_KEY='gateway-token';process.env.OPENAI_BASE_URL='https://gateway.example.test/openai/v1';delete process.env.OTTO_TRANSCRIBE_API_KEY;
+  const r=await transcribe(req({audio_base64:'YWJj',mime_type:'audio/webm'}));assert.equal(r.status,503);
+  if(oldKey)process.env.OPENAI_API_KEY=oldKey;else delete process.env.OPENAI_API_KEY;
+  if(oldBase)process.env.OPENAI_BASE_URL=oldBase;else delete process.env.OPENAI_BASE_URL;
+  if(oldDirect)process.env.OTTO_TRANSCRIBE_API_KEY=oldDirect;else delete process.env.OTTO_TRANSCRIBE_API_KEY;
+});
