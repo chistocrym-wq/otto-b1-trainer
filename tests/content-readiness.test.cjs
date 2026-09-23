@@ -63,7 +63,15 @@ function readyHoeren(overrides={}){
   t.audio.speakers=[{speaker_id:'moderatorin',voice_id:'voice-f-01'}];
   const r=validateTask(t);
   assert.equal(r.ok,false);
-  assert.ok(r.errors.includes('HOEREN_TEIL4_REQUIRES_MULTISPEAKER'));
+  assert.ok(r.errors.includes('HOEREN_TEIL4_REQUIRES_THREE_SPEAKERS'));
+}
+
+{
+  const t=readyHoeren({teil:3});
+  t.audio.speakers=[{speaker_id:'person_a',voice_id:'voice-f-01'}];
+  const r=validateTask(t);
+  assert.equal(r.ok,false);
+  assert.ok(r.errors.includes('HOEREN_TEIL3_REQUIRES_TWO_SPEAKERS'));
 }
 
 {
