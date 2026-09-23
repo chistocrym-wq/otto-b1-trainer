@@ -37,13 +37,31 @@ for(const group of Object.values(hoeren))for(const t of group){
   const imgs=t.scenes?t.scenes.map(x=>x.image):[t.image];
   imgs.forEach(i=>{const raw=JSON.stringify(i);assert.equal(/correct_answer|correct_index|solution|answer_key/i.test(raw),false,i.image_id+' answer leak metadata');});
 }
-for(let a=1;a<=3;a++)for(const t of read('content/schreiben/aufgabe-'+a+'.json').tasks){
-  germanish(t.task_id,t.instruction_de);germanish(t.task_id+' sample',t.sample);
-  assert.notEqual(t.instruction_de.trim(),t.translation.trim(),t.task_id+' untranslated');
-  assert.equal(new Set(t.required_points).size,t.required_points.length,t.task_id+' duplicate required point');
+for(let a=1;a<=3;a++){
+  const tasks=read('content/schreiben/aufgabe-'+a+'.json').tasks;
+  assert.equal(new Set(tasks.map(t=>t.instruction_de)).size,10,'Schreiben Aufgabe '+a+' prompts must be distinct');
+  assert.equal(new Set(tasks.map(t=>t.sample)).size,10,'Schreiben Aufgabe '+a+' samples must be distinct');
+  for(const t of tasks){
+    germanish(t.task_id,t.instruction_de);germanish(t.task_id+' sample',t.sample);
+    assert.notEqual(t.instruction_de.trim(),t.translation.trim(),t.task_id+' untranslated');
+    assert.equal(new Set(t.required_points).size,t.required_points.length,t.task_id+' duplicate required point');
+  }
 }
-for(let a=1;a<=3;a++)for(const t of read('content/sprechen/aufgabe-'+a+'.json').tasks){
-  germanish(t.task_id,t.instruction_de);germanish(t.task_id+' sample',t.sample);
-  assert.ok(t.phrase_bank.length>=4,t.task_id+' phrase bank short');
+for(let a=1;a<=3;a++){
+  const tasks=read('content/sprechen/aufgabe-'+a+'.json').tasks;
+  assert.equal(new Set(tasks.map(t=>t.instruction_de)).size,10,'Sprechen Aufgabe '+a+' prompts must be distinct');
+  assert.equal(new Set(tasks.map(t=>t.sample)).size,10,'Sprechen Aufgabe '+a+' samples must be distinct');
+  for(const t of tasks){
+    germanish(t.task_id,t.instruction_de);germanish(t.task_id+' sample',t.sample);
+    assert.ok(t.phrase_bank.length>=4,t.task_id+' phrase bank short');
+  }
+}
+for(const p of [1,2,3,4,5])for(const t of lesen[p]){
+  const raw=JSON.stringify(t);
+  assert.equal(/Переведите вопрос по смыслу материала|Проверьте это утверждение по содержанию материала/.test(raw),false,t.task_id+' contains fallback translation copy');
+}
+for(const p of [1,2,3,4])for(const t of hoeren[p]){
+  const raw=JSON.stringify(t);
+  assert.equal(/Переведите вопрос по смыслу материала|Проверьте это утверждение по содержанию материала/.test(raw),false,t.task_id+' contains fallback translation copy');
 }
 console.log('content quality reviewer: PASS; unique long materials='+fingerprints.size);
