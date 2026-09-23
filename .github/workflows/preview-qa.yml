@@ -40,10 +40,11 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Browser desktop/mobile regression
         run: npm run test:e2e
-      - name: Public Beta anonymous smoke
-        # Public Beta RC target: dedicated Netlify site, anonymous access required.
+      - name: Deploy Preview anonymous smoke
+        if: github.event_name == 'pull_request'
+        # Test the exact Netlify Deploy Preview created for this PR, never the stale standalone beta site.
         env:
-          PUBLIC_BETA_URL: https://otto-b1-beta.netlify.app
+          PUBLIC_BETA_URL: https://deploy-preview-${{ github.event.pull_request.number }}--otto-b1-trainer.netlify.app
         run: |
           ok=0
           for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
