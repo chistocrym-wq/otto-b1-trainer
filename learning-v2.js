@@ -30,6 +30,12 @@
     return w;
   }
   function duration(module,minutes){const base={Schreiben:10,Lesen:8,'Hören':8,Sprechen:6}[module]||8;return minutes<=10?Math.min(base,10):base;}
+  function daysUntilExam(state){
+    if(!state.examDate)return null;
+    const exam=new Date(state.examDate+'T00:00:00Z'),today=new Date(isoDay()+'T00:00:00Z');
+    const n=Math.ceil((exam-today)/86400000);
+    return Number.isFinite(n)?n:null;
+  }
   function candidateScore(state,result,task){
     const h=state.task_history[task.task_id];
     let score=moduleWeakness(result,task.module)*100;
@@ -37,8 +43,14 @@
     else{
       score-=Math.min(50,(h.attempt_count||0)*12);
       if(h.next_review&&h.next_review<=isoDay())score+=45;
-      if(h.last_seen===isoDay())score-=200;
+      if(h.next_review&&h.next_review>isoDay())score-=120;
+      if(h.last_seen===isoDay())score-=240;
       if(h.score!=null&&h.score<0.7)score+=25;
+    }
+    const examDays=daysUntilExam(state);
+    if(examDays!=null&&examDays>=0){
+      if(examDays<=14)score+=task.module==='Lesen'||task.module==='Hören'?18:24;
+      else if(examDays<=30)score+=10;
     }
     const recent=state.dailySession&&state.dailySession.completed||[];
     if(recent.includes(task.task_id))score-=300;
@@ -89,5 +101,5 @@
     const l=state.lesson||{};
     return {module:task?.module||state.selectedModule||null,part:task?.teil||null,task_id:task?.task_id||null,instruction:task?.german_instruction||task?.instruction_de||null,user_answer:l.userText||null,attempted:!!l.submitted,learning_orientation:state.diagnostic?.result?.placement?.band||state.diagnostic?.result?.placement?.closerTo||null,assistance_used:!!l.assistance_used};
   }
-  root.OTTO_FULL_LEARNING={version:'full-learning-runtime-v1',allTasks,findTask,ensureState,buildPlan,currentSessionTask,recordCompletion,shouldResume,ottoContext,isoDay};
+  root.OTTO_FULL_LEARNING={version:'full-learning-runtime-v1.1',allTasks,findTask,ensureState,buildPlan,currentSessionTask,recordCompletion,shouldResume,ottoContext,isoDay,daysUntilExam};
 })(window);
