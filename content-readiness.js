@@ -44,7 +44,8 @@ function validateSpeakers(audio,task){
   }
   const voices=[...voiceBySpeaker.values()];
   if(ids.length>1&&new Set(voices).size!==ids.length)errors.push('MULTISPEAKER_REUSES_VOICE');
-  if(String(task.teil)==='4'&&ids.length<2)errors.push('HOEREN_TEIL4_REQUIRES_MULTISPEAKER');
+  if(String(task.teil)==='3'&&ids.length<2)errors.push('HOEREN_TEIL3_REQUIRES_TWO_SPEAKERS');
+  if(String(task.teil)==='4'&&ids.length<3)errors.push('HOEREN_TEIL4_REQUIRES_THREE_SPEAKERS');
   return errors;
 }
 
