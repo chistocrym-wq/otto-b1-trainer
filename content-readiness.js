@@ -1,6 +1,7 @@
 'use strict';
 
 const FINAL_AUDIO_FORBIDDEN = new Set(['speechSynthesis','browser_speech_synthesis','tts_browser_placeholder']);
+const READY_STATUSES = new Set(['CONTENT_READY','CONTENT_READY_PREVIEW']);
 
 function nonEmptyString(v){return typeof v==='string'&&v.trim().length>0;}
 function isArray(v){return Array.isArray(v);}
@@ -13,7 +14,7 @@ function validateCommon(task){
   if(!isArray(task.glossary)||task.glossary.length===0)errors.push('MISSING_GLOSSARY');
   if(!nonEmptyString(task.translation))errors.push('MISSING_TRANSLATION');
   const hasAnswer=task.answer_key_status==='VERIFIED'&&(task.correct_answer!==undefined||task.answer_key!==undefined);
-  const hasRubric=task.rubric_status==='VERIFIED'&&task.rubric;
+  const hasRubric=['VERIFIED','GOETHE_MODEL_FORMAT_VERIFIED'].includes(task.rubric_status)&&task.rubric;
   if(!hasAnswer&&!hasRubric)errors.push('UNVERIFIED_ANSWER_KEY_OR_RUBRIC');
   return errors;
 }
@@ -69,8 +70,16 @@ function validateImage(task){
 
 function validateHoeren(task){
   const errors=[];
-  errors.push(...validateAudio(task));
-  errors.push(...validateImage(task));
+  if(isArray(task.scenes)&&task.scenes.length){
+    task.scenes.forEach((scene,index)=>{
+      const sceneTask=Object.assign({},task,{audio:scene.audio,image:scene.image});
+      validateAudio(sceneTask).forEach(e=>errors.push('SCENE_'+(index+1)+'_'+e));
+      validateImage(sceneTask).forEach(e=>errors.push('SCENE_'+(index+1)+'_'+e));
+    });
+  }else{
+    errors.push(...validateAudio(task));
+    errors.push(...validateImage(task));
+  }
   return errors;
 }
 
@@ -78,14 +87,15 @@ function validateTask(task){
   const errors=validateCommon(task);
   if(task.module==='Hören'||task.module==='Hoeren')errors.push(...validateHoeren(task));
   const ready=errors.length===0;
-  if(task.content_status==='CONTENT_READY'&&!ready)errors.unshift('CONTENT_READY_WITH_INCOMPLETE_BUNDLE');
+  if(READY_STATUSES.has(task.content_status)&&!ready)errors.unshift('CONTENT_READY_WITH_INCOMPLETE_BUNDLE');
   return {ok:ready,errors};
 }
 
 function assertCanPublish(task){
   const r=validateTask(task);
-  if(!r.ok)throw new Error('Task '+(task.task_id||'<unknown>')+' is not content-ready: '+r.errors.join(', '));
+  if(!READY_STATUSES.has(task.content_status))r.errors.unshift('CONTENT_STATUS_NOT_PUBLISHABLE');
+  if(!r.ok||r.errors.length)throw new Error('Task '+(task.task_id||'<unknown>')+' is not content-ready: '+r.errors.join(', '));
   return true;
 }
 
-module.exports={validateTask,assertCanPublish,FINAL_AUDIO_FORBIDDEN};
+module.exports={validateTask,assertCanPublish,FINAL_AUDIO_FORBIDDEN,READY_STATUSES};
