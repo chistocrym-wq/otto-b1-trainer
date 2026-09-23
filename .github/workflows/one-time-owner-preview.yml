@@ -1,0 +1,21 @@
+name: One-time Owner Preview
+on:
+  push:
+    branches:
+      - preview/clean-v1
+    paths:
+      - ".github/workflows/one-time-owner-preview.yml"
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate full B1 learning bank
+        run: python3 tools/generate_full_content.py
+      - name: Create anonymous Netlify preview
+        run: |
+          npx -y netlify-cli@latest deploy --allow-anonymous --build --json | tee /tmp/netlify-preview.json
+          cat /tmp/netlify-preview.json
