@@ -7,7 +7,8 @@ function outputText(data){
   return out.join('\n').trim();
 }
 async function provider(body,key,signal){
-  return fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'authorization':'Bearer '+key,'content-type':'application/json'},body:JSON.stringify(body),signal});
+  const base=String(process.env.OPENAI_BASE_URL||'https://api.openai.com/v1').replace(/\/$/,'');
+  return fetch(base+'/responses',{method:'POST',headers:{'authorization':'Bearer '+key,'content-type':'application/json'},body:JSON.stringify(body),signal});
 }
 export default async function handler(req){
   if(req.method!=='POST')return json(405,{error:'method_not_allowed'});
