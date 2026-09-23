@@ -527,6 +527,7 @@ function guideView(){
   MODULES.forEach(function(x){html+='<button class="guide-tab '+(x===m?'active':'')+'" data-guide-module="'+x+'">'+x+'</button>';});
   html+='</div><div class="fact-grid"><div class="fact"><span class="small">Время</span><strong>'+esc(g.exam.duration)+'</strong></div><div class="fact"><span class="small">Структура</span><strong>'+esc(g.exam.parts)+'</strong></div><div class="fact"><span class="small">Формат</span><strong>'+esc(g.exam.scored)+'</strong></div></div>'+
     '<details class="guide-section" open><summary>1. Как проходит на экзамене</summary><div class="guide-body"><p>'+esc(g.summary)+'</p><p>'+esc(g.exam.aids)+'</p></div></details>'+
+    (g.exam.criteria?'<details class="guide-section"><summary>Критерии оценки</summary><div class="guide-body">'+listHtml(g.exam.criteria)+'</div></details>':'')+
     '<details class="guide-section" open><summary>2. Blitz & Fakten — главное за минуту</summary><div class="guide-body">'+listHtml(g.blitz)+'</div></details>'+
     '<details class="guide-section"><summary>3. Части экзамена</summary><div class="guide-body">'+guidePartRows(g)+'</div></details>'+
     '<details class="guide-section"><summary>4. Стратегия Otto</summary><div class="guide-body">'+listHtml(g.strategy)+'</div></details>'+
