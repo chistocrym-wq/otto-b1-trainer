@@ -7,13 +7,25 @@ function nonEmptyString(v){return typeof v==='string'&&v.trim().length>0;}
 function isArray(v){return Array.isArray(v);}
 function uniq(xs){return new Set(xs).size===xs.length;}
 
+function hasEmbeddedAnswers(task){
+  const valid=q=>q&&(
+    typeof q.correct==='boolean'||typeof q.correct==='string'||
+    Number.isInteger(q.correct_index)||nonEmptyString(q.correct_speaker)
+  );
+  if(isArray(task.questions)&&task.questions.length)return task.questions.every(valid);
+  if(isArray(task.situations)&&task.situations.length)return task.situations.every(x=>x&&x.correct!==undefined);
+  if(isArray(task.opinions)&&task.opinions.length)return task.opinions.every(x=>x&&x.correct!==undefined);
+  if(isArray(task.scenes)&&task.scenes.length)return task.scenes.every(s=>isArray(s.questions)&&s.questions.length&&s.questions.every(valid));
+  return false;
+}
+
 function validateCommon(task){
   const errors=[];
   const req=['task_id','module','teil','task_type','skill','micro_skill','difficulty','topic','version','qa_status','source_basis','explanation','strategy'];
   req.forEach(k=>{if(task[k]==null||task[k]===''||(isArray(task[k])&&!task[k].length))errors.push('MISSING_'+k.toUpperCase());});
   if(!isArray(task.glossary)||task.glossary.length===0)errors.push('MISSING_GLOSSARY');
   if(!nonEmptyString(task.translation))errors.push('MISSING_TRANSLATION');
-  const hasAnswer=task.answer_key_status==='VERIFIED'&&(task.correct_answer!==undefined||task.answer_key!==undefined);
+  const hasAnswer=task.answer_key_status==='VERIFIED'&&(task.correct_answer!==undefined||task.answer_key!==undefined||hasEmbeddedAnswers(task));
   const hasRubric=['VERIFIED','GOETHE_MODEL_FORMAT_VERIFIED'].includes(task.rubric_status)&&task.rubric;
   if(!hasAnswer&&!hasRubric)errors.push('UNVERIFIED_ANSWER_KEY_OR_RUBRIC');
   return errors;
@@ -45,7 +57,7 @@ function validateAudio(task){
   });
   if(a.task_id!==task.task_id)errors.push('AUDIO_TASK_ID_MISMATCH');
   if(FINAL_AUDIO_FORBIDDEN.has(a.source_type))errors.push('BROWSER_SPEECH_SYNTHESIS_NOT_FINAL');
-  if(a.production_status==='FINAL'&&!nonEmptyString(a.asset_src))errors.push('FINAL_AUDIO_ASSET_MISSING');
+  if((a.production_status==='FINAL'||a.source_type==='versioned_static_asset')&&!nonEmptyString(a.asset_src))errors.push('FINAL_AUDIO_ASSET_MISSING');
   const p=a.playback_rules||{};
   if(!Number.isInteger(p.exam_play_count)||p.exam_play_count<1)errors.push('INVALID_EXAM_PLAY_COUNT');
   if(p.extra_training_plays_are_assisted!==true)errors.push('EXTRA_TRAINING_PLAYS_MUST_BE_ASSISTED');
