@@ -127,6 +127,77 @@ function domainLabel(d){
 }
 function confidenceRu(c){return c==='high'?'высокая':c==='medium'?'средняя':c==='low'?'низкая':'недостаточно данных';}
 
+const ERROR_MODELS={
+  matching_constraints:{
+    error_code:'matching_constraints',module:'Lesen',priority:'high',
+    title:'Не все условия объявления были учтены',
+    what:'Вы нашли вариант с подходящей темой, но одно или несколько важных условий ситуации не совпали.',
+    why:'В Lesen Teil 3 правильный ответ должен подходить по всем существенным ограничениям: тема, место, время, цена, возраст и другие условия.',
+    fix:'Перед выбором отметьте каждое условие ситуации и проверьте объявление по ним по очереди.',
+    target:'Сопоставление ситуаций и объявлений'
+  },
+  embedded_question:{
+    error_code:'embedded_question',module:'Грамматика',priority:'medium',
+    title:'Порядок слов в косвенном вопросе',
+    what:'После вводной фразы порядок слов остался как в прямом вопросе.',
+    why:'В конструкциях вроде „Ich weiß nicht, …“ и „Können Sie mir sagen, …“ спрягаемый глагол в придаточной части обычно стоит в конце.',
+    fix:'Сначала найдите вводную фразу, затем соберите придаточную часть и поставьте спрягаемый глагол в конец.',
+    target:'Косвенные вопросы'
+  },
+  purpose_paraphrase:{
+    error_code:'purpose_paraphrase',module:'Lesen',priority:'high',
+    title:'Трудно распознать ту же мысль другими словами',
+    what:'Вопрос и текст передают один смысл, но используют разные слова и формулировки.',
+    why:'На B1 ответ часто нельзя найти по одному совпавшему слову: нужно узнавать перефразирование.',
+    fix:'Сформулируйте смысл вопроса своими словами и ищите в тексте подтверждение идеи, а не буквальное совпадение.',
+    target:'Перефразирование и доказательство в тексте'
+  },
+  evidence_and_paraphrase:{
+    error_code:'evidence_and_paraphrase',module:'Lesen',priority:'high',
+    title:'Ответ выбран без достаточного доказательства в тексте',
+    what:'Вариант показался подходящим, но ключевой фрагмент текста подтверждает другой смысл.',
+    why:'В Lesen нужно опираться на конкретное доказательство, особенно когда варианты специально звучат правдоподобно.',
+    fix:'Перед ответом найдите фразу-доказательство и сравните её со всеми вариантами.',
+    target:'Поиск доказательства и перефразирование'
+  },
+  task_completion:{
+    error_code:'task_completion',module:'Schreiben',priority:'high',
+    title:'Не все пункты письменного задания раскрыты',
+    what:'Текст написан, но один из обязательных коммуникативных пунктов отсутствует или раскрыт слишком слабо.',
+    why:'В Schreiben выполнение задания оценивается отдельно: хороший язык не компенсирует пропущенный пункт.',
+    fix:'Перед написанием превратите каждый пункт условия в отдельную короткую мысль и отметьте его после выполнения.',
+    target:'Полное выполнение письменной задачи'
+  },
+  speaking_practice:{
+    error_code:'speaking_practice',module:'Sprechen',priority:'medium',
+    title:'Нужна ещё одна устная попытка',
+    what:'Устное задание было пропущено или пока не дало достаточно материала для разбора.',
+    why:'Для Sprechen важна реальная речь и взаимодействие, а не только чтение образцов.',
+    fix:'Запишите короткий ответ, прослушайте себя и проверьте, выполнена ли коммуникативная задача.',
+    target:'Самостоятельная устная практика'
+  }
+};
+function errorModel(raw){
+  const key=String(raw&&raw.micro_skill||raw&&raw.error_code||'');
+  const known=ERROR_MODELS[key];
+  if(known)return Object.assign({},known,{module:raw&&raw.module&&raw.module!=='grammar'?raw.module:known.module});
+  return {
+    error_code:'needs_review',module:domainLabel(raw&&raw.module||raw&&raw.skill||'Навык'),priority:'medium',
+    title:'Здесь нужна ещё одна тренировка',
+    what:'По этой попытке пока нельзя надёжно назвать узкую причину ошибки.',
+    why:'Otto не показывает внутренний технический код пользователю, если для него нет проверенного понятного объяснения.',
+    fix:'Повторите новое задание того же типа и сравните ход решения с разбором после ответа.',
+    target:'Уточнение навыка на новом задании'
+  };
+}
+function errorCard(m,i){
+  const cls=m.priority==='high'?'error-learning-card':'soft';
+  return '<div class="card '+cls+'"><span class="eyebrow">'+esc(m.module)+'</span><h3>'+esc(m.title)+'</h3>'+
+    '<p>'+esc(m.what)+'</p><div class="friendly-note"><b>Почему это важно:</b> '+esc(m.why)+'</div>'+
+    '<p><b>Что делать:</b> '+esc(m.fix)+'</p><p class="small"><b>Следующая цель:</b> '+esc(m.target)+'</p>'+
+    '<button class="btn secondary" data-error-train="'+i+'">Потренировать это</button></div>';
+}
+
 function captureRegistrationDraft(){
   const n=$('#regName'),g=$('#regGender'),d=$('#regExamDate'),c=$('#regContact');
   if(n)S.name=n.value;
