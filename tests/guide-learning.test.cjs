@@ -24,6 +24,10 @@ assert.equal(G.modules.Lesen.exam.scored,'30 заданий');
 assert.equal(G.modules.Hören.parts.length,4);
 assert.equal(G.modules.Schreiben.parts.length,3);
 assert.equal(G.modules.Sprechen.parts.length,3);
+assert.ok(G.modules.Schreiben.exam.criteria.some(x=>x.includes('Erfüllung 10')));
+assert.ok(G.modules.Schreiben.exam.criteria.some(x=>x.includes('Wortschatz 6')));
+assert.ok(G.modules.Sprechen.exam.criteria.some(x=>x.includes('Interaktion 4')));
+assert.ok(G.modules.Sprechen.exam.criteria.some(x=>x.includes('Aussprache')));
 assert.ok(G.modules.Sprechen.parts[1].label.includes('Präsentation'));
 assert.ok(!G.modules.Schreiben.parts.some(x=>/Präsentation/i.test(x.label)));
 
