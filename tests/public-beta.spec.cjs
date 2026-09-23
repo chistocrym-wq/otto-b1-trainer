@@ -62,3 +62,24 @@ test('public Beta anonymous 390x844 renders without overflow or login',async({br
   await page.screenshot({path:testInfo.outputPath('public-beta-390.png'),fullPage:true});
   await context.close();
 });
+
+
+test('public Beta serves full learning bank, static media and server functions',async({browser})=>{
+  const context=await browser.newContext({viewport:{width:1280,height:800}});
+  const page=await context.newPage();
+  await assertPublicShell(page);
+  const counts=await page.evaluate(()=>{
+    const c=window.OTTO_CONTENT_CATALOG||{};
+    const sum=o=>Object.values(o||{}).reduce((n,x)=>n+(Array.isArray(x)?x.length:0),0);
+    return {Lesen:sum(c.Lesen),Hoeren:sum(c['Hören']),Schreiben:sum(c.Schreiben),Sprechen:sum(c.Sprechen)};
+  });
+  expect(counts).toEqual({Lesen:50,Hoeren:40,Schreiben:30,Sprechen:30});
+  const audio=await page.request.get(new URL('/assets/audio/hoeren/h-t1-01-1.mp3',url).toString());
+  expect(audio.status()).toBe(200);
+  const image=await page.request.get(new URL('/assets/images/hoeren/h-t1-01-1.svg',url).toString());
+  expect(image.status()).toBe(200);
+  const chat=await page.request.post(new URL('/.netlify/functions/otto-chat',url).toString(),{data:{message:'Проверка подключения',context:{module:'Lesen',attempted:false}}});
+  expect([200,503]).toContain(chat.status());
+  expect(chat.status()).not.toBe(404);
+  await context.close();
+});
