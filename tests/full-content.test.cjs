@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const read=p=>JSON.parse(fs.readFileSync(path.join(root,p),'utf8'));
+const {assertCanPublish}=require('../content-readiness.js');
 const allIds=new Set();
 function common(t){
   for(const k of ['task_id','module','teil','task_type','skill','micro_skill','difficulty','topic','version','qa_status','content_status','source_basis','strategy','explanation'])assert.ok(t[k],t.task_id+' missing '+k);
@@ -12,6 +13,7 @@ function common(t){
   assert.ok(Array.isArray(t.glossary)&&t.glossary.length>=3,t.task_id+' glossary');
   assert.ok(t.translation,t.task_id+' translation');
   assert.equal(allIds.has(t.task_id),false,'duplicate '+t.task_id);allIds.add(t.task_id);
+  assert.equal(assertCanPublish(t),true,t.task_id+' publish gate');
 }
 const lesen={};for(let p=1;p<=5;p++)lesen[p]=read('content/lesen/teil-'+p+'.json').sets;
 assert.deepEqual(Object.fromEntries(Object.entries(lesen).map(([k,v])=>[k,v.length])),{'1':10,'2':10,'3':10,'4':10,'5':10});
