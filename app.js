@@ -950,7 +950,7 @@ async function submitSpeakingLesson(skip){
     else if(res.status===503)S.lesson.transcript='Расшифровка станет доступна после подключения серверного сервиса.';
     else S.lesson.transcript='Расшифровку получить не удалось, но запись можно использовать для самостоятельного прослушивания.';
   }catch(e){S.lesson.transcript='Расшифровку получить не удалось, но запись сохранена в текущей попытке.';}
-  S.lesson.submitted=true;S.lesson.score=.7;S.lesson.feedback={text:'Запись выполнена. Проверьте, раскрыли ли вы задачу, использовали ли связки и говорили ли законченными фразами.'};S.lesson.micStatus='Запись готова.';save();render();
+  S.lesson.submitted=true;S.lesson.score=null;S.lesson.feedback={text:'Запись выполнена. Проверьте, раскрыли ли вы задачу, использовали ли связки и говорили ли законченными фразами. Автоматический балл за устную речь не выставляется: расшифровка не измеряет произношение и беглость.'};S.lesson.micStatus='Запись готова.';save();render();
 }
 function recordManualHistory(task,score,assisted){
   const old=S.task_history[task.task_id]||{},d=new Date(),next=new Date(d);next.setUTCDate(next.getUTCDate()+(score!=null&&score<.7?2:5));
@@ -974,9 +974,29 @@ function playLessonAudio(){
 }
 async function sendOttoMessage(){
   const input=$('#ottoMessage');if(!input||S.ottoChat.sending)return;const message=input.value.trim();if(!message)return;if(message.length>2000)return alert('Сообщение слишком длинное.');
-  const task=currentFullTask();S.ottoChat.messages.push({role:'user',text:message});S.ottoChat.sending=true;S.ottoChat.error=null;save();renderModal();
+  const task=currentFullTask(),context=FULL?FULL.ottoContext(S,task):{module:S.selectedModule};
+  if(task){
+    const items=closedItems(task),item=items[S.lesson.index||0];
+    if(item){
+      context.current_prompt=item.prompt||null;
+      context.user_answer=S.lesson.answers[item.id]??null;
+      context.attempted=!!(S.lesson.checked[item.id]||S.lesson.submitted);
+      if(context.attempted){
+        context.correct_answer=item.correct??null;
+        context.evidence=item.evidence||null;
+        context.trap=item.trap||null;
+      }
+    }
+    if(task.module==='Schreiben'){
+      context.required_points=task.required_points||[];
+      context.user_text=S.lesson.userText||'';
+    }
+    if(task.module==='Sprechen')context.user_transcript=S.lesson.transcript||'';
+    context.recent_errors=(S.learningErrors||[]).slice(-5).map(x=>({module:x.module||null,micro_skill:x.micro_skill||null}));
+  }
+  S.ottoChat.messages.push({role:'user',text:message});S.ottoChat.sending=true;S.ottoChat.error=null;save();renderModal();
   try{
-    const res=await fetch('/.netlify/functions/otto-chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message,context:FULL?FULL.ottoContext(S,task):{module:S.selectedModule}})});
+    const res=await fetch('/.netlify/functions/otto-chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message,context})});
     const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.message||'Otto сейчас недоступен.');
     S.ottoChat.messages.push({role:'otto',text:data.text});
   }catch(e){S.ottoChat.messages.push({role:'otto',text:e&&e.message?e.message:'Otto сейчас недоступен.'});}
