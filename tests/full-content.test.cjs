@@ -7,6 +7,8 @@ const allIds=new Set();
 function common(t){
   for(const k of ['task_id','module','teil','task_type','skill','micro_skill','difficulty','topic','version','qa_status','content_status','source_basis','strategy','explanation'])assert.ok(t[k],t.task_id+' missing '+k);
   assert.equal(t.original_aligned,true,t.task_id+' not original_aligned');
+  assert.equal(t.content_status,'CONTENT_READY_PREVIEW',t.task_id+' not publishable preview content');
+  assert.equal(t.qa_status,'CONTROLLER_AUTOMATED_REVIEW_PASSED',t.task_id+' QA status');
   assert.ok(Array.isArray(t.glossary)&&t.glossary.length>=3,t.task_id+' glossary');
   assert.ok(t.translation,t.task_id+' translation');
   assert.equal(allIds.has(t.task_id),false,'duplicate '+t.task_id);allIds.add(t.task_id);
@@ -32,8 +34,28 @@ for(const t of hoeren[1]){common(t);assert.equal(t.scenes.length,5);for(const s 
 for(const t of hoeren[2]){common(t);assert.equal(t.questions.length,5);audio(t.audio,1,1);image(t.image);}
 for(const t of hoeren[3]){common(t);assert.equal(t.questions.length,7);audio(t.audio,1,2);image(t.image);}
 for(const t of hoeren[4]){common(t);assert.equal(t.questions.length,8);audio(t.audio,2,3);assert.equal(t.audio.speakers.length,3);image(t.image);}
-for(let a=1;a<=3;a++){const tasks=read('content/schreiben/aufgabe-'+a+'.json').tasks;assert.equal(tasks.length,10);for(const t of tasks){common(t);assert.ok(t.instruction_de&&t.instruction_ru&&t.sample&&t.sample_translation);assert.ok(t.rubric&&t.rubric_status==='VERIFIED');assert.ok(Array.isArray(t.required_points)&&t.required_points.length>=3);}}
-for(let a=1;a<=3;a++){const tasks=read('content/sprechen/aufgabe-'+a+'.json').tasks;assert.equal(tasks.length,10);for(const t of tasks){common(t);assert.ok(t.instruction_de&&t.instruction_ru&&t.sample&&t.sample_translation);assert.ok(t.rubric&&t.rubric_status==='VERIFIED');if(a===2)assert.ok(fs.existsSync(path.join(root,t.sample_audio)),t.sample_audio+' missing');}}
+for(let a=1;a<=3;a++){
+  const tasks=read('content/schreiben/aufgabe-'+a+'.json').tasks;
+  assert.equal(tasks.length,10);
+  for(const t of tasks){
+    common(t);assert.ok(t.instruction_de&&t.instruction_ru&&t.sample&&t.sample_translation);
+    assert.equal(t.rubric_status,'GOETHE_MODEL_FORMAT_VERIFIED');
+    assert.ok(Array.isArray(t.required_points)&&t.required_points.length>=3);
+    if(a<3)assert.deepEqual(t.rubric,{task_completion:10,coherence:10,vocabulary:10,structures:10});
+    else assert.deepEqual(t.rubric,{task_completion:4,coherence:4,vocabulary:6,structures:6});
+  }
+}
+for(let a=1;a<=3;a++){
+  const tasks=read('content/sprechen/aufgabe-'+a+'.json').tasks;
+  assert.equal(tasks.length,10);
+  for(const t of tasks){
+    common(t);assert.ok(t.instruction_de&&t.instruction_ru&&t.sample&&t.sample_translation);
+    assert.equal(t.rubric_status,'GOETHE_MODEL_FORMAT_VERIFIED');
+    if(a===1)assert.deepEqual(t.rubric,{task_completion:8,interaction:4,vocabulary_register:8,structures:8,pronunciation_shared:16});
+    if(a===2){assert.deepEqual(t.rubric,{task_completion:12,interaction:4,vocabulary_register:12,structures:12,pronunciation_shared:16});assert.ok(fs.existsSync(path.join(root,t.sample_audio)),t.sample_audio+' missing');}
+    if(a===3)assert.deepEqual(t.rubric,{task_completion:16,pronunciation_shared:16});
+  }
+}
 const audioFiles=fs.readdirSync(path.join(root,'assets','audio','hoeren'),{recursive:true}).filter(x=>String(x).endsWith('.mp3'));
 const speakingAudio=fs.readdirSync(path.join(root,'assets','audio','sprechen'),{recursive:true}).filter(x=>String(x).endsWith('.mp3'));
 const imageFiles=fs.readdirSync(path.join(root,'assets','images','hoeren')).filter(x=>x.endsWith('.svg'));
