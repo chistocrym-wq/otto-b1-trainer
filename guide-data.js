@@ -190,7 +190,13 @@ window.OTTO_GUIDE_B1={
         "duration": "60 минут",
         "parts": "3 Aufgaben",
         "scored": "критериальная оценка",
-        "aids": "Aufgaben 1 и 3 — E-Mail; Aufgabe 2 — Diskussionsbeitrag."
+        "aids": "Aufgaben 1 и 3 — E-Mail; Aufgabe 2 — Diskussionsbeitrag.",
+        "criteria": [
+          "Aufgabe 1: Erfüllung 10, Kohärenz 10, Wortschatz 10, Strukturen 10.",
+          "Aufgabe 2: Erfüllung 10, Kohärenz 10, Wortschatz 10, Strukturen 10.",
+          "Aufgabe 3: Erfüllung 4, Kohärenz 4, Wortschatz 6, Strukturen 6.",
+          "Это официальная схема из актуального B1-Modellsatz; учебная автоматическая проверка Otto не выдаётся за официальный экзаменационный балл."
+        ]
       },
       "blitz": [
         "Aufgabe 1: E-Mail, ориентир около 80 слов, в Modellsatz рекомендовано 20 минут.",
@@ -494,7 +500,14 @@ window.OTTO_GUIDE_B1={
         "duration": "около 15 минут",
         "parts": "3 Aufgaben",
         "scored": "критериальная оценка",
-        "aids": "Перед экзаменом около 15 минут подготовки; можно делать заметки, но говорить нужно свободно."
+        "aids": "Перед экзаменом около 15 минут подготовки; можно делать заметки, но говорить нужно свободно.",
+        "criteria": [
+          "Aufgabe 1: Erfüllung 8, Interaktion 4, Wortschatz/Register 8, Strukturen 8.",
+          "Aufgabe 2: Erfüllung 12, Interaktion 4, Wortschatz/Register 12, Strukturen 12.",
+          "Aufgabe 3: Erfüllung 16.",
+          "Aussprache оценивается по Aufgaben 1–3 вместе: максимум 16.",
+          "Расшифровка записи помогает анализировать содержание и грамматику, но сама по себе не является оценкой Aussprache."
+        ]
       },
       "blitz": [
         "Aufgabe 1: вместе с партнёром что-то спланировать — около 3 минут.",
