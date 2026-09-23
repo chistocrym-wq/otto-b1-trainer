@@ -195,7 +195,7 @@ def writing(a,i):
  sample=sample.replace("новую Erfahrung","новую Erfahrung") if False else sample
  if a==1: sample=sample.replace("eine neue Erfahrung",f"eine neue Erfahrung mit {topic}")
  if a==2: sample=sample.replace("dieses Thema",f"das Thema {topic}")
- if a==3: sample=sample.replace("am Dienstag",["am Montag","am Dienstag","am Mittwoch","am Donnerstag","am Freitag"][i%5]).replace("Donnerstag",["Dienstag","Mittwoch","Donnerstag","Freitag","Montag"][i%5]).replace("zu unserem Termin",f"zu unserem Termin zum Thema {topic}")
+ if a==3: sample=sample.replace("am Dienstag",["am Montag","am Dienstag","am Mittwoch","am Donnerstag","am Freitag"][i%5]).replace("Donnerstag",["Dienstag","Mittwoch","Donnerstag","Freitag","Montag"][i%5]).replace(" nicht kommen, weil",f" nicht zu unserem Termin zum Thema {topic} kommen, weil")
  return {**common(f"W-A{a}-{i+1:02d}","Schreiben",a,"writing_free_text",topic,"written_communication"),"instruction_de":instr,"instruction_ru":instr_ru,"required_points":pts,"target_words":target,"sample":sample,"sample_translation":sample_ru,"structure":["обращение/введение","обязательные пункты","связки","завершение"],"phrase_bank":["Meiner Meinung nach ...","Ein wichtiger Grund ist ...","Leider kann ich ...","Wäre ... möglich?"],"glossary":glossary(),"rubric_status":"GOETHE_MODEL_FORMAT_VERIFIED","rubric":rubric,"checklist":["Все пункты раскрыты","Подходящий регистр","Есть связки","Текст перечитан"],"translation":"Русский перевод образца доступен в учебном режиме."}
 def speaking(a,i):
  topic=TOPICS[i]
