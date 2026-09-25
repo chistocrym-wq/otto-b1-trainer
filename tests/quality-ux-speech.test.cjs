@@ -34,9 +34,11 @@ for(let part=1;part<=4;part++){
 }
 assert.equal(imageCount,80,'expected 80 Hören contextual images');
 
+const writingStats={};
 for(const [a,min,max] of [[1,70,95],[2,70,95],[3,35,50]]){
-  const tasks=read('content/schreiben/aufgabe-'+a+'.json').tasks;
-  for(const t of tasks){const n=words(t.sample);assert.ok(n>=min&&n<=max,t.task_id+' sample words '+n+' outside '+min+'-'+max);}
+  const tasks=read('content/schreiben/aufgabe-'+a+'.json').tasks,counts=[];
+  for(const t of tasks){const n=words(t.sample);counts.push(n);assert.ok(n>=min&&n<=max,t.task_id+' sample words '+n+' outside '+min+'-'+max);}
+  writingStats[a]={min:Math.min(...counts),avg:Number((counts.reduce((x,y)=>x+y,0)/counts.length).toFixed(1)),max:Math.max(...counts)};
 }
 for(const t of read('content/sprechen/aufgabe-2.json').tasks){
   assert.equal(t.presentation_structure_coverage,'ALL_5_STEPS');
@@ -62,4 +64,4 @@ assert.match(app,/Микрофон не найден/);
 assert.match(app,/уже немного знаю немецкий/);
 assert.match(app,/2026-09-23-v1/);
 assert.match(app,/otto\.nash@mail\.ru/);
-console.log('quality/ux/speech regression: PASS; Hören images='+imageCount);
+console.log('quality/ux/speech regression: PASS; Hören images='+imageCount+'; Schreiben stats='+JSON.stringify(writingStats));
