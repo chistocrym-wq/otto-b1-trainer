@@ -129,6 +129,7 @@ test('Sprechen Aufgabe 1 runs real turn-by-turn mocked conversation after microp
   for(let i=0;i<3;i++){
     await page.getByRole('button',{name:'🎙 Начать запись'}).click();await page.getByRole('button',{name:'■ Остановить'}).click();
     await page.getByRole('button',{name:'Отправить реплику Otto'}).click();
+    await expect(page.locator('.conversation-turn.otto')).toHaveCount(i+2);
   }
   await expect(page.locator('.planning-progress')).toContainText('Wann?');
   await expect(page.getByRole('button',{name:'Завершить диалог'})).toBeVisible();
