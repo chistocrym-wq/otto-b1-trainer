@@ -1,0 +1,12 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+for(const file of ['index.html','styles.css','otto.js','diagnostic-bank.js','diagnostic-engine.js','guide-data.js','learning-bank.js','app.js']) assert.ok(fs.existsSync(path.join(root,file)),file+' missing');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+for(const src of ['./styles.css','./otto.js','./diagnostic-bank.js','./diagnostic-engine.js','./guide-data.js','./learning-bank.js','./app.js']) assert.ok(html.includes(src),'index missing '+src);
+const engine=require('../diagnostic-engine.js');
+const v=engine.validateBank();
+assert.equal(v.ok,true,v.errors.join('\n'));
+console.log('static build/content smoke: PASS');

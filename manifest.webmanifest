@@ -1,0 +1,17 @@
+{
+  "name": "OTTO B1 — Goethe-Zertifikat B1",
+  "short_name": "OTTO B1",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#e8f3ff",
+  "theme_color": "#076cd4",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "./otto-b1-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

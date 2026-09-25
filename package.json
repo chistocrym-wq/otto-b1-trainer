@@ -1,0 +1,21 @@
+{
+  "name": "otto-b1-preview",
+  "private": true,
+  "version": "0.4.1",
+  "scripts": {
+    "check": "node --check diagnostic-bank.js && node --check diagnostic-engine.js && node --check content-readiness.js && node --check guide-data.js && node --check learning-bank.js && node --check speech-client.js && node --check app.js",
+    "test:diagnostic": "node tests/diagnostic-engine.test.cjs",
+    "test:e2e": "playwright test tests/preview.spec.cjs --browser=chromium --reporter=line",
+    "build:check": "node tests/build-smoke.cjs",
+    "test:content": "node tests/content-readiness.test.cjs",
+    "test:guide": "node tests/guide-learning.test.cjs",
+    "test:release": "node tests/release-audit.test.cjs",
+    "test:public": "playwright test tests/public-beta.spec.cjs --browser=chromium --reporter=line",
+    "test:openai": "node --test tests/openai-functions.test.mjs",
+    "prepare:content": "python3 -m pip install -r requirements.txt -q && python3 tools/generate_full_content.py && python3 tools/generate_sprechen_sample_audio.py",
+    "test:full-content": "node tests/full-content.test.cjs",
+    "test:planner": "node tests/learning-v2.test.cjs",
+    "test:content-quality": "node tests/content-quality-review.test.cjs",
+    "test:quality-ux-speech": "node tests/quality-ux-speech.test.cjs"
+  }
+}
