@@ -46,6 +46,12 @@ function validateSpeakers(audio,task){
   if(ids.length>1&&new Set(voices).size!==ids.length)errors.push('MULTISPEAKER_REUSES_VOICE');
   if(String(task.teil)==='3'&&ids.length<2)errors.push('HOEREN_TEIL3_REQUIRES_TWO_SPEAKERS');
   if(String(task.teil)==='4'&&ids.length<3)errors.push('HOEREN_TEIL4_REQUIRES_THREE_SPEAKERS');
+  if(String(task.teil)==='3'||String(task.teil)==='4'){
+    const portraits=audio.speakers.map(s=>s&&s.portrait_id).filter(Boolean);
+    const portraitSrc=audio.speakers.map(s=>s&&s.portrait_src).filter(Boolean);
+    if(portraits.length!==audio.speakers.length||portraitSrc.length!==audio.speakers.length)errors.push('MISSING_SPEAKER_PORTRAIT');
+    if(portraits.length&&new Set(portraits).size!==audio.speakers.length)errors.push('MULTISPEAKER_REUSES_PORTRAIT');
+  }
   return errors;
 }
 
@@ -75,7 +81,9 @@ function validateImage(task){
   });
   if(i.task_id!==task.task_id)errors.push('IMAGE_TASK_ID_MISMATCH');
   if(i.context_only!==true)errors.push('IMAGE_MUST_BE_CONTEXT_ONLY');
-  if(i.answer_leak_review!=='PASSED')errors.push('IMAGE_ANSWER_LEAK_REVIEW_REQUIRED');
+  if(!['PASSED','PASSED_CONTEXT_ONLY'].includes(i.answer_leak_review))errors.push('IMAGE_ANSWER_LEAK_REVIEW_REQUIRED');
+  if(/\.svg(?:$|\?)/i.test(i.src))errors.push('LEGACY_PLACEHOLDER_SVG_FORBIDDEN');
+  if(!/\.(webp|avif|png)(?:$|\?)/i.test(i.src))errors.push('IMAGE_MUST_BE_RASTER_ASSET');
   const serialized=JSON.stringify(i);
   if(/correct_answer|answer_key|correctOption|solution/i.test(serialized))errors.push('IMAGE_METADATA_CONTAINS_ANSWER_DATA');
   return errors;
