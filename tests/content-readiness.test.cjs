@@ -76,6 +76,14 @@ function readyHoeren(overrides={}){
 
 {
   const t=readyHoeren();
+  t.turns=[{speaker:'moderatorin',text:'Start.'},{speaker:'unknown_person',text:'Hallo.'}];
+  const r=validateTask(t);
+  assert.equal(r.ok,false);
+  assert.ok(r.errors.includes('TURN_REFERENCES_UNKNOWN_SPEAKER'));
+}
+
+{
+  const t=readyHoeren();
   delete t.image;
   const r=validateTask(t);
   assert.equal(r.ok,false);
