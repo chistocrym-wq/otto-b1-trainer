@@ -846,6 +846,7 @@ function settingsView(){
     '<section class="settings-card"><div class="settings-head"><span class="settings-icon">🌐</span><div><span class="eyebrow">Язык</span><h2>Язык приложения</h2></div></div><p class="muted">Русский интерфейс проверяется полностью. Другие языки появятся только после полной локализации.</p><button class="btn secondary" disabled>Русский</button></section>'+
     '<section class="settings-card"><div class="settings-head"><span class="settings-icon">🔔</span><div><span class="eyebrow">Напоминания</span><h2>Когда напомнить о тренировке?</h2></div></div><p class="muted">В веб-Preview локальное напоминание может сработать, пока OTTO открыт. Фоновую доставку закрытому приложению не обещаем.</p><div class="days">'+dayButton(0,'Вс')+dayButton(1,'Пн')+dayButton(2,'Вт')+dayButton(3,'Ср')+dayButton(4,'Чт')+dayButton(5,'Пт')+dayButton(6,'Сб')+'</div><label class="setting-label">Время<input id="reminderTime" type="time" class="field" value="'+esc(PREFS.reminder.time)+'"></label><div class="button-row"><button class="btn secondary" data-action="request-notifications">'+(permission==='granted'?'Уведомления разрешены':'Разрешить уведомления')+'</button><button class="btn primary" data-action="save-reminder">Сохранить</button></div></section>'+
     '<section class="settings-card"><div class="settings-head"><span class="settings-icon">🔊</span><div><span class="eyebrow">Фирменный голос</span><h2>Как говорит Otto</h2></div></div><p class="muted">Утверждённая A1 voice policy перенесена в B1: OpenAI gpt-4o-mini-tts, voice cedar. Скорость применяется к Otto, словарю и учебным фразам, но не к Hören exam audio.</p><div class="segmented"><button data-voice-speed="normal" class="'+(PREFS.voiceSpeed==='normal'?'active':'')+'">Нормально</button><button data-voice-speed="slow" class="'+(PREFS.voiceSpeed==='slow'?'active':'')+'">Медленнее</button></div><button class="btn secondary full" data-action="test-otto-voice">▶ Послушать голос Otto</button></section>'+
+    '<section class="settings-card"><div class="settings-head"><span class="settings-icon">🎙</span><div><span class="eyebrow">Микрофон</span><h2>Проверить микрофон</h2></div></div><p class="muted">OTTO запишет 5 секунд. Микрофон считается проверенным только если запись можно остановить и реально прослушать.</p><button class="btn secondary full" data-action="mic-preflight">Проверить микрофон</button>'+(S.lesson.micStatus?'<div class="notice">'+esc(S.lesson.micStatus)+'</div>':'')+(micTestUrl?'<audio class="record-playback" controls src="'+micTestUrl+'"></audio>':'')+'</section>'+
     '<section class="settings-card"><div class="settings-head"><span class="settings-icon">📱</span><div><span class="eyebrow">Установка</span><h2>Установка приложения</h2></div></div><p class="muted">'+esc(installState)+'</p><button class="btn secondary full" data-action="install-app">'+(isStandalone()?'Приложение установлено':'Установить приложение')+'</button><div id="installNotice" class="small"></div></section>'+
     '<section class="settings-card settings-support"><div><span class="eyebrow">Поддержка</span><h2>Написать в поддержку</h2><p class="muted">Откроется ваше почтовое приложение. Ложного статуса «обращение отправлено» OTTO не показывает.</p></div><a class="btn secondary" href="mailto:'+SUPPORT_EMAIL+'">Написать</a></section>'+
     '<section class="settings-card settings-support"><div><span class="eyebrow">Поделиться</span><h2>Поделиться OTTO B1</h2><p class="muted">Передаётся только ссылка на приложение — без email, диагностики, прогресса и аккаунта.</p></div><button class="btn secondary" data-action="share-app">Поделиться</button></section>';
@@ -934,7 +935,8 @@ function closedItems(task){
 }
 function lessonTools(task){
   if(S.lesson.mode==='exam'&&!S.lesson.submitted)return '<div class="exam-lock"><b>Как на экзамене.</b> Перевод, словарь, образец и подсказки скрыты до завершения попытки.</div>';
-  let html='<div class="task-tools"><button class="chip" data-action="lesson-translation">👁 Перевод</button><button class="chip" data-action="lesson-strategy">☝ Стратегия Otto</button><button class="chip" data-action="lesson-dictionary">Aa Словарь</button>';
+  let html=PREFS.helpMode==='guided'?'<div class="friendly-note"><b>Otto ведёт:</b> сначала выполните задание самостоятельно. Перевод, стратегия и словарь доступны ниже по запросу.</div>':'';
+  html+='<div class="task-tools"><button class="chip" data-action="lesson-translation">👁 Перевод</button><button class="chip" data-action="lesson-strategy">☝ Стратегия Otto</button><button class="chip" data-action="lesson-dictionary">Aa Словарь</button>';
   if(task.sample)html+='<button class="chip" data-action="lesson-sample">◎ Образец</button>';
   html+='</div>';
   if(S.lesson.translation)html+='<div class="translation-box">'+esc(task.translation||task.sample_translation||'Перевод для этого материала пока не добавлен.')+'</div>';
@@ -1058,36 +1060,69 @@ function submitWritingLesson(){
 function base64Blob(blob){return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(String(fr.result).split(',')[1]||'');fr.onerror=reject;fr.readAsDataURL(blob);});}
 function recorderMime(){
   if(!window.MediaRecorder)return '';
-  for(const x of ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'])if(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(x))return x;
-  return '';
+  const candidates=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'];
+  if(typeof MediaRecorder.isTypeSupported!=='function')return '';
+  return candidates.find(x=>MediaRecorder.isTypeSupported(x))||'';
+}
+function micErrorInfo(error){
+  const name=String(error?.name||''),msg=String(error?.message||'');
+  if(name==='NotAllowedError'||name==='SecurityError')return{code:'permission_denied',message:'Разрешите микрофон для OTTO в настройках сайта.'};
+  if(name==='NotFoundError'||name==='DevicesNotFoundError')return{code:'no_device',message:'Микрофон не найден.'};
+  if(name==='NotReadableError'||name==='TrackStartError')return{code:'device_busy',message:'Микрофон сейчас занят другим приложением. Закройте его там и попробуйте снова.'};
+  if(name==='OverconstrainedError')return{code:'constraints_failed',message:'Браузер не смог использовать доступный микрофон. Проверьте устройство ввода в настройках.'};
+  if(name==='AbortError')return{code:'recording_aborted',message:'Запись была прервана. Попробуйте ещё раз.'};
+  if(name==='TypeError'||/mediaDevices|MediaRecorder/i.test(msg))return{code:'unsupported_browser',message:'Этот браузер не поддерживает нужный режим записи. Откройте OTTO в актуальном Chrome, Edge или Safari.'};
+  if(name==='NoAudioInput')return{code:'no_device',message:'Микрофон не найден.'};
+  if(name==='EmptyRecording')return{code:'empty_recording',message:'Запись получилась пустой. Проверьте микрофон и повторите тест.'};
+  return{code:'unknown_mic_error',message:'Не удалось открыть микрофон. Проверьте разрешение сайта и устройство ввода.'};
+}
+function setMicStatus(info){
+  S.lesson.micDiagnosticCode=info.code;S.lesson.micStatus=info.message;save();render();
 }
 async function microphonePreflight(){
-  S.lesson.micStatus='Проверяем доступ к микрофону…';save();render();
-  if(!(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){S.lesson.micStatus='Микрофон работает только на защищённой HTTPS-странице.';save();render();return;}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){S.lesson.micStatus='Браузер не поддерживает доступ к микрофону через mediaDevices.';save();render();return;}
-  if(!window.MediaRecorder){S.lesson.micStatus='В этом браузере недоступна запись через MediaRecorder.';save();render();return;}
+  S.lesson.micDiagnosticCode='checking';S.lesson.micStatus='Проверяем доступ к микрофону…';save();render();
+  const local=['localhost','127.0.0.1'].includes(location.hostname);
+  if(!(window.isSecureContext||local))return setMicStatus({code:'insecure_context',message:'Микрофон доступен только на защищённой HTTPS-странице.'});
+  if(!navigator.mediaDevices?.getUserMedia)return setMicStatus({code:'unsupported_browser',message:'Этот браузер не поддерживает доступ к микрофону. Откройте OTTO в актуальном Chrome, Edge или Safari.'});
+  if(!window.MediaRecorder)return setMicStatus({code:'unsupported_recorder',message:'В этом браузере недоступна запись звука. Обновите браузер или используйте другой.'});
+  let stream=null;
   try{
-    if(navigator.permissions&&navigator.permissions.query){try{const p=await navigator.permissions.query({name:'microphone'});if(p.state==='denied')throw new Error('Доступ к микрофону запрещён в настройках браузера.');}catch(e){if(/запрещён/.test(e.message))throw e;}}
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    const devices=await navigator.mediaDevices.enumerateDevices();if(!devices.some(d=>d.kind==='audioinput'))throw new Error('Браузер не видит устройство ввода звука.');
+    if(navigator.permissions?.query){
+      try{const p=await navigator.permissions.query({name:'microphone'});if(p.state==='denied'){const e=new Error();e.name='NotAllowedError';throw e;}}catch(e){if(e?.name==='NotAllowedError')throw e;}
+    }
+    stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    if(navigator.mediaDevices.enumerateDevices){
+      const devices=await navigator.mediaDevices.enumerateDevices();
+      if(!devices.some(d=>d.kind==='audioinput')){const e=new Error();e.name='NoAudioInput';throw e;}
+    }
     const mime=recorderMime(),parts=[],rec=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
-    rec.ondataavailable=e=>{if(e.data&&e.data.size)parts.push(e.data);};
+    rec.ondataavailable=e=>{if(e.data?.size)parts.push(e.data);};
     await new Promise((resolve,reject)=>{rec.onerror=e=>reject(e.error||e);rec.onstop=resolve;rec.start();setTimeout(()=>{if(rec.state==='recording')rec.stop();},5000);});
-    stream.getTracks().forEach(t=>t.stop());micTestBlob=new Blob(parts,{type:mime||parts[0]?.type||'audio/webm'});
-    if(micTestUrl)URL.revokeObjectURL(micTestUrl);micTestUrl=URL.createObjectURL(micTestBlob);
-    S.lesson.micStatus='Запись готова. Прослушайте 5-секундный тест ниже.';save();render();
-  }catch(e){S.lesson.micStatus='Микрофон недоступен: '+(e&&e.message?e.message:'проверьте разрешение браузера и Windows.');save();render();}
+    if(!parts.length||parts.reduce((n,b)=>n+b.size,0)===0){const e=new Error();e.name='EmptyRecording';throw e;}
+    micTestBlob=new Blob(parts,{type:mime||parts[0]?.type||'audio/webm'});
+    if(micTestUrl)URL.revokeObjectURL(micTestUrl);
+    micTestUrl=URL.createObjectURL(micTestBlob);
+    S.lesson.micDiagnosticCode='record_playback_ready';S.lesson.micStatus='Запись готова. Нажмите Play и убедитесь, что вы слышите себя.';save();render();
+  }catch(e){setMicStatus(micErrorInfo(e));}
+  finally{try{stream?.getTracks?.().forEach(t=>t.stop())}catch{}}
 }
 async function toggleLessonRecording(){
   if(lessonRecorder&&lessonRecorder.state==='recording'){lessonRecorder.stop();return;}
-  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)return alert('Запись микрофона не поддерживается.');
+  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){setMicStatus({code:'unsupported_browser',message:'Запись микрофона не поддерживается в этом браузере.'});return;}
+  let stream=null;
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true}),mime=recorderMime();lessonChunks=[];
+    stream=await navigator.mediaDevices.getUserMedia({audio:true});const mime=recorderMime();lessonChunks=[];
     lessonRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
-    lessonRecorder.ondataavailable=e=>{if(e.data&&e.data.size)lessonChunks.push(e.data);};
-    lessonRecorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());lessonAudioBlob=new Blob(lessonChunks,{type:mime||lessonChunks[0]?.type||'audio/webm'});if(lessonAudioUrl)URL.revokeObjectURL(lessonAudioUrl);lessonAudioUrl=URL.createObjectURL(lessonAudioBlob);S.lesson.recordingReady=true;S.lesson.micStatus='Запись готова.';lessonRecorder=null;save();render();};
-    lessonRecorder.start();S.lesson.micStatus='Идёт запись…';save();render();
-  }catch(e){S.lesson.micStatus='Не удалось начать запись: '+(e&&e.message?e.message:'нет доступа к микрофону');save();render();}
+    lessonRecorder.ondataavailable=e=>{if(e.data?.size)lessonChunks.push(e.data);};
+    lessonRecorder.onstop=()=>{
+      try{stream?.getTracks?.().forEach(t=>t.stop())}catch{}
+      lessonAudioBlob=new Blob(lessonChunks,{type:mime||lessonChunks[0]?.type||'audio/webm'});
+      if(lessonAudioUrl)URL.revokeObjectURL(lessonAudioUrl);
+      lessonAudioUrl=URL.createObjectURL(lessonAudioBlob);
+      S.lesson.recordingReady=true;S.lesson.micDiagnosticCode='recording_ready';S.lesson.micStatus='Запись готова.';lessonRecorder=null;save();render();
+    };
+    lessonRecorder.start();S.lesson.micDiagnosticCode='recording';S.lesson.micStatus='Идёт запись…';save();render();
+  }catch(e){try{stream?.getTracks?.().forEach(t=>t.stop())}catch{};setMicStatus(micErrorInfo(e));}
 }
 async function submitSpeakingLesson(skip){
   const task=currentFullTask();
