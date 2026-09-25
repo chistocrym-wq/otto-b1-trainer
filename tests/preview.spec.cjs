@@ -162,3 +162,25 @@ test('Settings persists text help and voice preferences and 390 dock has no over
   await page.getByRole('button',{name:'Поделиться'}).first().click();expect(await page.evaluate(()=>window.__shared&&window.__shared.url)).toContain(base);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1)).toBe(false);
 });
+
+test('microphone contract handles permission denial, mp4 fallback and object URL cleanup',async({page})=>{
+  await page.addInitScript(()=>{
+    const real=window.setTimeout.bind(window);window.setTimeout=(fn,ms,...a)=>real(fn,ms===5000?20:ms,...a);
+    window.__mic={mime:null,revoked:0,created:0,permission:'denied'};
+    Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:async()=>({state:window.__mic.permission})}});
+    Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>({getTracks:()=>[{stop(){}}]}),enumerateDevices:async()=>[{kind:'audioinput',deviceId:'fake'}]}});
+    const realCreate=URL.createObjectURL.bind(URL),realRevoke=URL.revokeObjectURL.bind(URL);
+    URL.createObjectURL=b=>{window.__mic.created++;return realCreate(b)};URL.revokeObjectURL=u=>{window.__mic.revoked++;return realRevoke(u)};
+    class Mp4MediaRecorder{constructor(stream,opt){this.state='inactive';this.mimeType=opt?.mimeType||'';window.__mic.mime=this.mimeType;}static isTypeSupported(v){return v==='audio/mp4';}start(){this.state='recording';}stop(){this.state='inactive';this.ondataavailable?.({data:new Blob(['a'],{type:this.mimeType||'audio/mp4'})});this.onstop?.();}}
+    window.MediaRecorder=Mp4MediaRecorder;
+  });
+  await fresh(page);await seedCompleted(page);await page.locator('[data-nav="settings"]').click();
+  await page.getByRole('button',{name:'Проверить микрофон'}).click();
+  await expect(page.getByText('Разрешите микрофон для OTTO в настройках сайта.')).toBeVisible();
+  expect(await page.evaluate(()=>window.__OTTO_TEST__.getState().lesson.micDiagnosticCode)).toBe('permission_denied');
+  await page.evaluate(()=>{window.__mic.permission='granted'});
+  await page.getByRole('button',{name:'Проверить микрофон'}).click();await expect(page.getByText(/Запись готова/)).toBeVisible();
+  expect(await page.evaluate(()=>window.__mic.mime)).toBe('audio/mp4');
+  await page.getByRole('button',{name:'Проверить микрофон'}).click();await expect(page.getByText(/Запись готова/)).toBeVisible();
+  expect(await page.evaluate(()=>window.__mic.created>=2&&window.__mic.revoked>=1)).toBe(true);
+});
