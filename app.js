@@ -347,7 +347,11 @@ function diagnosticView(){
   if(s.completed||s.phase==='complete')return reportView();
   if(s.phase==='closed_complete'||s.phase==='writing'||s.phase==='speaking')return productiveView();
   const item=currentItem();
-  if(!item)return '<div class="notice">Otto пересчитывает следующий шаг диагностики…</div>';
+  if(!item){
+    if(['closed_complete','writing','speaking'].includes(s.phase))return productiveView();
+    if(s.completed||s.phase==='complete')return reportView();
+    return '<div class="notice">Otto пересчитывает следующий шаг диагностики…</div>';
+  }
   const pct=s.phase==='screening_core'?18:s.phase==='screening_path'?35:s.phase==='boundary'?55:s.phase==='boundary_extra'?68:75;
   const human=item.modality==='audio'?'Понимание речи':item.skill==='Lesen'?'Чтение':item.skill==='grammar'?'Грамматика':item.skill==='vocabulary'?'Лексика':'Языковая база';
   return '<span class="eyebrow">'+stageTitle(s.phase)+'</span><div class="diag-top"><div><h1 class="h2">'+human+'</h1><p class="muted">'+phaseCopy(s.phase)+'</p></div><div class="time-left">≈ '+remainingMinutes()+' мин.</div></div><div class="progress-line"><i style="width:'+pct+'%"></i></div>'+renderClosed(item)+'<p class="small">Каждый ответ сохраняется автоматически. Закрыли страницу — продолжите с этого места.</p>';
