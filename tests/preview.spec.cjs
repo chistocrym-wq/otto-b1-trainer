@@ -124,7 +124,8 @@ test('Sprechen Aufgabe 1 runs real turn-by-turn mocked conversation after microp
   await page.route('**/.netlify/functions/otto-chat',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({text:replies[Math.min(reply++,2)]})}));
   await fresh(page);await seedCompleted(page);await page.evaluate(()=>{location.hash='#modules';});await page.waitForTimeout(40);await page.locator('[data-module="Sprechen"]').click();await page.locator('[data-start-full="1"][data-mode="training"]').click();
   await page.getByRole('button',{name:'Проверить микрофон'}).click();await expect(page.getByText(/Запись готова/).first()).toBeVisible({timeout:3000});await expect(page.locator('audio').first()).toBeVisible();
-  await page.getByRole('button',{name:'Начать диалог с Otto'}).click();await expect(page.getByText(/Samstag passt gut/)).toBeVisible();
+  await page.getByRole('button',{name:'Начать диалог с Otto'}).click();await expect(page.getByText('Реплика Otto прозвучала голосом.')).toBeVisible();
+  await page.getByRole('button',{name:'Показать transcript'}).click();await expect(page.getByText(/Samstag passt gut/)).toBeVisible();
   for(let i=0;i<3;i++){
     await page.getByRole('button',{name:'🎙 Начать запись'}).click();await page.getByRole('button',{name:'■ Остановить'}).click();
     await page.getByRole('button',{name:'Отправить реплику Otto'}).click();
