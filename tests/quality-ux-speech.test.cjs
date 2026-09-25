@@ -59,6 +59,7 @@ assert.equal(/speechSynthesis|SpeechSynthesisUtterance/.test(app),false,'app fin
 assert.equal(/speechSynthesis|SpeechSynthesisUtterance/.test(speech),false,'speech client must not fall back to browser speechSynthesis');
 assert.match(speech,/gpt-4o-mini-tts/);assert.match(speech,/voice:'cedar'/);
 assert.match(app,/audio\/mp4/,'Safari/iOS microphone MIME fallback missing');
+assert.equal(/new MediaRecorder\(stream\);/.test(app),false,'all microphone paths must use negotiated or browser-default MIME safely');
 assert.match(app,/Разрешите микрофон для OTTO/);
 assert.match(app,/Микрофон не найден/);
 assert.match(app,/уже немного знаю немецкий/);
