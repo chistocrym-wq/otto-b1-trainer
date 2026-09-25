@@ -867,7 +867,13 @@ function logoutLocalProfile(){
 function editLocalProfile(){
   const next=prompt('Имя пользователя',S.name||'');if(next===null)return;
   const name=String(next).trim();if(!name)return alert('Имя не может быть пустым.');
-  S.name=name;save();render();
+  let contact=S.auth.contact||'';
+  if(S.auth.method==='email'){
+    const e=prompt('Email',contact);if(e===null)return;
+    const clean=String(e).trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean))return alert('Введите корректный email.');
+    contact=clean;
+  }
+  S.name=name;S.auth.contact=contact;save();render();
 }
 
 
