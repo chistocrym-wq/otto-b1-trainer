@@ -825,7 +825,7 @@ function speakText(text){
   void speech.speakGerman(text,{voiceRole:'otto',context:'dictionary'}).then(ok=>{if(!ok)alert('Не удалось воспроизвести слово фирменным немецким голосом Otto.');});
 }
 async function shareApp(){
-  const data={title:'OTTO — Goethe-Zertifikat B1',text:'OTTO B1 — тренажёр для подготовки к экзамену',url:location.origin+location.pathname};
+  const data={url:location.origin+location.pathname};
   try{
     if(navigator.share){await navigator.share(data);return;}
     if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(data.url);alert('Ссылка скопирована.');return;}
