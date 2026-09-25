@@ -1508,16 +1508,9 @@ function handleAction(x){
   else if(x==='lesson-complete')finishLessonAndAdvance();
 }
 function bindActionButtons(){
-  const bind=(selector,fn)=>document.querySelectorAll(selector).forEach(function(el){
-    el.onclick=function(e){e.preventDefault();e.stopPropagation();fn(el);};
+  document.querySelectorAll('[data-action]').forEach(function(el){
+    el.onclick=function(e){e.preventDefault();e.stopPropagation();handleAction(el.dataset.action);};
   });
-  bind('[data-action]',el=>handleAction(el.dataset.action));
-  bind('[data-text-size]',el=>{PREFS.textSize=el.dataset.textSize;savePrefs();render();});
-  bind('[data-help-mode]',el=>{PREFS.helpMode=el.dataset.helpMode;savePrefs();render();});
-  bind('[data-voice-speed]',el=>{PREFS.voiceSpeed=el.dataset.voiceSpeed;savePrefs();render();});
-  bind('[data-setting-gender]',el=>{S.gender=el.dataset.settingGender;save();render();});
-  bind('[data-reminder-day]',el=>{const d=Number(el.dataset.reminderDay),has=PREFS.reminder.days.includes(d);PREFS.reminder.days=has?PREFS.reminder.days.filter(x=>x!==d):[...PREFS.reminder.days,d].sort();savePrefs();render();});
-  bind('[data-diag-choice]',el=>answerDiagnostic(Number(el.dataset.diagChoice)));
 }
 document.addEventListener('click',click);
 document.addEventListener('input',function(e){if(e.target&&e.target.id==='fullWriting'){S.lesson.userText=e.target.value;save();}if(e.target&&e.target.id==='reminderTime'){PREFS.reminder.time=e.target.value;}});
