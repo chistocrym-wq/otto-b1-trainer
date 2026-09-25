@@ -1045,7 +1045,7 @@ function speakingConversationView(task){
     if(S.lesson.mode!=='exam')html+='<div class="planning-progress">'+covered.map(x=>'<span class="'+(conv.covered.includes(x)?'done':'')+'">'+esc(x)+'</span>').join('')+'</div>';
     if(conv.sending)html+='<div class="notice">Otto формулирует следующую реплику…</div>';
     if(conv.voiceStatus==='tts_unavailable')html+='<div class="notice">Текстовая реплика готова, но фирменный голос Otto на сервере не настроен. Live voice reply сейчас BLOCKED.</div>';
-    if(!S.lesson.submitted&&!conv.complete)html+=recordPracticePanel('Ваша следующая реплика')+(lessonAudioBlob?'<div class="button-row"><button class="btn primary" data-action="speaking-conversation-send">Отправить реплику Otto</button></div>':'');
+    if(!S.lesson.submitted&&!conv.complete&&!conv.sending)html+=recordPracticePanel('Ваша следующая реплика')+(lessonAudioBlob?'<div class="button-row"><button class="btn primary" data-action="speaking-conversation-send">Отправить реплику Otto</button></div>':'');
     if(!S.lesson.submitted&&conv.complete)html+='<div class="button-row"><button class="btn primary" data-action="speaking-conversation-finish">Завершить диалог</button></div>';
   }
   if(S.lesson.submitted)html+='<div class="feedback-card correct"><h3>Диалог завершён</h3><p>'+esc(S.lesson.feedback?.text||'')+'</p></div><div class="button-row"><button class="btn primary" data-action="lesson-complete">Далее</button></div>';
@@ -1202,7 +1202,8 @@ async function startOttoConversation(){
   await requestOttoRoleplay('sprechen_aufgabe1_partner','Beginne das Planungsgespräch natürlich und frage nach einem ersten konkreten Punkt.');
 }
 async function sendConversationTurn(){
-  const conv=speakingConversation(),tr=await transcribeLessonRecording();
+  const conv=speakingConversation();if(conv.sending)return;
+  const tr=await transcribeLessonRecording();
   if(!tr.ok){S.lesson.micDiagnosticCode=tr.code;S.lesson.micStatus=tr.message;save();render();return;}
   conv.turns.push({role:'user',text:tr.text,at:now()});conv.covered=planningCoverage(tr.text,conv.covered);S.lesson.transcript=tr.text;clearLessonRecording();save();render();
   await requestOttoRoleplay('sprechen_aufgabe1_partner',tr.text,{user_transcript:tr.text});
@@ -1507,9 +1508,16 @@ function handleAction(x){
   else if(x==='lesson-complete')finishLessonAndAdvance();
 }
 function bindActionButtons(){
-  document.querySelectorAll('[data-action]').forEach(function(el){
-    el.onclick=function(e){e.preventDefault();e.stopPropagation();handleAction(el.dataset.action);};
+  const bind=(selector,fn)=>document.querySelectorAll(selector).forEach(function(el){
+    el.onclick=function(e){e.preventDefault();e.stopPropagation();fn(el);};
   });
+  bind('[data-action]',el=>handleAction(el.dataset.action));
+  bind('[data-text-size]',el=>{PREFS.textSize=el.dataset.textSize;savePrefs();render();});
+  bind('[data-help-mode]',el=>{PREFS.helpMode=el.dataset.helpMode;savePrefs();render();});
+  bind('[data-voice-speed]',el=>{PREFS.voiceSpeed=el.dataset.voiceSpeed;savePrefs();render();});
+  bind('[data-setting-gender]',el=>{S.gender=el.dataset.settingGender;save();render();});
+  bind('[data-reminder-day]',el=>{const d=Number(el.dataset.reminderDay),has=PREFS.reminder.days.includes(d);PREFS.reminder.days=has?PREFS.reminder.days.filter(x=>x!==d):[...PREFS.reminder.days,d].sort();savePrefs();render();});
+  bind('[data-diag-choice]',el=>answerDiagnostic(Number(el.dataset.diagChoice)));
 }
 document.addEventListener('click',click);
 document.addEventListener('input',function(e){if(e.target&&e.target.id==='fullWriting'){S.lesson.userText=e.target.value;save();}if(e.target&&e.target.id==='reminderTime'){PREFS.reminder.time=e.target.value;}});
