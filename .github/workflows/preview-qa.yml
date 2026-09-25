@@ -18,6 +18,8 @@ jobs:
         run: python3 -m pip install -r requirements.txt
       - name: Generate full learning content
         run: python3 tools/generate_full_content.py
+      - name: Generate full Sprechen presentation audio
+        run: python3 tools/generate_sprechen_sample_audio.py
       - name: Syntax checks
         run: npm run check
       - name: Static build/content smoke
