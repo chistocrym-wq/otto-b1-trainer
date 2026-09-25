@@ -44,6 +44,13 @@ for(const t of read('content/sprechen/aufgabe-2.json').tasks){
   assert.equal(t.duration_is_primary_qa,true);
   assert.equal(t.presentation_structure.length,5);
 }
+const sampleAudio=read('assets/audio/sprechen/sample-duration-manifest.json');
+assert.equal(sampleAudio.human_listening_qa,'NOT_VERIFIED');
+assert.equal(Object.keys(sampleAudio.items).length,10);
+for(const [id,m] of Object.entries(sampleAudio.items)){
+  assert.ok(m.duration_seconds>=150&&m.duration_seconds<=210,id+' duration '+m.duration_seconds+' outside 150-210');
+  assert.ok(fs.existsSync(path.join(root,m.asset_src)),m.asset_src+' missing');
+}
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
 const speech=fs.readFileSync(path.join(root,'speech-client.js'),'utf8');
 assert.equal(/speechSynthesis|SpeechSynthesisUtterance/.test(app),false,'app final German playback must not use browser speechSynthesis');
