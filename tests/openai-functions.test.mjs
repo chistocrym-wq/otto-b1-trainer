@@ -33,12 +33,13 @@ test('transcription requires server key and audio',async()=>{
 });
 
 test('transcription does not send Netlify gateway token to direct OpenAI audio endpoint',async()=>{
-  const oldKey=process.env.OPENAI_API_KEY,oldBase=process.env.OPENAI_BASE_URL,oldDirect=process.env.OTTO_TRANSCRIBE_API_KEY;
-  process.env.OPENAI_API_KEY='gateway-token';process.env.OPENAI_BASE_URL='https://gateway.example.test/openai/v1';delete process.env.OTTO_TRANSCRIBE_API_KEY;
+  const oldKey=process.env.OPENAI_API_KEY,oldBase=process.env.OPENAI_BASE_URL,oldDirect=process.env.OTTO_TRANSCRIBE_API_KEY,oldShared=process.env.OPENAI_DIRECT_API_KEY;
+  process.env.OPENAI_API_KEY='gateway-token';process.env.OPENAI_BASE_URL='https://gateway.example.test/openai/v1';delete process.env.OTTO_TRANSCRIBE_API_KEY;delete process.env.OPENAI_DIRECT_API_KEY;
   const r=await transcribe(req({audio_base64:'YWJj',mime_type:'audio/webm'}));assert.equal(r.status,503);
   if(oldKey)process.env.OPENAI_API_KEY=oldKey;else delete process.env.OPENAI_API_KEY;
   if(oldBase)process.env.OPENAI_BASE_URL=oldBase;else delete process.env.OPENAI_BASE_URL;
   if(oldDirect)process.env.OTTO_TRANSCRIBE_API_KEY=oldDirect;else delete process.env.OTTO_TRANSCRIBE_API_KEY;
+  if(oldShared)process.env.OPENAI_DIRECT_API_KEY=oldShared;else delete process.env.OPENAI_DIRECT_API_KEY;
 });
 
 test('Sprechen Aufgabe 1 partner mode is German-only roleplay, not generic coaching',async()=>{
@@ -58,4 +59,12 @@ test('Sprechen Aufgabe 3 mode receives the real presentation transcript',async()
   const r=await chat(req({message:'Stelle eine relevante Frage.',context:{mode:'sprechen_aufgabe3_question',presentation_transcript:presentation}}));assert.equal(r.status,200);
   assert.match(captured.instructions,/konkreten Inhalt aus der echten Präsentation/i);assert.match(captured.input,/Kosten für viele Familien/);
   global.fetch=oldFetch;if(oldKey)process.env.OPENAI_API_KEY=oldKey;else delete process.env.OPENAI_API_KEY;
+});
+
+test('transcription may safely reuse server-only OPENAI_DIRECT_API_KEY',async()=>{
+  const oldShared=process.env.OPENAI_DIRECT_API_KEY,oldBase=process.env.OPENAI_BASE_URL,oldFetch=global.fetch;
+  process.env.OPENAI_DIRECT_API_KEY='server-only-direct-key';process.env.OPENAI_BASE_URL='https://gateway.example.test/openai/v1';
+  let auth='';global.fetch=async(url,opts)=>{assert.equal(String(url),'https://api.openai.com/v1/audio/transcriptions');auth=opts.headers.authorization;return new Response(JSON.stringify({text:'Guten Tag'}),{status:200,headers:{'content-type':'application/json'}});};
+  const r=await transcribe(req({audio_base64:'YWJj',mime_type:'audio/mp4'}));assert.equal(r.status,200);assert.equal(auth,'Bearer server-only-direct-key');assert.equal((await r.json()).text,'Guten Tag');
+  global.fetch=oldFetch;if(oldShared)process.env.OPENAI_DIRECT_API_KEY=oldShared;else delete process.env.OPENAI_DIRECT_API_KEY;if(oldBase)process.env.OPENAI_BASE_URL=oldBase;else delete process.env.OPENAI_BASE_URL;
 });
