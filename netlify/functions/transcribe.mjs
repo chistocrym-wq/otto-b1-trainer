@@ -7,7 +7,7 @@ export default async function handler(req){
   if(!b64)return json(400,{error:'audio_required'});
   if(b64.length>12_000_000)return json(413,{error:'audio_too_large'});
   const gatewayBase=process.env.OPENAI_BASE_URL;
-  const key=process.env.OTTO_TRANSCRIBE_API_KEY||(!gatewayBase?process.env.OPENAI_API_KEY:null);
+  const key=process.env.OTTO_TRANSCRIBE_API_KEY||process.env.OPENAI_DIRECT_API_KEY||(!gatewayBase?process.env.OPENAI_API_KEY:null);
   if(!key)return json(503,{error:'transcription_not_configured',message:'Запись сохранена, но автоматическая расшифровка в этом Preview не подключена.'});
   let bytes;try{bytes=Buffer.from(b64,'base64');}catch{return json(400,{error:'invalid_audio'});}
   if(!bytes.length)return json(400,{error:'invalid_audio'});
