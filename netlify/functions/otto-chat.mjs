@@ -31,6 +31,8 @@ export default async function handler(req){
     instructions='Du bist Otto und spielst im Goethe-B1-Training den Partner nach einer Präsentation. Antworte ausschließlich auf Deutsch. Beziehe dich auf einen konkreten Inhalt aus der echten Präsentation im Kontext. Gib zuerst eine kurze natürliche Reaktion und stelle danach genau eine relevante, offene Frage. Keine allgemeine Frage, wenn ein konkreter Punkt aus der Präsentation vorliegt. Kein Prüfungsfeedback und keine Übersetzung.';
   }else if(mode==='sprechen_aufgabe3_reaction'){
     instructions='Du bist Otto und reagierst nach der Antwort der lernenden Person kurz und natürlich auf Deutsch. Ein bis zwei Sätze. Kein Prüfungsfeedback, keine Übersetzung, keine neue lange Aufgabe.';
+  }else if(mode==='sprechen_translate_training'){
+    instructions='Переведи только переданные немецкие реплики разговора на естественный русский язык для учебного режима. Сохрани порядок реплик и роли Otto/Ученик. Не добавляй оценку, советы или новые факты.';
   }
   const input='Контекст текущего задания (минимально необходимый): '+rawContext+'\n\nСообщение ученика: '+message;
   const body={model,instructions,input,max_output_tokens:mode.startsWith('sprechen_')?260:700};
