@@ -1388,6 +1388,7 @@ function render(){
   $('#ottoNavImg').src=window.OTTO_SRC||'';
   document.querySelectorAll('[data-nav]').forEach(function(b){b.classList.toggle('active',b.dataset.nav===r);});
   renderModal();
+  bindActionButtons();
 }
 
 function click(e){
@@ -1419,8 +1420,9 @@ function click(e){
     if(m==='Lesen')startLearning(1,'training');else go('guide');
     return;
   }
-  const a=e.target.closest('[data-action]');if(!a)return;
-  const x=a.dataset.action;
+  const a=e.target.closest('[data-action]');if(a){handleAction(a.dataset.action);return;}
+}
+function handleAction(x){
   if(x==='auth-email'){captureRegistrationDraft();S.auth.method='email';save();render();}
   else if(x==='auth-telegram'){captureRegistrationDraft();S.auth.method='telegram';save();render();}
   else if(x==='register-submit')submitRegistration();
@@ -1498,6 +1500,11 @@ function click(e){
   else if(x==='conversation-phrases'){const conv=speakingConversation();conv.showPhrases=!conv.showPhrases;save();render();}
   else if(x==='start-sprechen-a2'){const t=chooseGeneratedTask('Sprechen',2);if(t){S.selectedModule='Sprechen';resetLesson(t,'training',false);go('lesson');}}
   else if(x==='lesson-complete')finishLessonAndAdvance();
+}
+function bindActionButtons(){
+  document.querySelectorAll('[data-action]').forEach(function(el){
+    el.onclick=function(e){e.preventDefault();e.stopPropagation();handleAction(el.dataset.action);};
+  });
 }
 document.addEventListener('click',click);
 document.addEventListener('input',function(e){if(e.target&&e.target.id==='fullWriting'){S.lesson.userText=e.target.value;save();}if(e.target&&e.target.id==='reminderTime'){PREFS.reminder.time=e.target.value;}});
