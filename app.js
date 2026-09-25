@@ -700,6 +700,7 @@ function ottoModal(){
 function renderModal(){
   const root=$('#modalRoot');if(!root)return;
   root.innerHTML=S.ui.helpOpen?helpModal():(S.ui.ottoOpen?ottoModal():'');
+  bindActionButtons();
 }
 
 /* ---------- Full original-aligned Lesen Teil 1 ---------- */
