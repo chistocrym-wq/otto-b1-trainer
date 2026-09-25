@@ -363,6 +363,7 @@ function answerDiagnostic(index){
   const audio=S.diagnostic.audioPlays[item.item_id]||0;
   ENGINE.submitClosed(s,item.item_id,Number(index),{duration_ms:duration,audio_plays:audio});
   S.diagnostic.activeItemId=null;S.diagnostic.itemStartedAt=null;save();render();
+  if(['closed_complete','writing','speaking','complete'].includes(s.phase))setTimeout(()=>{if(route()==='diagnostic')render();},0);
 }
 function playDiagnosticAudio(){
   const item=currentItem();if(!item||item.modality!=='audio')return;
