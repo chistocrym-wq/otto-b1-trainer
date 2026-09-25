@@ -185,3 +185,16 @@ test('microphone contract handles permission denial, mp4 fallback and object URL
   await page.getByRole('button',{name:'Проверить микрофон'}).click();await expect(page.getByText(/Запись готова/)).toBeVisible();
   expect(await page.evaluate(()=>window.__mic.created>=2&&window.__mic.revoked>=1)).toBe(true);
 });
+
+test('Settings logout preserves learning progress and profile is not falsely verified',async({page})=>{
+  await fresh(page);await seedCompleted(page);
+  await page.evaluate(()=>{const s=window.__OTTO_TEST__.getState();s.task_history['T-KEEP']={task_id:'T-KEEP',attempt_count:2,score:.8};window.__OTTO_TEST__.setState(s);});
+  await page.locator('[data-nav="settings"]').click();
+  const screen=await page.locator('#screen').innerText();expect(screen).toContain('локальный Preview-профиль');expect(screen).not.toContain('Статус: подтверждён');
+  await page.getByRole('button',{name:'Выйти из аккаунта'}).click();await expect(page.getByText('Регистрация')).toBeVisible();
+  const st=await page.evaluate(()=>window.__OTTO_TEST__.getState());expect(st.auth.verified).toBe(false);expect(st.task_history['T-KEEP'].attempt_count).toBe(2);
+});
+test('PWA manifest and service worker are present',async({page})=>{
+  const m=await page.request.get(base+'/manifest.webmanifest');expect(m.status()).toBe(200);const manifest=await m.json();expect(manifest.display).toBe('standalone');expect(manifest.name).toMatch(/OTTO B1/);
+  const sw=await page.request.get(base+'/sw.js');expect(sw.status()).toBe(200);expect(await sw.text()).toContain("otto-b1-shell-v1");
+});
