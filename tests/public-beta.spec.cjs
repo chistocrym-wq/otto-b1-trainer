@@ -76,7 +76,7 @@ test('public Beta serves full learning bank, static media and server functions',
   expect(counts).toEqual({Lesen:50,Hoeren:40,Schreiben:30,Sprechen:30});
   const audio=await page.request.get(new URL('/assets/audio/hoeren/h-t1-01-1.mp3',url).toString());
   expect(audio.status()).toBe(200);
-  const image=await page.request.get(new URL('/assets/images/hoeren/h-t1-01-1.svg',url).toString());
+  const image=await page.request.get(new URL('/assets/images/hoeren/h-t1-01-1.webp',url).toString());
   expect(image.status()).toBe(200);
   const chat=await page.request.post(new URL('/.netlify/functions/otto-chat',url).toString(),{data:{message:'Проверка подключения',context:{module:'Lesen',attempted:false}}});
   expect([200,503]).toContain(chat.status());
