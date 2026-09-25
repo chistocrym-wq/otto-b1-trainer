@@ -113,7 +113,8 @@ function fresh(){
     ui:{ottoOpen:false,helpOpen:false,micHelp:false},
     task_history:{},
     learningErrors:[],
-    lesson:{task_id:null,mode:'training',index:0,answers:{},checked:{},audioPlays:{},translation:false,strategy:false,dictionary:false,sample:false,userText:'',submitted:false,feedback:null,transcript:'',assistance_used:false,micStatus:'',recordingReady:false},
+    lesson:defaultLesson(),
+    speakingContext:{lastPresentationTranscript:'',lastPresentationTaskId:null,lastPresentationAt:null},
     ottoChat:{messages:[],sending:false,error:null},
     dailySession:{started:false,date:null,plan:[],index:0,completed:[],finished:false}
   };
@@ -140,7 +141,8 @@ function normalizeRuntimeState(){
   if(!S.dailySession)S.dailySession={started:false,date:null,plan:[],index:0,completed:[],finished:false};
   if(!S.task_history)S.task_history={};
   if(!S.learningErrors)S.learningErrors=[];
-  if(!S.lesson)S.lesson=fresh().lesson; else S.lesson=Object.assign(fresh().lesson,S.lesson);
+  if(!S.lesson)S.lesson=defaultLesson(); else S.lesson=Object.assign(defaultLesson(),S.lesson);
+  if(!S.speakingContext)S.speakingContext={lastPresentationTranscript:'',lastPresentationTaskId:null,lastPresentationAt:null};
   if(!S.ottoChat)S.ottoChat={messages:[],sending:false,error:null};
   if(FULL)FULL.ensureState(S);
   if(!S.selectedGuide)S.selectedGuide=S.selectedModule||'Lesen';
@@ -871,7 +873,7 @@ function editLocalProfile(){
 
 /* ---------- Full learning preview v1 ---------- */
 function defaultLesson(){
-  return {task_id:null,mode:'training',index:0,answers:{},checked:{},audioPlays:{},translation:false,strategy:false,dictionary:false,sample:false,userText:'',submitted:false,feedback:null,transcript:'',assistance_used:false,micStatus:'',recordingReady:false,fromSession:false,score:null,review:false,examFinished:false};
+  return {task_id:null,mode:'training',index:0,answers:{},checked:{},audioPlays:{},translation:false,strategy:false,dictionary:false,sample:false,userText:'',submitted:false,feedback:null,transcript:'',assistance_used:false,micStatus:'',micDiagnosticCode:'',recordingReady:false,fromSession:false,score:null,review:false,examFinished:false,presentationStartedAt:null,presentationDurationSeconds:0,conversation:{started:false,sending:false,turns:[],covered:[],complete:false,voiceStatus:''}};
 }
 function resetLesson(task,mode,fromSession){
   S.lesson=Object.assign(defaultLesson(),{task_id:task.task_id,mode:mode||'training',fromSession:!!fromSession});
