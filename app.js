@@ -954,8 +954,10 @@ function lessonMaterial(task,item){
 function audioPanel(item){
   if(!item.audio)return '';
   const used=S.lesson.audioPlays[item.audio.audio_id]||0,p=item.audio.playback_rules||{},limit=S.lesson.mode==='exam'?p.exam_play_count:p.training_play_count;
-  const disabled=used>=limit?'disabled':'';
-  return '<div class="audio-card">'+(item.image?'<img class="hearing-image" src="'+esc(item.image.src)+'" alt="'+esc(item.image.alt)+'">':'')+'<div><b>Аудио задания</b><div class="small">Прослушано: '+used+' / '+limit+(S.lesson.mode==='exam'?'':' · дополнительное прослушивание учитывается как помощь')+'</div></div><button class="btn secondary" data-action="lesson-audio" '+disabled+'>▶ Слушать</button></div>';
+  const disabled=used>=limit?'disabled':'',training=S.lesson.mode!=='exam';
+  const image=training&&item.image?'<img class="hearing-image" src="'+esc(item.image.src)+'" alt="'+esc(item.image.alt)+'" loading="lazy">':'';
+  const portraits=training&&Array.isArray(item.audio.speakers)?item.audio.speakers.filter(s=>s.portrait_src).map(s=>'<div class="speaker-identity"><img src="'+esc(s.portrait_src)+'" alt="'+esc(s.display_name||s.speaker_id)+'"><div><b>'+esc(s.display_name||s.speaker_id)+'</b><span>'+esc(s.role||'')+'</span></div></div>').join(''):'';
+  return '<div class="audio-card hearing-panel">'+image+'<div class="audio-main"><b>Аудио задания</b><div class="small">Прослушано: '+used+' / '+limit+(training?' · дополнительное прослушивание учитывается как помощь':'')+'</div>'+(portraits?'<div class="speaker-identities">'+portraits+'</div>':'')+'</div><button class="btn secondary" data-action="lesson-audio" '+disabled+'>▶ Слушать</button></div>';
 }
 function closedLessonView(task){
   const items=closedItems(task);
