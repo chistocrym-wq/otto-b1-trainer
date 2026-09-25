@@ -413,16 +413,17 @@ async function toggleSpeakingRecord(){
   }
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    chunks=[];recorder=new MediaRecorder(stream);recorder.stream=stream;
+    const mime=recorderMime();chunks=[];recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);recorder.stream=stream;
     recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
     recorder.onstop=()=>{
       const bytes=chunks.reduce((n,b)=>n+b.size,0);
-      S.diagnostic.lastRecording={recorded:bytes>0,bytes,savedAt:now()};
+      S.diagnostic.lastRecording={recorded:bytes>0,bytes,mime_type:mime||'',savedAt:now()};
       save();recorder=null;render();
     };
     recorder.start();render();
   }catch(e){
-    S.diagnostic.micError=(e&&e.name==='NotAllowedError')?'Браузер отклонил разрешение. Разрешите микрофон для этого сайта и попробуйте снова.':(e&&e.message?e.message:'Не удалось открыть микрофон.');
+    const m=micErrorMessage(e);
+    S.diagnostic.micError=m.message;S.diagnostic.micDiagnosticCode=m.code;
     S.ui.micHelp=true;save();render();
   }
 }
