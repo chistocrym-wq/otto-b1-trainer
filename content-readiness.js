@@ -51,6 +51,7 @@ function validateSpeakers(audio,task){
     const portraitSrc=audio.speakers.map(s=>s&&s.portrait_src).filter(Boolean);
     if(portraits.length!==audio.speakers.length||portraitSrc.length!==audio.speakers.length)errors.push('MISSING_SPEAKER_PORTRAIT');
     if(portraits.length&&new Set(portraits).size!==audio.speakers.length)errors.push('MULTISPEAKER_REUSES_PORTRAIT');
+    if(isArray(task.turns)&&task.turns.some(t=>!t||!ids.includes(t.speaker)))errors.push('TURN_REFERENCES_UNKNOWN_SPEAKER');
   }
   return errors;
 }
