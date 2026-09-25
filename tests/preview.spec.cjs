@@ -130,7 +130,7 @@ test('Sprechen Aufgabe 1 runs real turn-by-turn mocked conversation after microp
     await page.getByRole('button',{name:'🎙 Начать запись'}).click();await page.getByRole('button',{name:'■ Остановить'}).click();
     await page.getByRole('button',{name:'Отправить реплику Otto'}).click();
   }
-  await expect(page.getByText('Wann?').locator('..')).toContainText('Wann?');
+  await expect(page.locator('.planning-progress')).toContainText('Wann?');
   await expect(page.getByRole('button',{name:'Завершить диалог'})).toBeVisible();
   await page.getByRole('button',{name:'Завершить диалог'}).click();await expect(page.getByText('Диалог завершён')).toBeVisible();
   const state=await page.evaluate(()=>window.__OTTO_TEST__.getState());expect(state.lesson.conversation.turns.filter(x=>x.role==='user').length).toBe(3);expect(state.lesson.conversation.covered.length).toBe(4);
