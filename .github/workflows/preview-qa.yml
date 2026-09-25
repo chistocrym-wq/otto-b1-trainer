@@ -30,6 +30,8 @@ jobs:
         run: npm run test:full-content
       - name: Content quality reviewer regression
         run: npm run test:content-quality
+      - name: Quality UX speech regression
+        run: npm run test:quality-ux-speech
       - name: Adaptive planner regression
         run: npm run test:planner
       - name: OpenAI server contract regression
