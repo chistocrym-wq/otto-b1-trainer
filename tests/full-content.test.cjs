@@ -60,8 +60,11 @@ for(let a=1;a<=3;a++){
 }
 const audioFiles=fs.readdirSync(path.join(root,'assets','audio','hoeren'),{recursive:true}).filter(x=>String(x).endsWith('.mp3'));
 const speakingAudio=fs.readdirSync(path.join(root,'assets','audio','sprechen'),{recursive:true}).filter(x=>String(x).endsWith('.mp3'));
-const imageFiles=fs.readdirSync(path.join(root,'assets','images','hoeren')).filter(x=>x.endsWith('.svg'));
+const allImageFiles=fs.readdirSync(path.join(root,'assets','images','hoeren'));
+const imageFiles=allImageFiles.filter(x=>x.endsWith('.webp'));
+const legacySvg=allImageFiles.filter(x=>x.endsWith('.svg'));
 assert.equal(audioFiles.length,80,'expected 80 Hören MP3 assets');
 assert.equal(speakingAudio.length,10,'expected 10 Sprechen sample MP3 assets');
-assert.equal(imageFiles.length,80,'expected 80 Hören contextual images');
+assert.equal(imageFiles.length,80,'expected 80 Hören contextual WebP images');
+assert.equal(legacySvg.length,0,'legacy placeholder SVGs must not remain in Hören');
 console.log('full-content regression: PASS; ids='+allIds.size+'; audio='+(audioFiles.length+speakingAudio.length)+'; images='+imageFiles.length);
