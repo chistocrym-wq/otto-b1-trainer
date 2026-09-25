@@ -316,14 +316,10 @@ function playDiagnosticAudio(){
   const item=currentItem();if(!item||item.modality!=='audio')return;
   const used=S.diagnostic.audioPlays[item.item_id]||0;
   if(used>=2)return;
-  S.diagnostic.audioPlays[item.item_id]=used+1;save();
-  if(!('speechSynthesis'in window))return alert('Системная немецкая озвучка недоступна в этом браузере.');
-  speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(item.audio_script);
-  u.lang='de-DE';
-  u.rate=item.target_band.startsWith('B1')?.96:item.target_band.startsWith('A2')?.90:.82;
-  speechSynthesis.speak(u);
-  render();
+  S.diagnostic.audioPlays[item.item_id]=used+1;save();render();
+  const speech=window.OTTO_SPEECH;
+  if(!speech?.speakGerman)return alert('Фирменная немецкая озвучка Otto недоступна.');
+  void speech.speakGerman(item.audio_script,{voiceRole:'otto',speed:item.target_band.startsWith('B1')?'normal':'slow',context:'diagnostic'}).then(ok=>{if(!ok)alert('Не удалось воспроизвести немецкую озвучку. Попробуйте ещё раз позже.');});
 }
 
 function countGermanWords(text){return (String(text||'').match(/[A-Za-zÄÖÜäöüß]+/g)||[]).length;}
@@ -413,9 +409,10 @@ function finishSpeaking(skipped=false){
   }else{save();render();}
 }
 function speakOtto(){
-  if(!('speechSynthesis' in window))return;
-  const u=new SpeechSynthesisUtterance('Wir könnten den Lerntag am Samstag ab zehn Uhr in der Bibliothek machen. Ich würde aber nur eine kurze Mittagspause planen. Was meinst du?');
-  u.lang='de-DE';u.rate=.92;speechSynthesis.speak(u);
+  const text='Wir könnten den Lerntag am Samstag ab zehn Uhr in der Bibliothek machen. Ich würde aber nur eine kurze Mittagspause planen. Was meinst du?';
+  const speech=window.OTTO_SPEECH;
+  if(!speech?.speakGerman)return alert('Фирменный голос Otto недоступен.');
+  void speech.speakGerman(text,{voiceRole:'otto',context:'sprechen-partner'}).then(ok=>{if(!ok)alert('Не удалось воспроизвести голос Otto.');});
 }
 
 function ensureResult(){
@@ -775,8 +772,9 @@ function learningSummaryView(){
   html+='<div class="button-row">'+button('Вернуться к Lesen','learn-module','primary')+button('Открыть Гид Lesen','learn-guide','ghost')+'</div></div>';return html;
 }
 function speakText(text){
-  if(!('speechSynthesis' in window))return alert('В этом браузере недоступна системная немецкая озвучка.');
-  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=.92;speechSynthesis.speak(u);
+  const speech=window.OTTO_SPEECH;
+  if(!speech?.speakGerman)return alert('Фирменная немецкая озвучка недоступна.');
+  void speech.speakGerman(text,{voiceRole:'otto',context:'dictionary'}).then(ok=>{if(!ok)alert('Не удалось воспроизвести слово фирменным немецким голосом Otto.');});
 }
 async function shareApp(){
   const data={url:location.origin+location.pathname};
