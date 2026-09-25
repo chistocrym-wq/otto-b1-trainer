@@ -1001,15 +1001,63 @@ function writingLessonView(task){
   }
   return html+'</div>';
 }
-function speakingLessonView(task){
-  let html='<div class="learning-shell"><span class="eyebrow">'+(S.lesson.mode==='exam'?'Как на экзамене':'Учебный режим')+' · Sprechen</span><h1 class="h2">Sprechen · Aufgabe '+task.teil+'</h1><div class="card soft"><b>'+esc(task.instruction_de)+'</b><p>'+esc(task.instruction_ru)+'</p></div>'+lessonTools(task);
-  html+='<div class="card"><h3>Сначала проверьте микрофон</h3><p class="muted">Тест запросит разрешение, запишет 5 секунд и позволит прослушать результат.</p><div class="button-row"><button class="btn secondary" data-action="mic-preflight">Проверить микрофон</button></div>'+(S.lesson.micStatus?'<div class="notice">'+esc(S.lesson.micStatus)+'</div>':'')+(micTestUrl?'<audio class="record-playback" controls src="'+micTestUrl+'"></audio>':'')+'</div>';
-  html+='<div class="record-box '+(lessonRecorder&&lessonRecorder.state==='recording'?'recording':'')+'"><b>'+(lessonRecorder&&lessonRecorder.state==='recording'?'Идёт запись…':'Ваш ответ')+'</b><div class="button-row"><button class="btn primary" data-action="lesson-record">'+(lessonRecorder&&lessonRecorder.state==='recording'?'■ Остановить':'🎙 Начать запись')+'</button></div></div>';
+function micPracticePanel(){
+  return '<div class="card"><h3>Проверить микрофон</h3><p class="muted">Тест запишет 5 секунд. Микрофон считается рабочим только если вы можете прослушать себя.</p><div class="button-row"><button class="btn secondary" data-action="mic-preflight">Проверить микрофон</button></div>'+(S.lesson.micStatus?'<div class="notice">'+esc(S.lesson.micStatus)+'</div>':'')+(micTestUrl?'<audio class="record-playback" controls src="'+micTestUrl+'"></audio>':'')+'</div>';
+}
+function recordPracticePanel(label='Ваш ответ'){
+  let html='<div class="record-box '+(lessonRecorder&&lessonRecorder.state==='recording'?'recording':'')+'"><b>'+(lessonRecorder&&lessonRecorder.state==='recording'?'Идёт запись…':esc(label))+'</b><div class="button-row"><button class="btn primary" data-action="lesson-record">'+(lessonRecorder&&lessonRecorder.state==='recording'?'■ Остановить':'🎙 Начать запись')+'</button></div></div>';
   if(lessonAudioUrl)html+='<div class="card good"><b>Запись готова</b><p class="muted">Прослушайте себя перед отправкой.</p><audio class="record-playback" controls src="'+lessonAudioUrl+'"></audio></div>';
-  if(S.lesson.transcript)html+='<div class="card soft"><b>Расшифровка</b><p>'+esc(S.lesson.transcript)+'</p><p class="small">Расшифровка помогает разбирать содержание и грамматику, но не является оценкой произношения.</p></div>';
-  if(!S.lesson.submitted)html+='<div class="button-row"><button class="btn primary" data-action="speaking-submit" '+(!lessonAudioBlob?'disabled':'')+'>Отправить запись</button><button class="btn ghost" data-action="speaking-skip">Пропустить это задание</button></div>';
-  else html+='<div class="feedback-card correct"><h3>Ответ сохранён</h3><p>'+esc(S.lesson.feedback?.text||'Запись выполнена. На следующем шаге Otto учтёт эту практику.')+'</p></div><div class="button-row"><button class="btn primary" data-action="lesson-complete">Далее</button></div>';
+  return html;
+}
+function conversationThreadHtml(conv){
+  if(!conv.turns.length)return '';
+  return '<div class="conversation-thread">'+conv.turns.map(t=>{
+    const exam=S.lesson.mode==='exam';
+    if(exam)return '<div class="conversation-turn '+t.role+'"><b>'+(t.role==='otto'?'Otto':'Вы')+'</b><span>'+(t.role==='otto'?'Реплика прозвучала голосом.':'Ваша реплика записана.')+'</span></div>';
+    return '<div class="conversation-turn '+t.role+'"><b>'+(t.role==='otto'?'Otto':'Вы')+'</b><span>'+esc(t.text)+'</span></div>';
+  }).join('')+'</div>';
+}
+function speakingConversationView(task){
+  const conv=speakingConversation(),covered=task.planning_points||[];
+  let html='<div class="learning-shell"><span class="eyebrow">'+(S.lesson.mode==='exam'?'Как на экзамене':'Учебный режим')+' · Sprechen</span><h1 class="h2">Aufgabe 1 · Gemeinsam etwas planen</h1><div class="card soft"><b>'+esc(task.instruction_de)+'</b><p>'+esc(task.instruction_ru)+'</p></div>'+lessonTools(task)+micPracticePanel();
+  if(!conv.started)html+='<div class="card"><h3>Диалог с Otto</h3><p class="muted">Otto сам сформулирует первую немецкую реплику. Дальше он будет реагировать на вашу речь, а не проигрывать заранее записанный сценарий.</p><button class="btn primary" data-action="speaking-conversation-start">Начать диалог с Otto</button></div>';
+  else{
+    html+=conversationThreadHtml(conv);
+    if(S.lesson.mode!=='exam')html+='<div class="planning-progress">'+covered.map(x=>'<span class="'+(conv.covered.includes(x)?'done':'')+'">'+esc(x)+'</span>').join('')+'</div>';
+    if(conv.sending)html+='<div class="notice">Otto формулирует следующую реплику…</div>';
+    if(conv.voiceStatus==='tts_unavailable')html+='<div class="notice">Текстовая реплика готова, но фирменный голос Otto на сервере не настроен. Live voice reply сейчас BLOCKED.</div>';
+    if(!S.lesson.submitted&&!conv.complete)html+=recordPracticePanel('Ваша следующая реплика')+(lessonAudioBlob?'<div class="button-row"><button class="btn primary" data-action="speaking-conversation-send">Отправить реплику Otto</button></div>':'');
+    if(!S.lesson.submitted&&conv.complete)html+='<div class="button-row"><button class="btn primary" data-action="speaking-conversation-finish">Завершить диалог</button></div>';
+  }
+  if(S.lesson.submitted)html+='<div class="feedback-card correct"><h3>Диалог завершён</h3><p>'+esc(S.lesson.feedback?.text||'')+'</p></div><div class="button-row"><button class="btn primary" data-action="lesson-complete">Далее</button></div>';
   return html+'</div>';
+}
+function speakingPresentationView(task){
+  let html='<div class="learning-shell"><span class="eyebrow">'+(S.lesson.mode==='exam'?'Как на экзамене':'Учебный режим')+' · Sprechen</span><h1 class="h2">Aufgabe 2 · Präsentation</h1><div class="card soft"><b>'+esc(task.instruction_de)+'</b><p>'+esc(task.instruction_ru)+'</p></div>'+lessonTools(task)+micPracticePanel();
+  html+='<div class="speaking-timer"><span>Время речи</span><strong data-speaking-timer>'+formatSeconds(S.lesson.presentationDurationSeconds)+'</strong><small>Ориентир задания: около 3 минут. Это временной формат, не норма количества слов.</small></div>'+recordPracticePanel('Ваша презентация');
+  if(S.lesson.sample&&task.sample_audio)html+='<div class="card soft"><b>Аудиообразец</b><audio class="record-playback" controls src="'+esc(task.sample_audio)+'"></audio><p class="small">QA оценивает длительность образца и покрытие структуры, а не придуманную норму слов.</p></div>';
+  if(S.lesson.transcript&&S.lesson.mode!=='exam')html+='<div class="card soft"><b>Расшифровка</b><p>'+esc(S.lesson.transcript)+'</p></div>';
+  if(!S.lesson.submitted)html+='<div class="button-row"><button class="btn primary" data-action="speaking-submit" '+(!lessonAudioBlob?'disabled':'')+'>Завершить презентацию</button><button class="btn ghost" data-action="speaking-skip">Пропустить</button></div>';
+  else html+='<div class="feedback-card correct"><h3>Презентация сохранена</h3><p>'+esc(S.lesson.feedback?.text||'')+'</p></div><div class="button-row"><button class="btn primary" data-action="lesson-complete">Далее</button></div>';
+  return html+'</div>';
+}
+function speakingFollowupView(task){
+  const conv=speakingConversation(),hasPresentation=Boolean(S.speakingContext?.lastPresentationTranscript);
+  let html='<div class="learning-shell"><span class="eyebrow">'+(S.lesson.mode==='exam'?'Как на экзамене':'Учебный режим')+' · Sprechen</span><h1 class="h2">Aufgabe 3 · Rückmeldung und Fragen</h1><div class="card soft"><b>'+esc(task.instruction_de)+'</b><p>'+esc(task.instruction_ru)+'</p></div>'+lessonTools(task)+micPracticePanel();
+  if(!hasPresentation)html+='<div class="notice"><b>Для живого follow-up нужна ваша реальная презентация.</b> Сначала выполните Aufgabe 2: Otto должен задать вопрос по тому, что вы действительно сказали, а не по фиктивному тексту.</div><button class="btn primary" data-action="start-sprechen-a2">Перейти к Aufgabe 2</button>';
+  else if(!conv.started)html+='<div class="card"><h3>Otto слушал вашу презентацию</h3><p class="muted">Он даст короткую реакцию и сформулирует один релевантный вопрос по вашему transcript.</p><button class="btn primary" data-action="speaking-followup-start">Получить реакцию и вопрос Otto</button></div>';
+  else{
+    html+=conversationThreadHtml(conv);
+    if(conv.sending)html+='<div class="notice">Otto готовит реплику…</div>';
+    if(!S.lesson.submitted)html+=recordPracticePanel('Ответьте на вопрос Otto')+(lessonAudioBlob?'<div class="button-row"><button class="btn primary" data-action="speaking-followup-send">Отправить ответ</button></div>':'');
+  }
+  if(S.lesson.submitted)html+='<div class="feedback-card correct"><h3>Follow-up завершён</h3><p>'+esc(S.lesson.feedback?.text||'')+'</p></div><div class="button-row"><button class="btn primary" data-action="lesson-complete">Далее</button></div>';
+  return html+'</div>';
+}
+function speakingLessonView(task){
+  if(Number(task.teil)===1)return speakingConversationView(task);
+  if(Number(task.teil)===2)return speakingPresentationView(task);
+  return speakingFollowupView(task);
 }
 function lessonView(){
   const task=currentFullTask();
@@ -1062,6 +1110,92 @@ function submitWritingLesson(){
   save();render();
 }
 function base64Blob(blob){return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(String(fr.result).split(',')[1]||'');fr.onerror=reject;fr.readAsDataURL(blob);});}
+function speakingConversation(){
+  if(!S.lesson.conversation||typeof S.lesson.conversation!=='object')S.lesson.conversation={started:false,sending:false,turns:[],covered:[],complete:false,voiceStatus:''};
+  return S.lesson.conversation;
+}
+function planningCoverage(text,current=[]){
+  const s=String(text||'').toLowerCase(),set=new Set(current||[]);
+  if(/\b(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|uhr|morgen|vormittag|nachmittag|abend|wochenende)\b/.test(s))set.add('Wann?');
+  if(/\b(in der|im |bei |bibliothek|café|cafe|park|schule|zentrum|wohnung|haus|online|treffen wir uns)\b/.test(s))set.add('Wo?');
+  if(/\b(ich|du|wir)\b.{0,45}\b(mache|machst|machen|kaufe|kaufst|bringen|mitbringen|organisieren|vorbereiten|reservieren|bestellen)\b/.test(s))set.add('Wer macht was?');
+  if(/\b(brauchen|braucht|mitbringen|material|ticket|tickets|getränk|getränke|essen|geld|kamera|buch|bücher|werkzeug)\b/.test(s))set.add('Was braucht man?');
+  return [...set];
+}
+function clearLessonRecording(){
+  lessonAudioBlob=null;lessonChunks=[];S.lesson.recordingReady=false;
+  if(lessonAudioUrl){URL.revokeObjectURL(lessonAudioUrl);lessonAudioUrl=null;}
+}
+async function transcribeLessonRecording(){
+  if(!lessonAudioBlob)return{ok:false,code:'no_recording',message:'Сначала запишите реплику.'};
+  try{
+    const audio_base64=await base64Blob(lessonAudioBlob);
+    const res=await fetch('/.netlify/functions/transcribe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({audio_base64,mime_type:lessonAudioBlob.type})});
+    const data=await res.json().catch(()=>({}));
+    if(res.ok&&data.text)return{ok:true,text:String(data.text).trim()};
+    if(res.status===503)return{ok:false,code:'transcription_not_configured',message:'Live Sprechen с Otto пока заблокирован: на сервере не подключена безопасная транскрипция речи.'};
+    return{ok:false,code:'transcription_failed',message:'Не удалось расшифровать запись. Саму запись можно прослушать и повторить.'};
+  }catch{return{ok:false,code:'transcription_network_error',message:'Не удалось связаться с сервисом расшифровки. Попробуйте ещё раз.'};}
+}
+async function playOttoRoleplay(text,context){
+  const ok=await window.OTTO_SPEECH?.speakGerman?.(text,{voiceRole:'otto',context:context||'sprechen-partner'});
+  const conv=speakingConversation();conv.voiceStatus=ok?'ready':'tts_unavailable';save();render();return ok;
+}
+async function requestOttoRoleplay(mode,message,extra={}){
+  const conv=speakingConversation(),task=currentFullTask();if(conv.sending)return false;
+  conv.sending=true;save();render();
+  const context={
+    mode,task_id:task?.task_id||null,teil:task?.teil||null,topic:task?.topic||null,
+    planning_points:task?.planning_points||[],covered_planning_points:conv.covered||[],
+    unresolved_planning_points:(task?.planning_points||[]).filter(x=>!(conv.covered||[]).includes(x)),
+    conversation:(conv.turns||[]).slice(-10),exam_like:S.lesson.mode==='exam',...extra
+  };
+  try{
+    const res=await fetch('/.netlify/functions/otto-chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message,context})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.message||'Otto сейчас недоступен.');
+    conv.turns.push({role:'otto',text:String(data.text||''),at:now()});conv.sending=false;save();render();
+    await playOttoRoleplay(String(data.text||''),mode);
+    return true;
+  }catch(e){conv.sending=false;conv.voiceStatus='reply_error';S.lesson.micStatus=e?.message||'Otto сейчас недоступен.';save();render();return false;}
+}
+async function startOttoConversation(){
+  const conv=speakingConversation();if(conv.started)return;
+  conv.started=true;save();render();
+  await requestOttoRoleplay('sprechen_aufgabe1_partner','Beginne das Planungsgespräch natürlich und frage nach einem ersten konkreten Punkt.');
+}
+async function sendConversationTurn(){
+  const conv=speakingConversation(),tr=await transcribeLessonRecording();
+  if(!tr.ok){S.lesson.micDiagnosticCode=tr.code;S.lesson.micStatus=tr.message;save();render();return;}
+  conv.turns.push({role:'user',text:tr.text,at:now()});conv.covered=planningCoverage(tr.text,conv.covered);S.lesson.transcript=tr.text;clearLessonRecording();save();render();
+  await requestOttoRoleplay('sprechen_aufgabe1_partner',tr.text,{user_transcript:tr.text});
+  const userTurns=conv.turns.filter(x=>x.role==='user').length;
+  if(userTurns>=3&&['Wann?','Wo?','Wer macht was?','Was braucht man?'].every(x=>conv.covered.includes(x))){conv.complete=true;save();render();}
+}
+function finishOttoConversation(){
+  const conv=speakingConversation();if(!conv.complete)return alert('Im Gespräch sind noch nicht alle Planungspunkte geklärt.');
+  S.lesson.submitted=true;S.lesson.score=null;S.lesson.feedback={text:'Диалог завершён. Otto сохранил несколько реальных обменов репликами и четыре пункта планирования. Учебный результат не выдаётся за официальный балл Goethe.'};save();render();
+}
+async function startFollowupQuestion(){
+  const presentation=String(S.speakingContext?.lastPresentationTranscript||'').trim();
+  if(!presentation)return alert('Сначала выполните Aufgabe 2 и запишите реальную презентацию.');
+  const conv=speakingConversation();if(conv.started)return;
+  conv.started=true;save();render();
+  await requestOttoRoleplay('sprechen_aufgabe3_question','Reagiere auf die Präsentation und stelle eine relevante Frage.',{presentation_transcript:presentation});
+}
+async function sendFollowupAnswer(){
+  const tr=await transcribeLessonRecording();if(!tr.ok){S.lesson.micDiagnosticCode=tr.code;S.lesson.micStatus=tr.message;save();render();return;}
+  const conv=speakingConversation();conv.turns.push({role:'user',text:tr.text,at:now()});S.lesson.transcript=tr.text;clearLessonRecording();save();render();
+  await requestOttoRoleplay('sprechen_aufgabe3_reaction',tr.text,{presentation_transcript:S.speakingContext.lastPresentationTranscript,user_answer_transcript:tr.text});
+  conv.complete=true;S.lesson.submitted=true;S.lesson.score=null;S.lesson.feedback={text:'Follow-up завершён: Otto задал вопрос по содержанию вашей реальной презентации и получил голосовой ответ.'};save();render();
+}
+function formatSeconds(sec){sec=Math.max(0,Math.round(Number(sec)||0));return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');}
+function updateSpeakingTimer(){
+  const el=document.querySelector('[data-speaking-timer]');if(!el)return;
+  let sec=S.lesson.presentationDurationSeconds||0;
+  if(lessonRecorder?.state==='recording'&&S.lesson.presentationStartedAt)sec=(Date.now()-S.lesson.presentationStartedAt)/1000;
+  el.textContent=formatSeconds(sec);
+}
 function recorderMime(){
   if(!window.MediaRecorder)return '';
   const candidates=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'];
@@ -1120,28 +1254,31 @@ async function toggleLessonRecording(){
     lessonRecorder.ondataavailable=e=>{if(e.data?.size)lessonChunks.push(e.data);};
     lessonRecorder.onstop=()=>{
       try{stream?.getTracks?.().forEach(t=>t.stop())}catch{}
+      const activeTask=currentFullTask();
+      if(activeTask?.module==='Sprechen'&&Number(activeTask.teil)===2&&S.lesson.presentationStartedAt){S.lesson.presentationDurationSeconds=(Date.now()-S.lesson.presentationStartedAt)/1000;S.lesson.presentationStartedAt=null;}
       lessonAudioBlob=new Blob(lessonChunks,{type:mime||lessonChunks[0]?.type||'audio/webm'});
       if(lessonAudioUrl)URL.revokeObjectURL(lessonAudioUrl);
       lessonAudioUrl=URL.createObjectURL(lessonAudioBlob);
       S.lesson.recordingReady=true;S.lesson.micDiagnosticCode='recording_ready';S.lesson.micStatus='Запись готова.';lessonRecorder=null;save();render();
     };
-    lessonRecorder.start();S.lesson.micDiagnosticCode='recording';S.lesson.micStatus='Идёт запись…';save();render();
+    lessonRecorder.start();const activeTask=currentFullTask();if(activeTask?.module==='Sprechen'&&Number(activeTask.teil)===2&&!S.lesson.presentationStartedAt)S.lesson.presentationStartedAt=Date.now();S.lesson.micDiagnosticCode='recording';S.lesson.micStatus='Идёт запись…';save();render();
   }catch(e){try{stream?.getTracks?.().forEach(t=>t.stop())}catch{};setMicStatus(micErrorInfo(e));}
 }
 async function submitSpeakingLesson(skip){
   const task=currentFullTask();
   if(skip){S.lesson.submitted=true;S.lesson.score=null;S.lesson.feedback={text:'Задание пропущено. Otto предложит устную практику снова позже.'};S.learningErrors.push({task_id:task.task_id,module:'Sprechen',skill:'Sprechen',micro_skill:'speaking_practice',created_at:now()});save();render();return;}
-  if(!lessonAudioBlob)return alert('Сначала запишите ответ.');
-  S.lesson.micStatus='Сохраняем запись…';save();render();
-  try{
-    const audio_base64=await base64Blob(lessonAudioBlob);
-    const res=await fetch('/.netlify/functions/transcribe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({audio_base64,mime_type:lessonAudioBlob.type})});
-    const data=await res.json().catch(()=>({}));
-    if(res.ok&&data.text)S.lesson.transcript=data.text;
-    else if(res.status===503)S.lesson.transcript='Расшифровка станет доступна после подключения серверного сервиса.';
-    else S.lesson.transcript='Расшифровку получить не удалось, но запись можно использовать для самостоятельного прослушивания.';
-  }catch(e){S.lesson.transcript='Расшифровку получить не удалось, но запись сохранена в текущей попытке.';}
-  S.lesson.submitted=true;S.lesson.score=null;S.lesson.feedback={text:'Запись выполнена. Проверьте, раскрыли ли вы задачу, использовали ли связки и говорили ли законченными фразами. Автоматический балл за устную речь не выставляется: расшифровка не измеряет произношение и беглость.'};S.lesson.micStatus='Запись готова.';save();render();
+  if(Number(task.teil)!==2)return alert('Для этой части используйте диалоговый Sprechen-flow.');
+  const tr=await transcribeLessonRecording();
+  if(tr.ok){
+    S.lesson.transcript=tr.text;
+    S.speakingContext.lastPresentationTranscript=tr.text;S.speakingContext.lastPresentationTaskId=task.task_id;S.speakingContext.lastPresentationAt=now();
+  }else{
+    S.lesson.transcript='';S.lesson.micDiagnosticCode=tr.code;S.lesson.micStatus=tr.message;
+  }
+  S.lesson.submitted=true;S.lesson.score=null;
+  const sec=Math.round(S.lesson.presentationDurationSeconds||0);
+  S.lesson.feedback={text:'Презентация записана ('+formatSeconds(sec)+'). Проверяйте пять обязательных шагов структуры. Автоматический балл за произношение и беглость не выставляется.'+(tr.ok?' Расшифровка сохранена для следующего follow-up.':' Live follow-up с Otto требует рабочей серверной транскрипции.')};
+  save();render();
 }
 function recordManualHistory(task,score,assisted){
   const old=S.task_history[task.task_id]||{},d=new Date(),next=new Date(d);next.setUTCDate(next.getUTCDate()+(score!=null&&score<.7?2:5));
@@ -1319,6 +1456,12 @@ function click(e){
   else if(x==='lesson-record')toggleLessonRecording();
   else if(x==='speaking-submit')submitSpeakingLesson(false);
   else if(x==='speaking-skip')submitSpeakingLesson(true);
+  else if(x==='speaking-conversation-start')startOttoConversation();
+  else if(x==='speaking-conversation-send')sendConversationTurn();
+  else if(x==='speaking-conversation-finish')finishOttoConversation();
+  else if(x==='speaking-followup-start')startFollowupQuestion();
+  else if(x==='speaking-followup-send')sendFollowupAnswer();
+  else if(x==='start-sprechen-a2'){const t=chooseGeneratedTask('Sprechen',2);if(t){S.selectedModule='Sprechen';resetLesson(t,'training',false);go('lesson');}}
   else if(x==='lesson-complete')finishLessonAndAdvance();
 }
 document.addEventListener('click',click);
@@ -1328,6 +1471,7 @@ window.addEventListener('popstate',render);
 window.addEventListener('hashchange',render);
 window.addEventListener('focus',maybeSendReminder);
 setInterval(maybeSendReminder,30000);
+setInterval(updateSpeakingTimer,500);
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>undefined),{once:true});
 
 window.__OTTO_TEST__={
