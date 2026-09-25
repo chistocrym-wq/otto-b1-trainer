@@ -17,9 +17,9 @@ function readyHoeren(overrides={}){
     audio:{
       audio_id:'AUD-H-T4-001',task_id:'H-T4-001',version:'1.0.0',
       speakers:[
-        {speaker_id:'moderatorin',voice_id:'voice-f-01'},
-        {speaker_id:'frau_keller',voice_id:'voice-f-02'},
-        {speaker_id:'herr_brandt',voice_id:'voice-m-01'}
+        {speaker_id:'moderatorin',voice_id:'voice-f-01',portrait_id:'portrait-moderatorin',portrait_src:'assets/images/speakers/moderatorin.webp'},
+        {speaker_id:'frau_keller',voice_id:'voice-f-02',portrait_id:'portrait-frau-keller',portrait_src:'assets/images/speakers/person-a.webp'},
+        {speaker_id:'herr_brandt',voice_id:'voice-m-01',portrait_id:'portrait-herr-brandt',portrait_src:'assets/images/speakers/person-b.webp'}
       ],
       transcript:'Moderatorin: ... Frau Keller: ... Herr Brandt: ...',
       duration_seconds:82,
