@@ -422,7 +422,7 @@ async function toggleSpeakingRecord(){
     };
     recorder.start();render();
   }catch(e){
-    const m=micErrorMessage(e);
+    const m=micErrorInfo(e);
     S.diagnostic.micError=m.message;S.diagnostic.micDiagnosticCode=m.code;
     S.ui.micHelp=true;save();render();
   }
