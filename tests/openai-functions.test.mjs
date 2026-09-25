@@ -40,3 +40,22 @@ test('transcription does not send Netlify gateway token to direct OpenAI audio e
   if(oldBase)process.env.OPENAI_BASE_URL=oldBase;else delete process.env.OPENAI_BASE_URL;
   if(oldDirect)process.env.OTTO_TRANSCRIBE_API_KEY=oldDirect;else delete process.env.OTTO_TRANSCRIBE_API_KEY;
 });
+
+test('Sprechen Aufgabe 1 partner mode is German-only roleplay, not generic coaching',async()=>{
+  const oldKey=process.env.OPENAI_API_KEY,oldFetch=global.fetch;process.env.OPENAI_API_KEY='test-only';
+  let captured=null;
+  global.fetch=async(url,opts)=>{captured=JSON.parse(opts.body);return new Response(JSON.stringify({output_text:'Wann sollen wir uns treffen?'}),{status:200,headers:{'content-type':'application/json'}});};
+  const context={mode:'sprechen_aufgabe1_partner',topic:'Bücher',planning_points:['Wann?','Wo?','Wer macht was?','Was braucht man?'],covered_planning_points:['Wo?'],unresolved_planning_points:['Wann?','Wer macht was?','Was braucht man?'],conversation:[{role:'otto',text:'Wo treffen wir uns?'},{role:'user',text:'In der Bibliothek.'}]};
+  const r=await chat(req({message:'In der Bibliothek.',context}));assert.equal(r.status,200);
+  assert.match(captured.instructions,/ausschließlich auf Deutsch/i);assert.match(captured.instructions,/Wann, Wo, Wer macht was und Was braucht man/i);assert.match(captured.instructions,/kein Prüfungsfeedback/i);
+  assert.match(captured.input,/In der Bibliothek/);
+  global.fetch=oldFetch;if(oldKey)process.env.OPENAI_API_KEY=oldKey;else delete process.env.OPENAI_API_KEY;
+});
+test('Sprechen Aufgabe 3 mode receives the real presentation transcript',async()=>{
+  const oldKey=process.env.OPENAI_API_KEY,oldFetch=global.fetch;process.env.OPENAI_API_KEY='test-only';
+  let captured=null;global.fetch=async(url,opts)=>{captured=JSON.parse(opts.body);return new Response(JSON.stringify({output_text:'Du hast die Kosten erwähnt. Wie könnte man sie senken?'}),{status:200,headers:{'content-type':'application/json'}});};
+  const presentation='In meiner Präsentation habe ich gesagt, dass die Kosten für viele Familien ein Problem sind.';
+  const r=await chat(req({message:'Stelle eine relevante Frage.',context:{mode:'sprechen_aufgabe3_question',presentation_transcript:presentation}}));assert.equal(r.status,200);
+  assert.match(captured.instructions,/konkreten Inhalt aus der echten Präsentation/i);assert.match(captured.input,/Kosten für viele Familien/);
+  global.fetch=oldFetch;if(oldKey)process.env.OPENAI_API_KEY=oldKey;else delete process.env.OPENAI_API_KEY;
+});
