@@ -8,6 +8,7 @@
   <title>Тренажёр Otto — сертификат B1</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="manifest" href="./manifest.webmanifest">
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -23,13 +24,16 @@
     </header>
     <main id="screen" class="screen" aria-live="polite"></main>
     <img id="ottoDecor" class="otto-decor hidden" alt="" aria-hidden="true">
-    <button id="shareButton" class="share-utility hidden" data-action="share-app">Поделиться</button>
+    <div id="utilityDock" class="utility-dock hidden" aria-label="Дополнительные действия">
+      <button id="settingsButton" data-nav="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M19.4 13.5c.05-.49.05-.99 0-1.48l2-1.55-2-3.46-2.5 1a8.2 8.2 0 0 0-1.28-.75L15.24 4h-4l-.4 3.25c-.45.2-.88.45-1.28.75l-2.5-1-2 3.46 2 1.55a7.8 7.8 0 0 0 0 1.48l-2 1.55 2 3.46 2.5-1c.4.3.83.55 1.28.75l.4 3.25h4l.4-3.25c.45-.2.88-.45 1.28-.75l2.5 1 2-3.46-2.02-1.54Z"/></svg><span>Настройки</span></button>
+      <button id="shareButton" data-action="share-app"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a3 3 0 1 0-2.83-4A3 3 0 0 0 18 8ZM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="m8.6 10.4 6.8-4M8.6 13.6l6.8 4"/></svg><span>Поделиться</span></button>
+    </div>
     <nav id="bottomNav" class="bottom-nav hidden" aria-label="Основная навигация">
-      <button data-nav="home"><span>⌂</span><small>Сегодня</small></button>
-      <button data-nav="modules"><span>▦</span><small>Модули</small></button>
+      <button data-nav="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></svg><small>Сегодня</small></button>
+      <button data-nav="modules"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><small>Модули</small></button>
       <button class="otto-nav" data-action="ask-otto" aria-label="Спросить Otto"><span class="otto-nav-face"><img id="ottoNavImg" alt="Otto"></span><small>Спросить Otto</small></button>
-      <button data-nav="errors"><span>!</span><small>Ошибки</small></button>
-      <button data-nav="progress"><span>◔</span><small>Прогресс</small></button>
+      <button data-nav="errors"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17.5v.1"/></svg><small>Ошибки</small></button>
+      <button data-nav="progress"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg><small>Прогресс</small></button>
     </nav>
     <div id="modalRoot"></div>
   </div>
