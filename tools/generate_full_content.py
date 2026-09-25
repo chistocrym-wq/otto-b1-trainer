@@ -1,5 +1,6 @@
 from pathlib import Path
 import json, re
+from generate_visual_assets import generate_context_asset, generate_portrait_assets
 ROOT=Path(__file__).resolve().parents[1]
 C=ROOT/"content"; IMG=ROOT/"assets"/"images"/"hoeren"
 for p in [C/"lesen",C/"hoeren",C/"schreiben",C/"sprechen",IMG]: p.mkdir(parents=True,exist_ok=True)
@@ -145,7 +146,7 @@ def lesen5(i):
 6. Организация не несёт ответственности за личные вещи."""
  return {**common(f"L-T5-{i+1:02d}","Lesen",5,"rules_mcq",title,"rules_detail"),"german_instruction":"Lesen Sie die Regeln und lösen Sie vier Aufgaben. Wählen Sie a, b oder c.","instruction_ru":"Прочитайте правила и ответьте на 4 вопроса.","text":text,"translation":ru,"glossary":glossary(),"answer_key_status":"VERIFIED","questions":qs}
 def image(tid,n,scene):
- return {"image_id":f"IMG-{tid}-{n}","task_id":tid,"version":"1.0.0","src":f"assets/images/hoeren/{tid.lower()}-{n}.svg","alt":f"Нейтральная сцена: {scene}","scene_context":scene,"context_only":True,"answer_leak_review":"PASSED","art_direction_version":"otto-blue-context-v1","source_status":"OWNED"}
+ return {"image_id":f"IMG-{tid}-{n}","task_id":tid,"version":"2.0.0","src":f"assets/images/hoeren/{tid.lower()}-{n}.webp","alt":f"Нейтральная иллюстрация ситуации: {scene}","scene_context":scene,"context_only":True,"answer_leak_review":"PASSED_CONTEXT_ONLY","art_direction_version":"otto-blue-context-v2-raster","source_status":"OWNED_GENERATED_RASTER"}
 def audio(tid,n,transcript,voices,count):
  return {"audio_id":f"AUD-{tid}-{n}","task_id":tid,"version":"1.1.0","asset_src":f"assets/audio/hoeren/{tid.lower()}-{n}.mp3","duration_seconds":max(8,len(transcript)//14),"transcript":transcript,"playback_rules":{"exam_play_count":count,"training_play_count":count+1,"extra_training_plays_are_assisted":True},"source_status":"GENERATED_TTS_EDGE_STATIC","production_status":"STATIC_PREVIEW_ASSET","pronunciation_qa":"HUMAN_LISTENING_NOT_INDEPENDENTLY_VERIFIED","qa_status":"AUTOMATED_ASSET_CHECK_PASSED","source_type":"versioned_static_asset","speakers":[{"speaker_id":f"speaker-{k+1}","voice_id":v} for k,v in enumerate(voices)]}
 def hoeren1(i):
@@ -170,7 +171,10 @@ def hoeren3(i):
  vals=[False,False,True,True,False,True,False];st=["Paul kann früh am Vormittag.","Maria kommt mit.","Lena kauft Tickets online.","Paul möchte danach essen.","Paul hat abends unbegrenzt Zeit.","Lena schickt die Adresse.","Treffen ist um zehn."]
  ev=["erst nach elf","doch nicht mit","Tickets online","Gern","um sechs zu Hause","schicke ... Adresse","halb zwölf"]
  qs=[rf(f"{tid}-Q{k+1}",st[k],vals[k],ev[k],"Сверьте утверждение с конкретной репликой.","Отрицание и время меняют смысл.") for k in range(7)]
- a=audio(tid,1,transcript,[VOICES[0],VOICES[1]],1);a["speakers"]=[{"speaker_id":"Lena","voice_id":VOICES[0]},{"speaker_id":"Paul","voice_id":VOICES[1]}]
+ a=audio(tid,1,transcript,[VOICES[0],VOICES[1]],1);a["speakers"]=[
+  {"speaker_id":"Lena","display_name":"Lena","role":"Teilnehmerin","voice_id":VOICES[0],"portrait_id":"portrait-lena-v1","portrait_src":"assets/images/speakers/lena.webp"},
+  {"speaker_id":"Paul","display_name":"Paul","role":"Teilnehmer","voice_id":VOICES[1],"portrait_id":"portrait-paul-v1","portrait_src":"assets/images/speakers/paul.webp"}
+ ]
  return {**common(tid,"Hören",3,"dialogue_richtig_falsch",topic,"speaker_tracking"),"german_instruction":"Sie hören ein Gespräch einmal. Richtig oder Falsch?","instruction_ru":"Разговор звучит один раз; 7 утверждений Richtig/Falsch.","turns":[{"speaker":a,"text":b} for a,b in turns],"audio":a,"image":image(tid,1,topic),"questions":qs,"translation":transcript_ru,"glossary":glossary(),"answer_key_status":"VERIFIED"}
 def hoeren4(i):
  tid=f"H-T4-{i+1:02d}";theme=TOPICS[i]
@@ -180,7 +184,11 @@ def hoeren4(i):
  transcript_ru="\n".join(a+": "+b for a,b in turns_ru)
  data=[("Flexibilität ist wichtig.","Person A"),("Klare Regeln verhindern Nachteile.","Person B"),("Auch Menschen mit wenig Geld sollen teilnehmen können.","Person A"),("Qualität ist wichtiger als billig.","Person B"),("Transparenz hilft beim Vergleichen.","Person A"),("Eine Internetseite allein reicht nicht.","Person B"),("Zuerst klein anfangen.","Person A"),("Regeln vor dem Start.","Person B")]
  qs=[{"id":f"{tid}-Q{k+1}","statement":x,"correct_speaker":sp,"why":"Сопоставьте мысль с точной позицией говорящего.","trap":"Модератор задаёт вопросы, но не обязательно выражает эту позицию."} for k,(x,sp) in enumerate(data)]
- a=audio(tid,1,transcript,VOICES,2);a["speakers"]=[{"speaker_id":"Moderatorin","voice_id":VOICES[2]},{"speaker_id":"Person A","voice_id":VOICES[0]},{"speaker_id":"Person B","voice_id":VOICES[1]}]
+ a=audio(tid,1,transcript,VOICES,2);a["speakers"]=[
+  {"speaker_id":"Moderatorin","display_name":"Moderatorin","role":"Moderation","voice_id":VOICES[2],"portrait_id":"portrait-moderatorin-v1","portrait_src":"assets/images/speakers/moderatorin.webp"},
+  {"speaker_id":"Person A","display_name":"Person A","role":"Teilnehmende A","voice_id":VOICES[0],"portrait_id":"portrait-person-a-v1","portrait_src":"assets/images/speakers/person-a.webp"},
+  {"speaker_id":"Person B","display_name":"Person B","role":"Teilnehmende B","voice_id":VOICES[1],"portrait_id":"portrait-person-b-v1","portrait_src":"assets/images/speakers/person-b.webp"}
+ ]
  return {**common(tid,"Hören",4,"three_speaker_discussion",theme,"speaker_tracking"),"german_instruction":"Sie hören eine Diskussion zweimal. Wer sagt was?","instruction_ru":"Дискуссия звучит два раза; 8 мыслей распределите по говорящим.","turns":[{"speaker":a,"text":b} for a,b in turns],"audio":a,"image":image(tid,1,theme),"questions":qs,"translation":transcript_ru,"glossary":glossary(),"answer_key_status":"VERIFIED"}
 def writing(a,i):
  topic=TOPICS[i]
@@ -215,10 +223,8 @@ def speaking(a,i):
   rubric={"task_completion":16,"pronunciation_shared":16}
   sample=sample.replace("dein Beispiel",f"dein Beispiel zu {topic}")
  return {**common(f"S-A{a}-{i+1:02d}","Sprechen",a,"speaking_recording",topic,"spoken_interaction"),"instruction_de":instr,"instruction_ru":instr_ru,"sample":sample,"sample_translation":sample_ru,"phrase_bank":["Ich würde ... vorschlagen.","Was meinst du?","Ein Vorteil ist ...","Meiner Meinung nach ...","Ich habe noch eine Frage: ..."],"glossary":glossary(),"rubric_status":"GOETHE_MODEL_FORMAT_VERIFIED","rubric":rubric,"translation":"Перевод образца доступен.",**extra}
-def svg(path,label):
- safe=re.sub(r"[&<>]",lambda m:{"&":"&amp;","<":"&lt;",">":"&gt;"}[m.group()],label)
- path.write_text(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="{safe}"><rect width="800" height="450" rx="36" fill="#dcecff"/><circle cx="145" cy="140" r="58" fill="#8ebce8"/><rect x="90" y="205" width="110" height="115" rx="25" fill="#6f9fce"/><circle cx="655" cy="145" r="48" fill="#b4d4f2"/><rect x="610" y="202" width="90" height="105" rx="22" fill="#8db7df"/><rect x="255" y="105" width="290" height="220" rx="30" fill="#f8fcff"/><text x="400" y="220" text-anchor="middle" font-family="Arial" font-size="30" font-weight="700" fill="#173e66">{safe}</text><text x="400" y="265" text-anchor="middle" font-family="Arial" font-size="20" fill="#456987">Hören · Kontext</text></svg>',encoding="utf-8")
 def build():
+ generate_portrait_assets(ROOT)
  lesen={1:[lesen1(i) for i in range(10)],2:[lesen2(i) for i in range(10)],3:[lesen3(i) for i in range(10)],4:[lesen4(i) for i in range(10)],5:[lesen5(i) for i in range(10)]}
  hoeren={1:[hoeren1(i) for i in range(10)],2:[hoeren2(i) for i in range(10)],3:[hoeren3(i) for i in range(10)],4:[hoeren4(i) for i in range(10)]}
  schreiben={a:[writing(a,i) for i in range(10)] for a in (1,2,3)};sprechen={a:[speaking(a,i) for i in range(10)] for a in (1,2,3)}
@@ -229,8 +235,8 @@ def build():
  for sets in hoeren.values():
   for task in sets:
    ims=[x["image"] for x in task.get("scenes",[])] or [task["image"]]
-   for im in ims: svg(ROOT/im["src"],im["scene_context"])
- catalog={"version":"full-learning-preview-v1","Lesen":lesen,"Hören":hoeren,"Schreiben":schreiben,"Sprechen":sprechen}
+   for idx,im in enumerate(ims): generate_context_asset(ROOT/im["src"],im["scene_context"],variant=im["image_id"]+"-"+str(idx))
+ catalog={"version":"full-learning-preview-v1.1-quality","Lesen":lesen,"Hören":hoeren,"Schreiben":schreiben,"Sprechen":sprechen}
  (C/"catalog.js").write_text("window.OTTO_CONTENT_CATALOG="+json.dumps(catalog,ensure_ascii=False,separators=(',',':'))+";\n",encoding="utf-8")
  dump(C/"manifest.json",{"version":"full-learning-preview-v1","source_basis":SRC,"counts":{"Lesen":50,"Hören":40,"Schreiben":30,"Sprechen":30}})
  print("content generated: Lesen 50, Hören 40, Schreiben 30, Sprechen 30")
