@@ -156,7 +156,7 @@ test('Settings persists text help and voice preferences and 390 dock has no over
   await page.setViewportSize({width:390,height:844});
   await page.addInitScript(()=>{navigator.share=async data=>{window.__shared=data};});
   await fresh(page);await seedCompleted(page);await page.locator('[data-nav="settings"]').click();
-  await expect(page.getByRole('heading',{name:'OTTO B1'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'OTTO B1',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Крупный'}).click();await page.getByRole('button',{name:'Я уже немного знаю немецкий'}).click();await page.getByRole('button',{name:'Медленнее'}).click();
   expect(await page.evaluate(()=>document.documentElement.dataset.textSize)).toBe('large');
   await page.reload({waitUntil:'networkidle'});expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('ottoB1.uiPrefs.v1')).helpMode)).toBe('direct');
