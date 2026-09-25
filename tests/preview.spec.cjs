@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 let server,base;
-const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.mp3':'audio/mpeg'};
+const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.webp':'image/webp','.mp3':'audio/mpeg','.webmanifest':'application/manifest+json'};
 test.beforeAll(async()=>{
   server=http.createServer((req,res)=>{
     let p=new URL(req.url,'http://127.0.0.1').pathname;
@@ -107,19 +107,32 @@ test('errors page uses human Russian explanations, never raw codes',async({page}
   expect(text).not.toMatch(/matching_constraints|matching constraints|embedded_question|embedded question|purpose_paraphrase|purpose paraphrase/);
   await expect(page.getByRole('button',{name:/Потренировать/}).first()).toBeVisible();
 });
-test('Sprechen microphone preflight records, plays back and uses transcription contract',async({page})=>{
+test('Sprechen Aufgabe 1 runs real turn-by-turn mocked conversation after microphone playback',async({page})=>{
   await page.addInitScript(()=>{
     const real=window.setTimeout.bind(window);window.setTimeout=(fn,ms,...a)=>real(fn,ms===5000?25:ms,...a);
     Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:async()=>({state:'granted'})}});
     Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>({getTracks:()=>[{stop(){}}]}),enumerateDevices:async()=>[{kind:'audioinput',deviceId:'fake'}]}});
     class FakeMediaRecorder{constructor(stream,opt){this.state='inactive';this.mimeType=opt?.mimeType||'audio/webm';}static isTypeSupported(){return true;}start(){this.state='recording';}stop(){if(this.state!=='recording')return;this.state='inactive';if(this.ondataavailable)this.ondataavailable({data:new Blob(['fake-audio'],{type:this.mimeType})});if(this.onstop)this.onstop();}}
     window.MediaRecorder=FakeMediaRecorder;
+    class FakeAudio extends EventTarget{constructor(){super();this.currentTime=0;this.preload='';this.playsInline=true;this.src='';}play(){setTimeout(()=>this.dispatchEvent(new Event('playing')),0);return Promise.resolve();}pause(){}}
+    window.Audio=FakeAudio;
   });
-  await page.route('**/.netlify/functions/transcribe',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({text:'Ich würde Samstag vorschlagen. Wir treffen uns in der Bibliothek.'})}));
+  let transcribe=0,reply=0;
+  const transcripts=['Am Samstag um elf Uhr.','Wir treffen uns in der Bibliothek und ich kaufe die Tickets.','Wir brauchen Getränke und zwei Bücher.'];
+  const replies=['Samstag passt gut. Wo sollen wir uns treffen?','Die Bibliothek ist gut. Was brauchen wir noch?','Perfekt, dann ist unser Plan vollständig.'];
+  await page.route('**/.netlify/functions/transcribe',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({text:transcripts[Math.min(transcribe++,2)]})}));
+  await page.route('**/.netlify/functions/otto-chat',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({text:replies[Math.min(reply++,2)]})}));
   await fresh(page);await seedCompleted(page);await page.evaluate(()=>{location.hash='#modules';});await page.waitForTimeout(40);await page.locator('[data-module="Sprechen"]').click();await page.locator('[data-start-full="1"][data-mode="training"]').click();
   await page.getByRole('button',{name:'Проверить микрофон'}).click();await expect(page.getByText(/Запись готова/).first()).toBeVisible({timeout:3000});await expect(page.locator('audio').first()).toBeVisible();
-  await page.getByRole('button',{name:'🎙 Начать запись'}).click();await page.getByRole('button',{name:'■ Остановить'}).click();await expect(page.getByText('Запись готова',{exact:true}).last()).toBeVisible();
-  await page.getByRole('button',{name:'Отправить запись'}).click();await expect(page.getByText(/Ich würde Samstag vorschlagen/)).toBeVisible();await expect(page.getByText(/не является оценкой произношения/)).toBeVisible();
+  await page.getByRole('button',{name:'Начать диалог с Otto'}).click();await expect(page.getByText(/Samstag passt gut/)).toBeVisible();
+  for(let i=0;i<3;i++){
+    await page.getByRole('button',{name:'🎙 Начать запись'}).click();await page.getByRole('button',{name:'■ Остановить'}).click();
+    await page.getByRole('button',{name:'Отправить реплику Otto'}).click();
+  }
+  await expect(page.getByText('Wann?').locator('..')).toContainText('Wann?');
+  await expect(page.getByRole('button',{name:'Завершить диалог'})).toBeVisible();
+  await page.getByRole('button',{name:'Завершить диалог'}).click();await expect(page.getByText('Диалог завершён')).toBeVisible();
+  const state=await page.evaluate(()=>window.__OTTO_TEST__.getState());expect(state.lesson.conversation.turns.filter(x=>x.role==='user').length).toBe(3);expect(state.lesson.conversation.covered.length).toBe(4);
 });
 test('Otto chat is real UI and mobile 390 has no beta/overflow',async({page})=>{
   await page.setViewportSize({width:390,height:844});
@@ -128,4 +141,24 @@ test('Otto chat is real UI and mobile 390 has no beta/overflow',async({page})=>{
   await expect(page.locator('#ottoMessage')).toBeVisible();await page.locator('#ottoMessage').fill('Почему ответ неверный?');await page.getByRole('button',{name:'Отправить'}).click();await expect(page.getByText(/Сначала найдите в тексте/)).toBeVisible();
   await page.getByRole('button',{name:'×'}).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1)).toBe(false);
   expect(await page.locator('.beta-badge').count()).toBe(0);expect(await page.locator('body').innerText()).not.toMatch(/\bBeta\b|тестовой версии/);
+});
+
+test('Hören training shows raster context and distinct speaker portraits; exam hides them',async({page})=>{
+  await fresh(page);await seedCompleted(page);await page.evaluate(()=>{location.hash='#modules';});await page.waitForTimeout(30);await page.locator('[data-module="Hören"]').click();
+  await page.locator('[data-start-full="3"][data-mode="training"]').click();
+  await expect(page.locator('.hearing-image')).toHaveCount(1);await expect(page.locator('.speaker-identity')).toHaveCount(2);
+  expect(await page.locator('.hearing-image').getAttribute('src')).toMatch(/\.webp$/);
+  await page.evaluate(()=>{location.hash='#modules';});await page.waitForTimeout(30);await page.locator('[data-module="Hören"]').click();await page.locator('[data-start-full="4"][data-mode="exam"]').click();
+  await expect(page.locator('.hearing-image')).toHaveCount(0);await expect(page.locator('.speaker-identity')).toHaveCount(0);
+});
+test('Settings persists text help and voice preferences and 390 dock has no overflow',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.addInitScript(()=>{navigator.share=async data=>{window.__shared=data};});
+  await fresh(page);await seedCompleted(page);await page.locator('[data-nav="settings"]').click();
+  await expect(page.getByRole('heading',{name:'OTTO B1'})).toBeVisible();
+  await page.getByRole('button',{name:'Крупный'}).click();await page.getByRole('button',{name:'Я уже немного знаю немецкий'}).click();await page.getByRole('button',{name:'Медленнее'}).click();
+  expect(await page.evaluate(()=>document.documentElement.dataset.textSize)).toBe('large');
+  await page.reload({waitUntil:'networkidle'});expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('ottoB1.uiPrefs.v1')).helpMode)).toBe('direct');
+  await page.getByRole('button',{name:'Поделиться'}).first().click();expect(await page.evaluate(()=>window.__shared&&window.__shared.url)).toContain(base);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1)).toBe(false);
 });
