@@ -31,7 +31,7 @@ function audio(a,expected,voices){
   assert.ok(Array.isArray(a.speakers)&&new Set(a.speakers.map(x=>x.voice_id)).size>=voices);
   if(process.env.ALLOW_AUDIO_PENDING!=='1')assert.ok(fs.existsSync(path.join(root,a.asset_src)),a.asset_src+' missing');
 }
-function image(i){assert.ok(i.src&&fs.existsSync(path.join(root,i.src)),i.src+' missing');assert.equal(i.context_only,true);assert.equal(i.answer_leak_review,'PASSED');}
+function image(i){assert.ok(i.src&&fs.existsSync(path.join(root,i.src)),i.src+' missing');assert.equal(i.context_only,true);assert.equal(i.answer_leak_review,'PASSED_CONTEXT_ONLY');}
 for(const t of hoeren[1]){common(t);assert.equal(t.scenes.length,5);for(const s of t.scenes){assert.equal(s.questions.length,2);audio(s.audio,2,1);image(s.image);}}
 for(const t of hoeren[2]){common(t);assert.equal(t.questions.length,5);audio(t.audio,1,1);image(t.image);}
 for(const t of hoeren[3]){common(t);assert.equal(t.questions.length,7);audio(t.audio,1,2);image(t.image);}
