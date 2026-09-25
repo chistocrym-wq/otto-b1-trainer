@@ -1,5 +1,5 @@
 [build]
-  command = "python3 tools/generate_full_content.py"
+  command = "python3 -m pip install -r requirements.txt && python3 tools/generate_full_content.py"
   publish = "."
 
 [functions]
