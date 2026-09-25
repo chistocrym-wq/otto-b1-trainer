@@ -198,20 +198,60 @@ def writing(a,i):
   instr=f"Schreiben Sie in einem Forum etwa 80 Wörter zum Thema {topic}. Sagen Sie Ihre Meinung, begründen Sie sie und nennen Sie ein Beispiel.";instr_ru=f"Напишите на форуме около 80 слов на тему «{TOPICS_RU[topic]}»: выразите мнение, обоснуйте его и приведите пример.";target=80;pts=["мнение","обоснование","пример"]
  else:
   instr=f"Sie können einen Termin zum Thema {topic} nicht wahrnehmen. Schreiben Sie etwa 40 Wörter: Entschuldigung, Grund, neuer Termin.";instr_ru=f"Вы не можете прийти на встречу по теме «{TOPICS_RU[topic]}». Напишите около 40 слов: извинитесь, назовите причину и предложите новый срок.";target=40;pts=["извинение","причина","новый срок"]
- sample=("Hallo Anna,\n\nich wollte dir kurz erzählen, dass ich eine neue Erfahrung gemacht habe. Besonders gut fand ich die freundliche Atmosphäre. Ein wichtiger Grund war, dass ich etwas Neues ausprobieren wollte. Hast du am Samstag Zeit? Wir könnten uns treffen und ich erzähle dir mehr.\n\nLiebe Grüße\nMara" if a==1 else ("Meiner Meinung nach ist dieses Thema im Alltag wichtig. Ein Vorteil ist, dass man neue Erfahrungen sammeln kann. Gleichzeitig braucht man klare Absprachen. Ich habe selbst erlebt, dass gute Planung vieles leichter macht. Deshalb finde ich eine flexible, aber verlässliche Lösung am besten." if a==2 else "Guten Tag Frau Keller,\nleider kann ich am Dienstag nicht kommen, weil ich länger arbeiten muss. Das tut mir leid. Wäre Donnerstag um 16 Uhr möglich? Vielen Dank für Ihr Verständnis.\nMit freundlichen Grüßen\nMara Klein"))
- sample_ru=("Привет, Анна!\n\nЯ хотела коротко рассказать тебе о новом опыте. Особенно мне понравилась дружелюбная атмосфера. Для меня было важно попробовать что-то новое. У тебя есть время в субботу? Мы могли бы встретиться, и я расскажу подробнее.\n\nС наилучшими пожеланиями,\nМара" if a==1 else ("По моему мнению, эта тема важна в повседневной жизни. Одно из преимуществ — возможность получить новый опыт. Одновременно нужны чёткие договорённости. Я сама убедилась, что хорошее планирование многое упрощает. Поэтому лучшим считаю гибкое, но надёжное решение." if a==2 else "Добрый день, госпожа Келлер!\nК сожалению, я не могу прийти во вторник, потому что должна дольше работать. Простите, пожалуйста. Вам подошёл бы четверг в 16:00? Спасибо за понимание.\nС уважением,\nМара Кляйн"))
+ if a==1:
+  sample=f"""Hallo Anna,
+
+ich wollte dir von meiner Erfahrung mit {topic} erzählen. Letzten Samstag war ich dort, weil ich etwas Neues ausprobieren und neue Leute kennenlernen wollte. Am Anfang war ich etwas unsicher, aber die Gruppe war sehr freundlich. Wir haben gemeinsam etwas vorbereitet, viel gesprochen und am Ende noch Kaffee getrunken. Besonders gut fand ich die entspannte Atmosphäre. Hast du nächsten Samstag Zeit? Dann könnten wir uns treffen und ich erzähle dir alles genauer.
+
+Liebe Grüße
+Mara"""
+  sample_ru=f"""Привет, Анна!
+
+Я хотела рассказать тебе о своём опыте с темой «{TOPICS_RU[topic]}». В прошлую субботу я пришла туда, потому что хотела попробовать что-то новое и познакомиться с людьми. Сначала я немного волновалась, но группа оказалась очень дружелюбной. Мы вместе готовились, много разговаривали и потом пили кофе. Особенно мне понравилась спокойная атмосфера. У тебя есть время в следующую субботу? Мы могли бы встретиться, и я расскажу всё подробнее.
+
+С наилучшими пожеланиями,
+Мара"""
+ elif a==2:
+  sample=f"""Meiner Meinung nach ist das Thema {topic} für unseren Alltag wichtig. Es bietet die Chance, neue Erfahrungen zu machen und mit anderen Menschen in Kontakt zu kommen. Gleichzeitig funktioniert es nur gut, wenn die Beteiligten zuverlässig sind und klare Absprachen treffen. Ich habe selbst erlebt, dass eine gute Organisation viele Probleme verhindert. Deshalb finde ich solche Angebote sinnvoll. Sie sollten aber flexibel bleiben, damit auch Menschen mit wenig Zeit teilnehmen können."""
+  sample_ru=f"""По моему мнению, тема «{TOPICS_RU[topic]}» важна для повседневной жизни. Она даёт возможность получить новый опыт и общаться с другими людьми. Однако всё хорошо работает только тогда, когда участники надёжны и чётко договариваются. Я сама убедилась, что хорошая организация помогает избежать многих проблем. Поэтому я считаю такие предложения полезными. Но они должны оставаться достаточно гибкими, чтобы участвовать могли и люди, у которых мало времени."""
+ else:
+  day=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag"][i%5];newday=["Dienstag","Mittwoch","Donnerstag","Freitag","Montag"][i%5]
+  sample=f"""Guten Tag Frau Keller,
+leider kann ich zu unserem Termin zum Thema {topic} am {day} nicht kommen, weil ich länger arbeiten muss. Das tut mir sehr leid. Wäre {newday} um 16 Uhr für Sie möglich? Vielen Dank für Ihr Verständnis.
+Mit freundlichen Grüßen
+Mara Klein"""
+  sample_ru=f"""Добрый день, госпожа Келлер!
+К сожалению, я не могу прийти на нашу встречу по теме «{TOPICS_RU[topic]}» в назначенный день, потому что должна дольше работать. Простите, пожалуйста. Вам подошёл бы другой день в 16:00? Спасибо за понимание.
+С уважением,
+Мара Кляйн"""
  rubric=({"task_completion":10,"coherence":10,"vocabulary":10,"structures":10} if a in (1,2) else {"task_completion":4,"coherence":4,"vocabulary":6,"structures":6})
- sample=sample.replace("новую Erfahrung","новую Erfahrung") if False else sample
- if a==1: sample=sample.replace("eine neue Erfahrung",f"eine neue Erfahrung mit {topic}")
- if a==2: sample=sample.replace("dieses Thema",f"das Thema {topic}")
- if a==3: sample=sample.replace("am Dienstag",["am Montag","am Dienstag","am Mittwoch","am Donnerstag","am Freitag"][i%5]).replace("Donnerstag",["Dienstag","Mittwoch","Donnerstag","Freitag","Montag"][i%5]).replace(" nicht kommen, weil",f" nicht zu unserem Termin zum Thema {topic} kommen, weil")
  return {**common(f"W-A{a}-{i+1:02d}","Schreiben",a,"writing_free_text",topic,"written_communication"),"instruction_de":instr,"instruction_ru":instr_ru,"required_points":pts,"target_words":target,"sample":sample,"sample_translation":sample_ru,"structure":["обращение/введение","обязательные пункты","связки","завершение"],"phrase_bank":["Meiner Meinung nach ...","Ein wichtiger Grund ist ...","Leider kann ich ...","Wäre ... möglich?"],"glossary":glossary(),"rubric_status":"GOETHE_MODEL_FORMAT_VERIFIED","rubric":rubric,"checklist":["Все пункты раскрыты","Подходящий регистр","Есть связки","Текст перечитан"],"translation":"Русский перевод образца доступен в учебном режиме."}
 def speaking(a,i):
  topic=TOPICS[i]
  if a==1:
   instr=f"Planen Sie gemeinsam etwas zum Thema {topic}: Wann? Wo? Wer macht was? Was braucht man?";instr_ru=f"Вместе спланируйте дело на тему «{TOPICS_RU[topic]}»: когда, где, кто что делает и что понадобится.";extra={"planning_points":["Wann?","Wo?","Wer macht was?","Was braucht man?"]};sample="Ich würde Samstag vorschlagen. Wir könnten uns in der Bibliothek treffen. Ich kann die Materialien vorbereiten. Kannst du Getränke mitbringen? Was meinst du?";sample_ru="Я бы предложил(а) субботу. Мы могли бы встретиться в библиотеке. Я могу подготовить материалы. Ты можешь принести напитки? Что думаешь?"
  elif a==2:
-  instr=f"Wählen Sie Thema A oder B. A: {topic}. B: Deutsch im Alltag üben. Sprechen Sie etwa drei Minuten.";instr_ru=f"Выберите тему A или B. A: «{TOPICS_RU[topic]}». B: как практиковать немецкий в повседневной жизни. Говорите около трёх минут.";extra={"presentation_structure":["Thema und Aufbau nennen","eigene Erfahrung","Situation im Heimatland / Beispiel","Vor- und Nachteile + eigene Meinung","Schluss und Dank"],"sample_audio":f"assets/audio/sprechen/s-a2-{i+1:02d}.mp3"};sample=f"Ich möchte heute über {topic} sprechen. Zuerst erzähle ich von meiner Erfahrung. Danach nenne ich ein Beispiel. Ein Vorteil ist die gemeinsame Planung, ein Nachteil ist die Terminfindung. Meiner Meinung nach lohnt es sich trotzdem. Zum Schluss ist mir wichtig: klare Absprachen helfen.";sample_ru=f"Сегодня я хочу поговорить о теме «{TOPICS_RU[topic]}». Сначала расскажу о своём опыте, затем приведу пример. Одно преимущество — совместное планирование, один недостаток — сложно согласовать время. Несмотря на это, я считаю, что оно того стоит. В конце хочу подчеркнуть: чёткие договорённости помогают."
+  instr=f"Wählen Sie Thema A oder B. A: {topic}. B: Deutsch im Alltag üben. Sprechen Sie etwa drei Minuten.";instr_ru=f"Выберите тему A или B. A: «{TOPICS_RU[topic]}». B: как практиковать немецкий в повседневной жизни. Говорите около трёх минут."
+  structure=["Thema und Aufbau nennen","eigene Erfahrung","Situation im Heimatland / Beispiel","Vor- und Nachteile + eigene Meinung","Schluss und Dank"]
+  extra={"presentation_structure":structure,"presentation_structure_coverage":"ALL_5_STEPS","sample_audio":f"assets/audio/sprechen/s-a2-{i+1:02d}.mp3","sample_duration_target_seconds":[150,210],"duration_is_primary_qa":True}
+  sample=f"""Guten Tag. Ich möchte heute über das Thema {topic} sprechen. Zuerst erkläre ich kurz, warum dieses Thema für mich interessant ist. Danach erzähle ich von meiner persönlichen Erfahrung. Anschließend beschreibe ich, wie ich die Situation in meinem Heimatland und in meinem Alltag erlebe. Dann nenne ich einige Vorteile und Nachteile und sage meine eigene Meinung. Zum Schluss fasse ich meine wichtigsten Gedanken kurz zusammen.
+
+Mit {topic} habe ich schon mehrmals persönliche Erfahrungen gemacht. Am Anfang wusste ich nicht genau, ob dieses Thema für mich wichtig sein würde. Später habe ich aber gemerkt, dass es im Alltag viele konkrete Situationen gibt, in denen man damit zu tun hat. Besonders hilfreich war für mich, mit anderen Menschen darüber zu sprechen und verschiedene Möglichkeiten auszuprobieren. Dabei habe ich gelernt, dass eine gute Vorbereitung und klare Absprachen vieles einfacher machen.
+
+Auch in meinem Heimatland spielt {topic} eine Rolle. In größeren Städten gibt es meistens mehr Angebote und Informationen, während die Situation in kleineren Orten unterschiedlich sein kann. Viele Menschen interessieren sich dafür, aber nicht alle haben gleich viel Zeit, Geld oder Erfahrung. Deshalb finde ich es wichtig, dass Informationen verständlich sind und dass verschiedene Gruppen teilnehmen können. Ein gutes Beispiel aus meinem Umfeld zeigt, dass kleine, gut organisierte Projekte oft besser funktionieren als sehr große Pläne ohne klare Verantwortung.
+
+Ein Vorteil von {topic} ist für mich, dass Menschen neue Erfahrungen sammeln und voneinander lernen können. Außerdem kann es den Alltag interessanter und manchmal auch einfacher machen. Ein Nachteil ist, dass Organisation Zeit braucht und dass unterschiedliche Wünsche zu Problemen führen können. Manchmal entstehen auch zusätzliche Kosten. Meiner Meinung nach überwiegen trotzdem die Vorteile, wenn man realistisch plant und miteinander spricht.
+
+Zum Schluss möchte ich sagen, dass {topic} für mich ein aktuelles und praktisches Thema ist. Ich würde empfehlen, offen zu bleiben, aber vorher gut zu planen. Vielen Dank fürs Zuhören."""
+  sample_ru=f"""Добрый день. Сегодня я хочу поговорить о теме «{TOPICS_RU[topic]}». Сначала я коротко объясню, почему эта тема мне интересна. Затем расскажу о личном опыте. После этого опишу ситуацию в моей стране и в повседневной жизни. Потом назову преимущества и недостатки и выражу своё мнение. В конце кратко подведу итог.
+
+У меня уже несколько раз был личный опыт, связанный с этой темой. Сначала я не знала, насколько она будет для меня важна. Позже я заметила, что в повседневной жизни есть много конкретных ситуаций, где она встречается. Особенно полезно было обсуждать это с другими людьми и пробовать разные варианты. Я поняла, что хорошая подготовка и чёткие договорённости многое упрощают.
+
+В моей стране эта тема тоже играет роль. В крупных городах обычно больше предложений и информации, а в небольших населённых пунктах ситуация может отличаться. Многие интересуются этой темой, но не у всех одинаково много времени, денег или опыта. Поэтому важно, чтобы информация была понятной и участие было доступно разным людям. Пример из моего окружения показывает, что небольшие хорошо организованные проекты часто работают лучше больших планов без чёткой ответственности.
+
+Преимущество этой темы в том, что люди могут получать новый опыт и учиться друг у друга. Кроме того, это может сделать повседневную жизнь интереснее и иногда проще. Недостаток в том, что организация требует времени, а разные желания могут приводить к проблемам. Иногда появляются дополнительные расходы. Несмотря на это, я считаю, что плюсов больше, если реалистично планировать и разговаривать друг с другом.
+
+В заключение хочу сказать, что для меня это актуальная и практичная тема. Я бы советовала оставаться открытым к новому, но заранее хорошо всё планировать. Спасибо за внимание."""
  else:
   instr=f"Ihre Partnerin / Ihr Partner hat über {topic} gesprochen. Geben Sie Feedback und stellen Sie eine passende Frage.";instr_ru=f"Партнёр выступил на тему «{TOPICS_RU[topic]}». Коротко прокомментируйте презентацию и задайте подходящий вопрос.";extra={"feedback_points":["короткая позитивная реакция","конкретный вопрос"]};sample="Deine Präsentation war gut strukturiert. Besonders interessant fand ich dein Beispiel. Ich habe noch eine Frage: Wie würdest du das organisieren, wenn wenig Zeit da ist?";sample_ru="Твоя презентация была хорошо структурирована. Особенно интересным мне показался твой пример. У меня ещё один вопрос: как бы ты это организовал(а), если бы времени было мало?"
  if a==1:
