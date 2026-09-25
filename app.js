@@ -6,7 +6,53 @@ const GUIDE=window.OTTO_GUIDE_B1;
 const LEARNING=window.OTTO_LEARNING_BANK;
 const FULL=window.OTTO_FULL_LEARNING;
 const STORAGE='ottoB1.diagnostic.v3';
+const PREFS_KEY='ottoB1.uiPrefs.v1';
+const LEGAL_VERSION='2026-09-23-v1';
+const SUPPORT_EMAIL='otto.nash@mail.ru';
 const MODULES=['Lesen','Hören','Schreiben','Sprechen'];
+const DEFAULT_PREFS={textSize:'medium',helpMode:'guided',voiceSpeed:'normal',language:'ru',reminder:{enabled:false,days:[1,3,5],time:'19:00'}};
+function loadPrefs(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(PREFS_KEY)||'{}'),rem=raw.reminder||{};
+    return {
+      textSize:['small','medium','large'].includes(raw.textSize)?raw.textSize:'medium',
+      helpMode:['guided','direct'].includes(raw.helpMode)?raw.helpMode:'guided',
+      voiceSpeed:raw.voiceSpeed==='slow'?'slow':'normal',
+      language:'ru',
+      reminder:{enabled:Boolean(rem.enabled),days:Array.isArray(rem.days)?rem.days.map(Number).filter(n=>n>=0&&n<=6):[1,3,5],time:/^([01]\d|2[0-3]):[0-5]\d$/.test(String(rem.time||''))?String(rem.time):'19:00'}
+    };
+  }catch{return JSON.parse(JSON.stringify(DEFAULT_PREFS));}
+}
+let PREFS=loadPrefs(),deferredInstallPrompt=null,lastReminderDate='';
+function applyPrefs(){
+  document.documentElement.dataset.textSize=PREFS.textSize;
+  document.documentElement.style.setProperty('--otto-text-scale',PREFS.textSize==='small'?'0.94':PREFS.textSize==='large'?'1.12':'1');
+  window.OTTO_SPEECH?.setMode?.(PREFS.voiceSpeed);
+}
+function savePrefs(){
+  try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch{}
+  applyPrefs();
+}
+function notificationCapability(){return typeof Notification==='undefined'?'unsupported':Notification.permission;}
+async function requestReminderPermission(){
+  if(typeof Notification==='undefined')return'unsupported';
+  try{return await Notification.requestPermission();}catch{return'denied';}
+}
+function maybeSendReminder(){
+  if(!PREFS.reminder.enabled||typeof Notification==='undefined'||Notification.permission!=='granted')return;
+  const d=new Date(),day=d.getDay(),hhmm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'),date=d.toISOString().slice(0,10);
+  if(!PREFS.reminder.days.includes(day)||hhmm!==PREFS.reminder.time||lastReminderDate===date)return;
+  try{new Notification('Тренажёр Otto',{body:'Пора на короткую тренировку B1.',icon:'./otto-icon-192.png',tag:'otto-b1-reminder'});lastReminderDate=date;}catch{}
+}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;window.dispatchEvent(new Event('otto:pwa-install-change'));});
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;window.dispatchEvent(new Event('otto:pwa-install-change'));});
+function isStandalone(){try{return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch{return false}}
+function manualInstallHint(){
+  const ua=navigator.userAgent||'',ios=/iPad|iPhone|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(ios)return 'В Safari нажмите «Поделиться» → «На экран Домой» → «Добавить».';
+  return 'Откройте меню браузера и выберите «Установить приложение» или «Добавить на главный экран».';
+}
+applyPrefs();
 
 const B1_MAP={
   Lesen:[
@@ -777,12 +823,48 @@ function speakText(text){
   void speech.speakGerman(text,{voiceRole:'otto',context:'dictionary'}).then(ok=>{if(!ok)alert('Не удалось воспроизвести слово фирменным немецким голосом Otto.');});
 }
 async function shareApp(){
-  const data={url:location.origin+location.pathname};
+  const data={title:'OTTO — Goethe-Zertifikat B1',text:'OTTO B1 — тренажёр для подготовки к экзамену',url:location.origin+location.pathname};
   try{
     if(navigator.share){await navigator.share(data);return;}
     if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(data.url);alert('Ссылка скопирована.');return;}
   }catch(e){if(e&&e.name==='AbortError')return;}
   const ta=document.createElement('textarea');ta.value=data.url;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert('Ссылка скопирована.');
+}
+function dayButton(day,label){return '<button type="button" class="day-toggle '+(PREFS.reminder.days.includes(day)?'active':'')+'" data-reminder-day="'+day+'" aria-pressed="'+PREFS.reminder.days.includes(day)+'">'+label+'</button>';}
+function settingsView(){
+  const email=S.auth.method==='email'&&S.auth.contact?S.auth.contact:'не указан';
+  const gender=S.gender||'';
+  const installState=isStandalone()?'OTTO уже установлен и запускается как приложение.':'Установите OTTO на устройство, чтобы запускать его как обычное приложение.';
+  const permission=notificationCapability();
+  return '<span class="eyebrow">Настройки</span><h1 class="h2">OTTO B1</h1><p class="lead">Профиль, режим обучения, напоминания, интерфейс и фирменный немецкий голос.</p>'+
+    '<section class="settings-card"><div class="settings-head"><span class="settings-icon">👤</span><div><span class="eyebrow">Профиль</span><h2>'+esc(S.name||'Профиль пользователя')+'</h2></div></div><p class="muted">Email: '+esc(email)+(S.auth.method==='email'?'<br><b>Статус:</b> локальный Preview-профиль; реальная email-verification в B1 ещё не подключена.':'')+'</p>'+
+    '<div class="settings-gender"><b>Ваш пол</b><div class="segmented"><button data-setting-gender="female" class="'+(gender==='female'?'active':'')+'">Женский</button><button data-setting-gender="male" class="'+(gender==='male'?'active':'')+'">Мужской</button></div></div>'+
+    '<div class="button-row"><button class="btn secondary" data-action="settings-edit-profile">Изменить профиль</button><button class="btn ghost" data-action="open-progress">Мой прогресс</button><button class="btn ghost" data-action="settings-logout">Выйти из аккаунта</button></div><p class="small">Выход не удаляет сохранённый учебный прогресс на этом устройстве.</p></section>'+
+    '<section class="settings-card"><div class="settings-head"><span class="settings-icon">📄</span><div><span class="eyebrow">Документы</span><h2>Правовая информация</h2></div></div><p class="muted">Актуальная утверждённая версия в линейке OTTO: '+LEGAL_VERSION+'. Документы A1 содержат A1-специфичный текст, поэтому B1 не выдаёт их за утверждённые документы B1.</p><div class="legal-list"><button disabled>Политика обработки персональных данных · B1-версия требует утверждения</button><button disabled>Согласие на обработку персональных данных · B1-версия требует утверждения</button><button disabled>Пользовательское соглашение OTTO · B1-версия требует утверждения</button></div><p class="small">Контакт: <a href="mailto:'+SUPPORT_EMAIL+'">'+SUPPORT_EMAIL+'</a></p></section>'+
+    '<section class="settings-card"><div class="settings-head"><span class="settings-icon">Aa</span><div><span class="eyebrow">Интерфейс</span><h2>Размер текста</h2></div></div><div class="segmented three"><button data-text-size="small" class="'+(PREFS.textSize==='small'?'active':'')+'">Мелкий</button><button data-text-size="medium" class="'+(PREFS.textSize==='medium'?'active':'')+'">Средний</button><button data-text-size="large" class="'+(PREFS.textSize==='large'?'active':'')+'">Крупный</button></div></section>'+
+    '<section class="settings-card"><div class="settings-head"><span class="settings-icon">📘</span><div><span class="eyebrow">Обучение</span><h2>Режим помощи Otto</h2></div></div><p class="muted">Режим можно изменить в любой момент. Результаты и прогресс сохранятся.</p><div class="mode-grid settings-modes"><button class="mode-card '+(PREFS.helpMode==='guided'?'selected':'')+'" data-help-mode="guided"><b>Начинаю с нуля</b><span>Короткие объяснения перед новыми типами заданий.</span></button><button class="mode-card '+(PREFS.helpMode==='direct'?'selected':'')+'" data-help-mode="direct"><b>Я уже немного знаю немецкий</b><span>Сразу к тренировкам без дополнительного вступления.</span></button></div></section>'+
+    '<section class="settings-card"><div class="settings-head"><span class="settings-icon">🌐</span><div><span class="eyebrow">Язык</span><h2>Язык приложения</h2></div></div><p class="muted">Русский интерфейс проверяется полностью. Другие языки появятся только после полной локализации.</p><button class="btn secondary" disabled>Русский</button></section>'+
+    '<section class="settings-card"><div class="settings-head"><span class="settings-icon">🔔</span><div><span class="eyebrow">Напоминания</span><h2>Когда напомнить о тренировке?</h2></div></div><p class="muted">В веб-Preview локальное напоминание может сработать, пока OTTO открыт. Фоновую доставку закрытому приложению не обещаем.</p><div class="days">'+dayButton(0,'Вс')+dayButton(1,'Пн')+dayButton(2,'Вт')+dayButton(3,'Ср')+dayButton(4,'Чт')+dayButton(5,'Пт')+dayButton(6,'Сб')+'</div><label class="setting-label">Время<input id="reminderTime" type="time" class="field" value="'+esc(PREFS.reminder.time)+'"></label><div class="button-row"><button class="btn secondary" data-action="request-notifications">'+(permission==='granted'?'Уведомления разрешены':'Разрешить уведомления')+'</button><button class="btn primary" data-action="save-reminder">Сохранить</button></div></section>'+
+    '<section class="settings-card"><div class="settings-head"><span class="settings-icon">🔊</span><div><span class="eyebrow">Фирменный голос</span><h2>Как говорит Otto</h2></div></div><p class="muted">Утверждённая A1 voice policy перенесена в B1: OpenAI gpt-4o-mini-tts, voice cedar. Скорость применяется к Otto, словарю и учебным фразам, но не к Hören exam audio.</p><div class="segmented"><button data-voice-speed="normal" class="'+(PREFS.voiceSpeed==='normal'?'active':'')+'">Нормально</button><button data-voice-speed="slow" class="'+(PREFS.voiceSpeed==='slow'?'active':'')+'">Медленнее</button></div><button class="btn secondary full" data-action="test-otto-voice">▶ Послушать голос Otto</button></section>'+
+    '<section class="settings-card"><div class="settings-head"><span class="settings-icon">📱</span><div><span class="eyebrow">Установка</span><h2>Установка приложения</h2></div></div><p class="muted">'+esc(installState)+'</p><button class="btn secondary full" data-action="install-app">'+(isStandalone()?'Приложение установлено':'Установить приложение')+'</button><div id="installNotice" class="small"></div></section>'+
+    '<section class="settings-card settings-support"><div><span class="eyebrow">Поддержка</span><h2>Написать в поддержку</h2><p class="muted">Откроется ваше почтовое приложение. Ложного статуса «обращение отправлено» OTTO не показывает.</p></div><a class="btn secondary" href="mailto:'+SUPPORT_EMAIL+'">Написать</a></section>'+
+    '<section class="settings-card settings-support"><div><span class="eyebrow">Поделиться</span><h2>Поделиться OTTO B1</h2><p class="muted">Передаётся только ссылка на приложение — без email, диагностики, прогресса и аккаунта.</p></div><button class="btn secondary" data-action="share-app">Поделиться</button></section>';
+}
+async function installApp(){
+  if(isStandalone())return alert('OTTO уже установлен на этом устройстве.');
+  if(deferredInstallPrompt){
+    const p=deferredInstallPrompt;deferredInstallPrompt=null;
+    try{await p.prompt();const choice=await p.userChoice;if(choice?.outcome==='accepted')return alert('Установка приложения началась.');if(choice?.outcome==='dismissed')return alert('Установка отменена. Можно повторить позже.');}catch{}
+  }
+  alert(manualInstallHint());
+}
+function logoutLocalProfile(){
+  S.auth.verified=false;S.ui.ottoOpen=false;S.ui.helpOpen=false;save();go('register');
+}
+function editLocalProfile(){
+  const next=prompt('Имя пользователя',S.name||'');if(next===null)return;
+  const name=String(next).trim();if(!name)return alert('Имя не может быть пустым.');
+  S.name=name;save();render();
 }
 
 
@@ -1084,7 +1166,7 @@ function render(){
     report:reportView,home:homeView,route:routeView,modules:modulesView,module:moduleView,
     guide:guideView,learn:learnView,'learn-summary':learningSummaryView,session:sessionView,
     lesson:lessonView,'session-summary':sessionSummaryView,
-    errors:errorsView,progress:progressView
+    errors:errorsView,progress:progressView,settings:settingsView
   };
   const content=(views[r]||registerView)();
   const unlockedBack=!['register','verify','diagnostic-gate','diagnostic','home'].includes(r);
@@ -1092,7 +1174,7 @@ function render(){
   const locked=['register','verify','diagnostic-gate','diagnostic'].includes(r);
   $('#bottomNav').classList.toggle('hidden',locked);
   $('#guideButton').classList.toggle('hidden',locked);
-  $('#shareButton').classList.toggle('hidden',locked);
+  $('#utilityDock').classList.toggle('hidden',locked);
   $('#ottoDecor').classList.toggle('hidden',locked);
   $('#ottoDecor').src=window.OTTO_SRC||'';
   $('#ottoNavImg').src=window.OTTO_SRC||'';
@@ -1118,6 +1200,11 @@ function click(e){
   const speakWord=e.target.closest('[data-speak-word]');if(speakWord){speakText(speakWord.dataset.speakWord);return;}
   const mod=e.target.closest('[data-module]');if(mod){S.selectedModule=mod.dataset.module;S.selectedGuide=S.selectedModule;save();go('module');return;}
   const mins=e.target.closest('[data-minutes]');if(mins){captureRegistrationDraft();S.dailyMinutes=Number(mins.dataset.minutes);save();render();return;}
+  const gender=e.target.closest('[data-setting-gender]');if(gender){S.gender=gender.dataset.settingGender;save();render();return;}
+  const size=e.target.closest('[data-text-size]');if(size){PREFS.textSize=size.dataset.textSize;savePrefs();render();return;}
+  const helpMode=e.target.closest('[data-help-mode]');if(helpMode){PREFS.helpMode=helpMode.dataset.helpMode;savePrefs();render();return;}
+  const voiceSpeed=e.target.closest('[data-voice-speed]');if(voiceSpeed){PREFS.voiceSpeed=voiceSpeed.dataset.voiceSpeed;savePrefs();render();return;}
+  const reminderDay=e.target.closest('[data-reminder-day]');if(reminderDay){const d=Number(reminderDay.dataset.reminderDay),has=PREFS.reminder.days.includes(d);PREFS.reminder.days=has?PREFS.reminder.days.filter(x=>x!==d):[...PREFS.reminder.days,d].sort();savePrefs();render();return;}
   const ch=e.target.closest('[data-diag-choice]');if(ch){answerDiagnostic(Number(ch.dataset.diagChoice));return;}
   const sessionMod=e.target.closest('[data-session-module]');if(sessionMod){
     const m=sessionMod.dataset.sessionModule;S.selectedModule=m;S.selectedGuide=m;save();
@@ -1159,6 +1246,12 @@ function click(e){
   else if(x==='otto-send')sendOttoMessage();
   else if(x==='close-modal'){S.ui.helpOpen=false;S.ui.ottoOpen=false;save();renderModal();}
   else if(x==='share-app')shareApp();
+  else if(x==='settings-edit-profile')editLocalProfile();
+  else if(x==='settings-logout')logoutLocalProfile();
+  else if(x==='request-notifications')requestReminderPermission().then(()=>render());
+  else if(x==='save-reminder'){const input=$('#reminderTime');if(input)PREFS.reminder.time=input.value;PREFS.reminder.enabled=PREFS.reminder.days.length>0;savePrefs();alert('Настройка напоминания сохранена.');render();}
+  else if(x==='test-otto-voice'){window.OTTO_SPEECH?.speakGerman?.('Hallo. Ich heiße Otto. Schön, dass du da bist.',{voiceRole:'otto',context:'settings'}).then(ok=>{if(!ok)alert('Фирменный голос Otto пока не настроен на сервере.');});}
+  else if(x==='install-app')installApp();
   else if(x==='guide-speak-sample')speakText(GUIDE.modules.Sprechen.presentation.sample);
   else if(x==='instruction-help'){S.learning.instructionHelp=!S.learning.instructionHelp;if(S.learning.instructionHelp)recordAssistance('instruction_help','Lesen Teil 1');save();render();}
   else if(x==='toggle-translation'){S.learning.translation=!S.learning.translation;if(S.learning.translation)recordAssistance('translation_used','Lesen Teil 1');save();render();}
@@ -1190,10 +1283,13 @@ function click(e){
   else if(x==='lesson-complete')finishLessonAndAdvance();
 }
 document.addEventListener('click',click);
-document.addEventListener('input',function(e){if(e.target&&e.target.id==='fullWriting'){S.lesson.userText=e.target.value;save();}});
+document.addEventListener('input',function(e){if(e.target&&e.target.id==='fullWriting'){S.lesson.userText=e.target.value;save();}if(e.target&&e.target.id==='reminderTime'){PREFS.reminder.time=e.target.value;}});
 $('#resetButton').addEventListener('click',()=>{if(confirm('Сбросить профиль, диагностику и прогресс?'))reset();});
 window.addEventListener('popstate',render);
 window.addEventListener('hashchange',render);
+window.addEventListener('focus',maybeSendReminder);
+setInterval(maybeSendReminder,30000);
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>undefined),{once:true});
 
 window.__OTTO_TEST__={
   getState:()=>JSON.parse(JSON.stringify(S)),
